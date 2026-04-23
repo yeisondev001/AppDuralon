@@ -150,243 +150,280 @@ class _IniciarSessionScreenState extends State<IniciarSessionScreen> {
         child: SafeArea(
           child: Material(
             color: Colors.white,
-            child: ListView(
-              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              physics: const ClampingScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SizedBox(height: _scaled(height, 0.02, 8, 18)),
-                IconButton(
-                  onPressed: () => Navigator.of(context).maybePop(),
-                  icon: Icon(
-                    Icons.arrow_back,
-                    size: _scaled(28, scale, 22, 30),
-                    color: primaryBlue,
-                  ),
-                  padding: EdgeInsets.zero,
-                  alignment: Alignment.centerLeft,
-                  constraints: const BoxConstraints(),
-                ),
-                SizedBox(height: _scaled(height, 0.06, 24, 56)),
-                // Mismo fondo blanco que login_screen, sin marco ni sombra
-                Center(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: SizedBox(
-                      width: logoSize,
-                      height: logoSize,
-                      child: Image.asset(
-                        'assets/images/duralon_logo.png',
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: _scaled(height, 0.05, 24, 48)),
-                TextField(
-                  controller: _correoController,
-                  keyboardType: TextInputType.emailAddress,
-                  textInputAction: TextInputAction.next,
-                  autofillHints: const [AutofillHints.email],
-                  style: TextStyle(color: _textDark, fontSize: inputFontSize),
-                  cursorColor: primaryBlue,
-                  decoration: InputDecoration(
-                    hintText: 'Gmail o correo electrónico',
-                    hintStyle: TextStyle(
-                      color: hintColor,
-                      fontSize: inputFontSize,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    enabledBorder: const UnderlineInputBorder(
-                      borderSide: BorderSide(color: inputLine, width: 1),
-                    ),
-                    focusedBorder: const UnderlineInputBorder(
-                      borderSide: BorderSide(color: primaryBlue, width: 1.6),
-                    ),
-                    suffixIcon: _correoController.text.isNotEmpty
-                        ? _iconoBorrarCorreo()
-                        : null,
-                  ),
-                ),
-                SizedBox(height: _scaled(height, 0.03, 20, 30)),
-                TextField(
-                  controller: _contrasenaController,
-                  style: TextStyle(color: _textDark, fontSize: inputFontSize),
-                  cursorColor: primaryBlue,
-                  obscureText: _ocultarContrasena,
-                  textInputAction: TextInputAction.done,
-                  autofillHints: const [AutofillHints.password],
-                  onSubmitted: (_) {
-                    if (_puedeIniciarSesion) {
-                      _intentarIniciarSesion();
-                    }
-                  },
-                  decoration: InputDecoration(
-                    hintText: 'Contraseña',
-                    hintStyle: TextStyle(
-                      color: hintColor,
-                      fontSize: inputFontSize,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    suffixIcon: IconButton(
-                      onPressed: () {
-                        setState(() {
-                          _ocultarContrasena = !_ocultarContrasena;
-                        });
-                      },
-                      icon: Icon(
-                        _ocultarContrasena
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
-                        color: _iconoOjito,
-                        size: 22,
-                      ),
-                      tooltip: _ocultarContrasena
-                          ? 'Mostrar contraseña'
-                          : 'Ocultar contraseña',
-                    ),
-                    enabledBorder: const UnderlineInputBorder(
-                      borderSide: BorderSide(color: inputLine, width: 1),
-                    ),
-                    focusedBorder: const UnderlineInputBorder(
-                      borderSide: BorderSide(color: primaryBlue, width: 1.6),
-                    ),
-                  ),
-                ),
-                SizedBox(height: _scaled(height, 0.022, 14, 22)),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {
-                      Navigator.push<void>(
-                        context,
-                        slideRightRoute<void>(const RecuperarCuentaScreen()),
-                      );
-                    },
-                    style: TextButton.styleFrom(
-                      foregroundColor: primaryRed,
-                      padding: EdgeInsets.zero,
-                    ),
-                    child: Text(
-                      'Recuperar cuenta',
-                      style: TextStyle(
-                        fontSize: _scaled(17, scale, 15, 18),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: _scaled(height, 0.06, 24, 72)),
-                if (_mensajeErrorLogin != null) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _errorBg,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: primaryRed.withValues(alpha: 0.28),
-                      ),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(
-                          Icons.error_outline_rounded,
-                          color: primaryRed.withValues(alpha: 0.85),
-                          size: 22,
+                Expanded(
+                  child: ListView(
+                    padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    physics: const ClampingScrollPhysics(),
+                    children: [
+                      SizedBox(height: _scaled(height, 0.02, 8, 18)),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).maybePop(),
+                        icon: Icon(
+                          Icons.arrow_back,
+                          size: _scaled(28, scale, 22, 30),
+                          color: primaryBlue,
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            _mensajeErrorLogin!,
-                            style: TextStyle(
-                              color: _errorText,
-                              fontSize: _scaled(15, scale, 13, 16),
-                              height: 1.35,
-                              fontWeight: FontWeight.w600,
+                        padding: EdgeInsets.zero,
+                        alignment: Alignment.centerLeft,
+                        constraints: const BoxConstraints(),
+                      ),
+                      SizedBox(height: _scaled(height, 0.06, 24, 56)),
+                      Center(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: SizedBox(
+                            width: logoSize,
+                            height: logoSize,
+                            child: Image.asset(
+                              'assets/images/duralon_logo.png',
+                              fit: BoxFit.contain,
                             ),
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: _scaled(height, 0.02, 10, 16)),
-                ] else
-                  SizedBox(height: _scaled(height, 0.04, 12, 28)),
-                SizedBox(
-                  width: double.infinity,
-                  height: buttonHeight,
-                  child: ElevatedButton(
-                    onPressed: _puedeIniciarSesion
-                        ? _intentarIniciarSesion
-                        : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryRed,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: primaryRed.withValues(
-                        alpha: 0.35,
                       ),
-                      disabledForegroundColor: Colors.white.withValues(
-                        alpha: 0.6,
+                      SizedBox(height: _scaled(height, 0.05, 24, 48)),
+                      TextField(
+                        controller: _correoController,
+                        keyboardType: TextInputType.emailAddress,
+                        textInputAction: TextInputAction.next,
+                        autofillHints: const [AutofillHints.email],
+                        style: TextStyle(
+                          color: _textDark,
+                          fontSize: inputFontSize,
+                        ),
+                        cursorColor: primaryBlue,
+                        decoration: InputDecoration(
+                          hintText: 'Gmail o correo electrónico',
+                          hintStyle: TextStyle(
+                            color: hintColor,
+                            fontSize: inputFontSize,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          enabledBorder: const UnderlineInputBorder(
+                            borderSide: BorderSide(color: inputLine, width: 1),
+                          ),
+                          focusedBorder: const UnderlineInputBorder(
+                            borderSide: BorderSide(
+                              color: primaryBlue,
+                              width: 1.6,
+                            ),
+                          ),
+                          suffixIcon: _correoController.text.isNotEmpty
+                              ? _iconoBorrarCorreo()
+                              : null,
+                        ),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(999),
+                      SizedBox(height: _scaled(height, 0.03, 20, 30)),
+                      TextField(
+                        controller: _contrasenaController,
+                        style: TextStyle(
+                          color: _textDark,
+                          fontSize: inputFontSize,
+                        ),
+                        cursorColor: primaryBlue,
+                        obscureText: _ocultarContrasena,
+                        textInputAction: TextInputAction.done,
+                        autofillHints: const [AutofillHints.password],
+                        onSubmitted: (_) {
+                          if (_puedeIniciarSesion) {
+                            _intentarIniciarSesion();
+                          }
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'Contraseña',
+                          hintStyle: TextStyle(
+                            color: hintColor,
+                            fontSize: inputFontSize,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          suffixIcon: IconButton(
+                            onPressed: () {
+                              setState(() {
+                                _ocultarContrasena = !_ocultarContrasena;
+                              });
+                            },
+                            icon: Icon(
+                              _ocultarContrasena
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                              color: _iconoOjito,
+                              size: 22,
+                            ),
+                            tooltip: _ocultarContrasena
+                                ? 'Mostrar contraseña'
+                                : 'Ocultar contraseña',
+                          ),
+                          enabledBorder: const UnderlineInputBorder(
+                            borderSide: BorderSide(color: inputLine, width: 1),
+                          ),
+                          focusedBorder: const UnderlineInputBorder(
+                            borderSide: BorderSide(
+                              color: primaryBlue,
+                              width: 1.6,
+                            ),
+                          ),
+                        ),
                       ),
-                      elevation: 0,
-                    ),
-                    child: Text(
-                      'Iniciar sesión',
-                      style: TextStyle(
-                        fontSize: buttonTextSize,
-                        fontWeight: FontWeight.w700,
+                      SizedBox(height: _scaled(height, 0.022, 14, 22)),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.push<void>(
+                              context,
+                              slideRightRoute<void>(
+                                const RecuperarCuentaScreen(),
+                              ),
+                            );
+                          },
+                          style: TextButton.styleFrom(
+                            foregroundColor: primaryRed,
+                            padding: EdgeInsets.zero,
+                          ),
+                          child: Text(
+                            'Recuperar cuenta',
+                            style: TextStyle(
+                              fontSize: _scaled(17, scale, 15, 18),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+                      SizedBox(height: _scaled(height, 0.02, 12, 24)),
+                    ],
                   ),
                 ),
-                SizedBox(height: _scaled(height, 0.025, 14, 24)),
-                Center(
-                  child: Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    alignment: WrapAlignment.center,
-                    spacing: 4,
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    horizontalPadding,
+                    0,
+                    horizontalPadding,
+                    _scaled(height, 0.02, 12, 20),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(
-                        '¿Aún no tienes una cuenta? ',
-                        style: TextStyle(
-                          color: secondaryText,
-                          fontSize: _scaled(18, scale, 16, 20),
-                          fontWeight: FontWeight.w500,
+                      if (_mensajeErrorLogin != null) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _errorBg,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: primaryRed.withValues(alpha: 0.28),
+                            ),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(
+                                Icons.error_outline_rounded,
+                                color: primaryRed.withValues(alpha: 0.85),
+                                size: 22,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  _mensajeErrorLogin!,
+                                  style: TextStyle(
+                                    color: _errorText,
+                                    fontSize: _scaled(15, scale, 13, 16),
+                                    height: 1.35,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: _scaled(height, 0.018, 10, 14)),
+                      ],
+                      SizedBox(
+                        width: double.infinity,
+                        height: buttonHeight,
+                        child: ElevatedButton(
+                          onPressed: _puedeIniciarSesion
+                              ? _intentarIniciarSesion
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryRed,
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor: primaryRed.withValues(
+                              alpha: 0.35,
+                            ),
+                            disabledForegroundColor: Colors.white.withValues(
+                              alpha: 0.6,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: Text(
+                            'Iniciar sesión',
+                            style: TextStyle(
+                              fontSize: buttonTextSize,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
                       ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push<void>(
-                            context,
-                            slideRightRoute<void>(const CrearCuentaScreen()),
-                          );
-                        },
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 2),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: Text(
-                          'Crear una',
-                          style: TextStyle(
-                            color: primaryRed,
-                            fontSize: _scaled(18, scale, 16, 20),
-                            fontWeight: FontWeight.w700,
-                          ),
+                      SizedBox(height: _scaled(height, 0.02, 12, 18)),
+                      Center(
+                        child: Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          alignment: WrapAlignment.center,
+                          spacing: 4,
+                          children: [
+                            Text(
+                              '¿Aún no tienes una cuenta? ',
+                              style: TextStyle(
+                                color: secondaryText,
+                                fontSize: _scaled(18, scale, 16, 20),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.push<void>(
+                                  context,
+                                  slideRightRoute<void>(
+                                    const CrearCuentaScreen(),
+                                  ),
+                                );
+                              },
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 2,
+                                ),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: Text(
+                                'Crear una',
+                                style: TextStyle(
+                                  color: primaryRed,
+                                  fontSize: _scaled(18, scale, 16, 20),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
-                SizedBox(height: _scaled(height, 0.04, 20, 40)),
               ],
             ),
           ),

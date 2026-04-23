@@ -20,6 +20,7 @@ class LoginScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -37,37 +38,60 @@ class LoginScreen extends StatelessWidget {
             final afterLogoGap = _scaled(height, 0.03, 16, 30);
             final sectionGap = _scaled(height, 0.028, 12, 24);
 
-            return SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: height),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        SizedBox(height: topGap),
+                        Center(child: _BrandLogo(size: logoSize)),
+                        SizedBox(height: afterLogoGap),
+                        SizedBox(
+                          width: double.infinity,
+                          child: Text(
+                            '¡Bienvenido!',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: primaryBlue,
+                              fontSize: titleSize,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: sectionGap),
+                        Text.rich(
+                          textAlign: TextAlign.center,
+                          TextSpan(
+                            style: TextStyle(
+                              color: secondaryText,
+                              fontSize: bodySize,
+                              height: 1.5,
+                              letterSpacing: 0.15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: _scaled(height, 0.04, 20, 40)),
+                      ],
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    horizontalPadding,
+                    0,
+                    horizontalPadding,
+                    _scaled(height, 0.02, 12, 20),
+                  ),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      SizedBox(height: topGap),
-                      _BrandLogo(size: logoSize),
-                      SizedBox(height: afterLogoGap),
-                      Text(
-                        '¡Bienvenido a Plasticos Duralon!',
-                        style: TextStyle(
-                          color: primaryBlue,
-                          fontSize: titleSize,
-                          fontWeight: FontWeight.w800,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      SizedBox(height: sectionGap),
-                      Text(
-                        'Ahora podras comprar en Plasticos Duralon desde la\ncomodidad de tu casa.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: secondaryText,
-                          fontSize: bodySize,
-                          height: 1.4,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      SizedBox(height: _scaled(height, 0.12, 30, 130)),
                       SizedBox(
                         width: double.infinity,
                         height: buttonHeight,
@@ -75,7 +99,9 @@ class LoginScreen extends StatelessWidget {
                           onPressed: () {
                             Navigator.push<void>(
                               context,
-                              slideRightRoute<void>(const IniciarSessionScreen()),
+                              slideRightRoute<void>(
+                                const IniciarSessionScreen(),
+                              ),
                             );
                           },
                           style: ElevatedButton.styleFrom(
@@ -126,11 +152,12 @@ class LoginScreen extends StatelessWidget {
                           ),
                         ),
                       ),
-                      SizedBox(height: _scaled(sectionGap, 1, 12, 20)),
+                      SizedBox(height: _scaled(sectionGap, 1, 10, 16)),
                       Text(
                         'Echar un vistazo como invitado',
+                        textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: secondaryText,
+                          color: const Color.fromARGB(255, 255, 0, 0),
                           fontSize: guestTextSize,
                           fontWeight: FontWeight.w500,
                         ),
@@ -151,11 +178,10 @@ class LoginScreen extends StatelessWidget {
                         ),
                         tooltip: 'Continuar como invitado',
                       ),
-                      SizedBox(height: _scaled(height, 0.03, 14, 28)),
                     ],
                   ),
                 ),
-              ),
+              ],
             );
           },
         ),

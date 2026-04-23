@@ -1,5 +1,7 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:app_duralon/pages/iniciar_session_screen.dart';
+import 'package:app_duralon/utils/show_terminos_bottom_sheet.dart';
 import 'package:app_duralon/utils/slide_right_route.dart';
 
 class CrearCuentaScreen extends StatefulWidget {
@@ -17,9 +19,6 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
   static const Color secondaryText = Color(0xFF3F4E66);
   static const Color _textDark = Color(0xFF1C1C1C);
 
-  static const String _leyenda =
-      'Al registrarme, acepto los términos y condiciones de uso.';
-
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _contrasenaController = TextEditingController();
@@ -27,6 +26,7 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
 
   bool _ocultarContrasena = true;
   bool _ocultarConfirmar = true;
+  late final TapGestureRecognizer _tapTerminos;
 
   static double _s(double v, double f, double min, double max) {
     return (v * f).clamp(min, max).toDouble();
@@ -61,6 +61,7 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
   @override
   void initState() {
     super.initState();
+    _tapTerminos = TapGestureRecognizer()..onTap = _mostrarTerminosYCondiciones;
     _emailController.addListener(_onTextoCambiado);
     _contrasenaController.addListener(_onTextoCambiado);
     _confirmarController.addListener(_onTextoCambiado);
@@ -71,6 +72,7 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
     _emailController.removeListener(_onTextoCambiado);
     _contrasenaController.removeListener(_onTextoCambiado);
     _confirmarController.removeListener(_onTextoCambiado);
+    _tapTerminos.dispose();
     _emailController.dispose();
     _contrasenaController.dispose();
     _confirmarController.dispose();
@@ -82,6 +84,10 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
       context,
       slideRightRoute<void>(const IniciarSessionScreen()),
     );
+  }
+
+  void _mostrarTerminosYCondiciones() {
+    showTerminosYCondicionesBottomSheet(context);
   }
 
   void _crearCuenta() {
@@ -118,7 +124,7 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
     final height = h.isFinite && h > 0 ? h : 700.0;
     final scale = (width / 430).clamp(0.82, 1.2);
     final pad = _s(width, 0.08, 20, 36);
-    final smallLogo = _s(width, 0.12, 44, 58);
+    final logoGrande = _s(width, 0.38, 120, 190);
     final inputSize = _s(34, scale, 16, 20);
     final buttonH = _s(58, scale, 52, 64);
     final buttonTxt = _s(21, scale, 18, 23);
@@ -132,16 +138,14 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
         child: SafeArea(
           child: Material(
             color: Colors.white,
-            child: ListView(
-              padding: EdgeInsets.symmetric(horizontal: pad),
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              physics: const ClampingScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SizedBox(height: _s(height, 0.02, 6, 16)),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    IconButton(
+                Padding(
+                  padding: EdgeInsets.fromLTRB(pad, 8, pad, 0),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: IconButton(
                       onPressed: () => Navigator.of(context).maybePop(),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(
@@ -154,75 +158,84 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
                         color: primaryBlue,
                       ),
                     ),
-                    SizedBox(width: _s(width, 0.01, 4, 8)),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.asset(
-                        'assets/images/duralon_logo.png',
-                        width: smallLogo,
-                        height: smallLogo,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                    SizedBox(width: _s(width, 0.03, 10, 14)),
-                    Expanded(
-                      child: Text(
-                        'Crear una cuenta',
-                        style: TextStyle(
-                          color: primaryBlue,
-                          fontSize: titleSize,
-                          fontWeight: FontWeight.w800,
-                          height: 1.2,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: _s(height, 0.04, 20, 36)),
-                Center(
-                  child: Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    alignment: WrapAlignment.center,
-                    spacing: 4,
-                    runSpacing: 4,
-                    children: [
-                      Text(
-                        '¿Ya tienes una cuenta?',
-                        style: TextStyle(
-                          color: secondaryText,
-                          fontSize: _s(17, scale, 15, 18),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: _navegarAIniciarSesion,
-                        style: TextButton.styleFrom(
-                          foregroundColor: primaryRed,
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: Text(
-                          'Acceder',
-                          style: TextStyle(
-                            color: primaryRed,
-                            fontSize: _s(17, scale, 15, 18),
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ],
                   ),
                 ),
-                SizedBox(height: _s(height, 0.04, 20, 32)),
-                Form(
-                  key: _formKey,
-                  autovalidateMode: AutovalidateMode.disabled,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      TextFormField(
-                        controller: _emailController,
+                Expanded(
+                  child: SingleChildScrollView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    physics: const ClampingScrollPhysics(),
+                    padding: EdgeInsets.symmetric(horizontal: pad),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Center(
+                          child: Image.asset(
+                            'assets/images/duralon_logo.png',
+                            width: logoGrande,
+                            height: logoGrande,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                        SizedBox(height: _s(height, 0.03, 14, 22)),
+                        Text(
+                          'Crear una cuenta',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: primaryBlue,
+                            fontSize: titleSize,
+                            fontWeight: FontWeight.w800,
+                            height: 1.2,
+                          ),
+                        ),
+                        SizedBox(height: _s(height, 0.02, 10, 16)),
+                        Center(
+                          child: Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            alignment: WrapAlignment.center,
+                            spacing: 4,
+                            runSpacing: 4,
+                            children: [
+                              Text(
+                                '¿Ya tienes una cuenta?',
+                                style: TextStyle(
+                                  color: secondaryText,
+                                  fontSize: _s(17, scale, 15, 18),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: _navegarAIniciarSesion,
+                                style: TextButton.styleFrom(
+                                  foregroundColor: primaryRed,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: Text(
+                                  'Acceder',
+                                  style: TextStyle(
+                                    color: primaryRed,
+                                    fontSize: _s(17, scale, 15, 18),
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: _s(height, 0.02, 10, 16)),
+                        Form(
+                          key: _formKey,
+                          autovalidateMode: AutovalidateMode.disabled,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              TextFormField(
+                                controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
                         textInputAction: TextInputAction.next,
                         autofillHints: const [AutofillHints.email],
@@ -310,47 +323,78 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
                     ],
                   ),
                 ),
-                SizedBox(height: _s(height, 0.04, 16, 28)),
-                Text(
-                  _leyenda,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: secondaryText,
-                    fontSize: _s(14, scale, 12, 15),
-                    height: 1.4,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                SizedBox(height: _s(height, 0.04, 20, 36)),
-                SizedBox(
-                  width: double.infinity,
-                  height: buttonH,
-                  child: ElevatedButton(
-                    onPressed: _camposLlenos ? _crearCuenta : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryRed,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: primaryRed.withValues(
-                        alpha: 0.35,
-                      ),
-                      disabledForegroundColor: Colors.white.withValues(
-                        alpha: 0.6,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: Text(
-                      'Crear cuenta',
-                      style: TextStyle(
-                        fontSize: buttonTxt,
-                        fontWeight: FontWeight.w700,
-                      ),
+                        SizedBox(height: _s(height, 0.02, 12, 20)),
+                      ],
                     ),
                   ),
                 ),
-                SizedBox(height: _s(height, 0.04, 20, 40)),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    pad,
+                    0,
+                    pad,
+                    _s(height, 0.02, 12, 20),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text.rich(
+                        textAlign: TextAlign.center,
+                        TextSpan(
+                          style: TextStyle(
+                            color: secondaryText,
+                            fontSize: _s(14, scale, 12, 15),
+                            height: 1.4,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          children: [
+                            const TextSpan(
+                              text: 'Al registrarme, acepto los ',
+                            ),
+                            TextSpan(
+                              text: 'términos y condiciones de uso',
+                              style: const TextStyle(
+                                color: primaryRed,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              recognizer: _tapTerminos,
+                            ),
+                            const TextSpan(text: '.'),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: _s(height, 0.02, 10, 14)),
+                      SizedBox(
+                        width: double.infinity,
+                        height: buttonH,
+                        child: ElevatedButton(
+                          onPressed: _camposLlenos ? _crearCuenta : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryRed,
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor: primaryRed.withValues(
+                              alpha: 0.35,
+                            ),
+                            disabledForegroundColor: Colors.white.withValues(
+                              alpha: 0.6,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: Text(
+                            'Crear cuenta',
+                            style: TextStyle(
+                              fontSize: buttonTxt,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),

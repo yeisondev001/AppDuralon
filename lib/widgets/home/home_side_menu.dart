@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:app_duralon/utils/show_terminos_bottom_sheet.dart';
 
 class HomeSideMenu extends StatelessWidget {
   const HomeSideMenu({
@@ -15,7 +16,7 @@ class HomeSideMenu extends StatelessWidget {
     return SafeArea(
       child: Container(
         width: 280,
-        color: const Color(0xFFE5E5E5),
+        color: const Color(0xFFF5F5F5),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -82,14 +83,24 @@ class HomeSideMenu extends StatelessWidget {
               title: 'Iniciar sesion',
               onTap: onLoginTap,
             ),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 10, 20, 16),
-              child: Text(
-                'Terminos y condiciones',
-                style: TextStyle(
-                  color: Color(0xFF7D8798),
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () => showTerminosYCondicionesBottomSheet(context),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: Text(
+                      'Términos y condiciones',
+                      style: TextStyle(
+                        color: Color(0xFF7D8798),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),

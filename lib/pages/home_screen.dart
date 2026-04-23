@@ -1,6 +1,6 @@
 import 'package:app_duralon/data/mock_products.dart';
 import 'package:app_duralon/models/product.dart';
-import 'package:app_duralon/pages/iniciar_session_screen.dart';
+import 'package:app_duralon/pages/login_screen.dart';
 import 'package:app_duralon/utils/slide_right_route.dart';
 import 'package:app_duralon/widgets/home/home_header.dart';
 import 'package:app_duralon/widgets/home/horizontal_product_list.dart';
@@ -215,7 +215,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 _closeMenu();
                 Navigator.push<void>(
                   context,
-                  slideRightRoute<void>(const IniciarSessionScreen()),
+                  slideRightRoute<void>(const LoginScreen()),
                 );
               },
             ),
