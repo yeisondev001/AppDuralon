@@ -160,6 +160,7 @@ class LoginScreen extends StatelessWidget {
                       ),
                       IconButton(
                         onPressed: () {
+                          // isGuestMode: sin login (invitado). Con backend, derivar de token/sesion.
                           Navigator.push<void>(
                             context,
                             slideRightRoute<void>(
