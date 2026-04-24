@@ -1,5 +1,10 @@
+// Grid 3 columnas con todos los productos de una categoria o subtipo.
+// Tap en una celda abre [ProductoScreen]; [isGuestMode] se reenvia al detalle.
 import 'package:app_duralon/models/product.dart';
+import 'package:app_duralon/pages/producto_screen.dart';
 import 'package:app_duralon/styles/app_style.dart';
+import 'package:app_duralon/utils/slide_right_route.dart';
+import 'package:app_duralon/widgets/duralon_guest_cart_dialog.dart';
 import 'package:flutter/material.dart';
 
 class ProductosScreen extends StatefulWidget {
@@ -7,16 +12,19 @@ class ProductosScreen extends StatefulWidget {
     super.key,
     required this.sectionTitle,
     required this.products,
+    this.isGuestMode = true,
   });
 
   final String sectionTitle;
   final List<Product> products;
+  final bool isGuestMode;
 
   @override
   State<ProductosScreen> createState() => _ProductosScreenState();
 }
 
 class _ProductosScreenState extends State<ProductosScreen> {
+  // Texto del campo buscar: filtra por nombre o categoria.
   String _query = '';
 
   List<Product> get _filteredProducts {
@@ -28,6 +36,17 @@ class _ProductosScreenState extends State<ProductosScreen> {
     }).toList();
   }
 
+  void _onCartAction(BuildContext context, {Product? product}) {
+    if (widget.isGuestMode) {
+      showDuralonGuestCartDialog(context);
+      return;
+    }
+    final productName = product == null ? '' : ' (${product.name})';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Agregado al carrito$productName')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final filtered = _filteredProducts;
@@ -37,6 +56,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            // AppBar embebida: volver, titulo de seccion, carrito (placeholder)
             Padding(
               padding: const EdgeInsets.fromLTRB(6, 8, 6, 8),
               child: Row(
@@ -56,12 +76,14 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     ),
                   ),
                   IconButton(
-                    onPressed: () {},
+                    onPressed: () => _onCartAction(context, product: null),
                     icon: const Icon(Icons.shopping_cart_outlined),
+                    tooltip: 'Carrito',
                   ),
                 ],
               ),
             ),
+            // Linea de acento bajo el titulo (marca roja)
             Container(
               width: 50,
               height: 6,
@@ -71,6 +93,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
               ),
             ),
             const SizedBox(height: 10),
+            // Filtro local del listado (no llama a API; solo memoria)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10),
               child: TextField(
@@ -96,6 +119,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
               ),
             ),
             const SizedBox(height: 10),
+            // Contador de resultados visibles
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Align(
@@ -110,6 +134,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
               ),
             ),
             const SizedBox(height: 8),
+            // Celdas: tap en foto+nombre = detalle; carrito = accion (invitado → diálogo)
             Expanded(
               child: filtered.isEmpty
                   ? const Center(
@@ -133,37 +158,56 @@ class _ProductosScreenState extends State<ProductosScreen> {
                           ),
                       itemBuilder: (context, index) {
                         final product = filtered[index];
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                        return Material(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
                           child: Padding(
                             padding: const EdgeInsets.all(8),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Expanded(
-                                  child: ClipRRect(
+                                  child: InkWell(
+                                    onTap: () {
+                                      Navigator.push<void>(
+                                        context,
+                                        slideRightRoute<void>(
+                                          ProductoScreen(
+                                            product: product,
+                                            isGuestMode: widget.isGuestMode,
+                                          ),
+                                        ),
+                                      );
+                                    },
                                     borderRadius: BorderRadius.circular(8),
-                                    child: SizedBox(
-                                      width: double.infinity,
-                                      child: Image.asset(
-                                        product.imageAsset,
-                                        fit: BoxFit.cover,
-                                      ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(8),
+                                            child: SizedBox(
+                                              width: double.infinity,
+                                              child: Image.asset(
+                                                product.imageAsset,
+                                                fit: BoxFit.cover,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          product.name,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                            height: 1.1,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  product.name,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    height: 1.1,
                                   ),
                                 ),
                                 const SizedBox(height: 8),
@@ -171,7 +215,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                   children: [
                                     Expanded(
                                       child: Text(
-                                        '\$${product.price.toStringAsFixed(0)}',
+                                        'RD\$ ${product.price.toStringAsFixed(0)}',
                                         style: const TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w700,
@@ -179,10 +223,22 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                         ),
                                       ),
                                     ),
-                                    const Icon(
-                                      Icons.add_shopping_cart_rounded,
-                                      size: 18,
-                                      color: AppColors.primaryRed,
+                                    IconButton(
+                                      onPressed: () => _onCartAction(
+                                        context,
+                                        product: product,
+                                      ),
+                                      icon: const Icon(
+                                        Icons.add_shopping_cart_rounded,
+                                        size: 20,
+                                        color: AppColors.primaryRed,
+                                      ),
+                                      tooltip: 'Agregar al carrito',
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(
+                                        minWidth: 36,
+                                        minHeight: 36,
+                                      ),
                                     ),
                                   ],
                                 ),

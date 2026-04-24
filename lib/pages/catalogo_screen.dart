@@ -1,3 +1,5 @@
+// [CatalogoScreen]: contenido de la mitad deslizante en [HomeScreen] (no es el catalogo
+// acordeon). [CatalogoStandaloneScreen] es otra ruta, pantalla completa con arbol.
 import 'package:app_duralon/data/catalog_category_tree.dart';
 import 'package:app_duralon/models/home_product_section.dart';
 import 'package:app_duralon/models/product.dart';
@@ -7,10 +9,11 @@ import 'package:app_duralon/utils/slide_right_route.dart';
 import 'package:app_duralon/widgets/home/home_header.dart';
 import 'package:app_duralon/widgets/home/horizontal_product_list.dart';
 import 'package:app_duralon/widgets/home/main_categories_banner.dart';
+import 'package:app_duralon/widgets/duralon_guest_cart_dialog.dart';
 import 'package:app_duralon/widgets/home/home_side_menu.dart';
 import 'package:flutter/material.dart';
 
-// Esta version se mantiene para Home (no cambia tu home actual).
+/// Home embebido: buscador, tabs Hogar/Industrial, banner y filas con carruseles.
 class CatalogoScreen extends StatelessWidget {
   const CatalogoScreen({
     super.key,
@@ -23,6 +26,7 @@ class CatalogoScreen extends StatelessWidget {
     required this.onStoreTabChanged,
     required this.onMainCategoriesTap,
     required this.onCategoryVerTodos,
+    required this.onProductTap,
     required this.onAddToCart,
   });
 
@@ -36,6 +40,7 @@ class CatalogoScreen extends StatelessWidget {
   /// Banner *Todas las categorias* (catalogo acordeon).
   final VoidCallback onMainCategoriesTap;
   final ValueChanged<HomeProductSection> onCategoryVerTodos;
+  final ValueChanged<Product> onProductTap;
   final ValueChanged<Product> onAddToCart;
 
   @override
@@ -44,6 +49,7 @@ class CatalogoScreen extends StatelessWidget {
 
     return CustomScrollView(
       slivers: [
+        // Cabecera con menu, carrito y [TextField] de busqueda
         SliverToBoxAdapter(
           child: HomeHeader(
             onMenuTap: onMenuTap,
@@ -51,6 +57,7 @@ class CatalogoScreen extends StatelessWidget {
             onSearchChanged: onSearchChanged,
           ),
         ),
+        // Pestañas HOGAR / INDUSTRIAL: cambia [productSections] en el [HomeScreen]
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 2, 16, 10),
@@ -100,8 +107,9 @@ class CatalogoScreen extends StatelessWidget {
                 );
               }),
             ),
-          ),
+            ),
         ),
+        // Cinta "Todas las categorias" -> abre [CatalogoStandaloneScreen]
         SliverToBoxAdapter(
           child: MainCategoriesBanner(onTap: onMainCategoriesTap),
         ),
@@ -142,6 +150,7 @@ class CatalogoScreen extends StatelessWidget {
     );
   }
 
+  // Una categoria = titulo + "Ver todos" + [HorizontalProductList].
   List<Widget> _categorySlivers(BuildContext context) {
     return productSections
         .map(
@@ -151,6 +160,7 @@ class CatalogoScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Fila titulo categoria y boton listado completo
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
                     child: Row(
@@ -195,6 +205,7 @@ class CatalogoScreen extends StatelessWidget {
                   HorizontalProductList(
                     products: section.previewProducts,
                     onAddToCart: onAddToCart,
+                    onProductTap: onProductTap,
                   ),
                 ],
               ),
@@ -209,10 +220,12 @@ class CatalogoScreen extends StatelessWidget {
 class CatalogoStandaloneScreen extends StatefulWidget {
   const CatalogoStandaloneScreen({
     super.key,
+    this.isGuestMode = true,
     required this.onCartTap,
     required this.onSectionTap,
   });
 
+  final bool isGuestMode;
   final VoidCallback onCartTap;
   final ValueChanged<String> onSectionTap;
 
@@ -270,6 +283,15 @@ class _CatalogoStandaloneScreenState extends State<CatalogoStandaloneScreen> {
                 }
                 if (item == 'Catalogo') {
                   _closeMenu();
+                  return;
+                }
+                if (item == 'Mi perfil') {
+                  _closeMenu();
+                  if (widget.isGuestMode) {
+                    showDuralonGuestCartDialog(context);
+                  } else {
+                    _showComingSoon('Mi perfil');
+                  }
                   return;
                 }
                 _closeMenu();

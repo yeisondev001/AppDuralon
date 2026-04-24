@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:app_duralon/pages/login_screen.dart';
+import 'package:flutter/material.dart';
 
 void main() {
   runApp(const AppDuralon());

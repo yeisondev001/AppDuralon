@@ -1,3 +1,5 @@
+// Una fila del home: titulo de grupo (Cocina, etc.) + productos de preview
+// y metadatos para el backend. Ver [kCatalogHogar] y [kCatalogGroupIdByTitle].
 import 'package:app_duralon/models/product.dart';
 
 class HomeProductSection {
