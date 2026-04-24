@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:app_duralon/styles/app_style.dart';
 
 class HomeHeader extends StatelessWidget {
   const HomeHeader({
     super.key,
     required this.onMenuTap,
-    required this.onScannerTap,
     required this.onCartTap,
     required this.onSearchChanged,
   });
 
   final VoidCallback onMenuTap;
-  final VoidCallback onScannerTap;
   final VoidCallback onCartTap;
   final ValueChanged<String> onSearchChanged;
 
@@ -38,13 +37,6 @@ class HomeHeader extends StatelessWidget {
               hintText: 'Buscar productos',
               onChanged: onSearchChanged,
               leading: const Icon(Icons.search_rounded),
-              trailing: [
-                IconButton(
-                  onPressed: onScannerTap,
-                  icon: const Icon(Icons.qr_code_scanner_rounded),
-                  tooltip: 'Escanear codigo',
-                ),
-              ],
               padding: const WidgetStatePropertyAll<EdgeInsets>(
                 EdgeInsets.symmetric(horizontal: 12),
               ),
@@ -53,8 +45,8 @@ class HomeHeader extends StatelessWidget {
           IconButton.filledTonal(
             onPressed: onCartTap,
             style: IconButton.styleFrom(
-              backgroundColor: const Color(0xFF0059B7).withValues(alpha: 0.12),
-              foregroundColor: const Color(0xFF0059B7),
+              backgroundColor: AppColors.primaryBlue.withValues(alpha: 0.12),
+              foregroundColor: AppColors.primaryBlue,
             ),
             icon: const Icon(Icons.shopping_cart_rounded, size: 24),
             tooltip: 'Carrito',

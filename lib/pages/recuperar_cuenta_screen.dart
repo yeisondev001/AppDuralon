@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:app_duralon/styles/app_style.dart';
 
 class RecuperarCuentaScreen extends StatefulWidget {
   const RecuperarCuentaScreen({super.key});
@@ -10,13 +11,6 @@ class RecuperarCuentaScreen extends StatefulWidget {
 }
 
 class _RecuperarCuentaScreenState extends State<RecuperarCuentaScreen> {
-  static const Color primaryBlue = Color(0xFF0059B7);
-  static const Color primaryRed = Color(0xFFFF0018);
-  static const Color inputLine = Color(0xFFB6BAC2);
-  static const Color hintColor = Color(0xFFB5B8BE);
-  static const Color secondaryText = Color(0xFF3F4E66);
-  static const Color _textDark = Color(0xFF1C1C1C);
-
   static const Color _errorBg = Color(0xFFFFE8E8);
   static const Color _errorText = Color(0xFFB71C1C);
   static const Duration _duracionAviso = Duration(seconds: 4);
@@ -53,7 +47,7 @@ class _RecuperarCuentaScreenState extends State<RecuperarCuentaScreen> {
       icon: Icon(
         Icons.close,
         size: 18,
-        color: secondaryText.withValues(alpha: 0.8),
+        color: AppColors.secondaryText.withValues(alpha: 0.8),
       ),
       tooltip: 'Borrar',
       onPressed: onPressed,
@@ -138,7 +132,7 @@ class _RecuperarCuentaScreenState extends State<RecuperarCuentaScreen> {
                           icon: Icon(
                             Icons.arrow_back,
                             size: _s(26, scale, 22, 28),
-                            color: primaryBlue,
+                            color: AppColors.primaryBlue,
                           ),
                         ),
                       ),
@@ -160,7 +154,7 @@ class _RecuperarCuentaScreenState extends State<RecuperarCuentaScreen> {
                           'Recuperar cuenta',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: primaryBlue,
+                            color: AppColors.primaryBlue,
                             fontSize: titleSize,
                             fontWeight: FontWeight.w800,
                             height: 1.2,
@@ -179,14 +173,14 @@ class _RecuperarCuentaScreenState extends State<RecuperarCuentaScreen> {
                             if (_emailNoVacio) _continuar();
                           },
                           style: TextStyle(
-                            color: _textDark,
+                            color: AppColors.textDark,
                             fontSize: inputSize,
                           ),
-                          cursorColor: primaryBlue,
+                          cursorColor: AppColors.primaryBlue,
                           decoration: InputDecoration(
                             hintText: 'Correo electrónico',
                             hintStyle: TextStyle(
-                              color: hintColor,
+                              color: AppColors.hintColor,
                               fontSize: inputSize,
                               fontWeight: FontWeight.w500,
                             ),
@@ -197,25 +191,25 @@ class _RecuperarCuentaScreenState extends State<RecuperarCuentaScreen> {
                             ),
                             enabledBorder: const UnderlineInputBorder(
                               borderSide: BorderSide(
-                                color: inputLine,
+                                color: AppColors.inputLine,
                                 width: 1.2,
                               ),
                             ),
                             focusedBorder: const UnderlineInputBorder(
                               borderSide: BorderSide(
-                                color: primaryBlue,
+                                color: AppColors.primaryBlue,
                                 width: 1.8,
                               ),
                             ),
                             errorBorder: const UnderlineInputBorder(
                               borderSide: BorderSide(
-                                color: Color(0xFFFF0018),
+                                color: AppColors.primaryRed,
                                 width: 1.2,
                               ),
                             ),
                             focusedErrorBorder: const UnderlineInputBorder(
                               borderSide: BorderSide(
-                                color: Color(0xFFFF0018),
+                                color: AppColors.primaryRed,
                                 width: 1.6,
                               ),
                             ),
@@ -245,7 +239,7 @@ class _RecuperarCuentaScreenState extends State<RecuperarCuentaScreen> {
                             color: _errorBg,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: primaryRed.withValues(alpha: 0.28),
+                              color: AppColors.primaryRed.withValues(alpha: 0.28),
                             ),
                           ),
                           child: Row(
@@ -253,7 +247,7 @@ class _RecuperarCuentaScreenState extends State<RecuperarCuentaScreen> {
                             children: [
                               Icon(
                                 Icons.error_outline_rounded,
-                                color: primaryRed.withValues(alpha: 0.85),
+                                color: AppColors.primaryRed.withValues(alpha: 0.85),
                                 size: 22,
                               ),
                               const SizedBox(width: 10),
@@ -292,9 +286,9 @@ class _RecuperarCuentaScreenState extends State<RecuperarCuentaScreen> {
                     child: ElevatedButton(
                       onPressed: _emailNoVacio ? _continuar : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryRed,
+                        backgroundColor: AppColors.primaryRed,
                         foregroundColor: Colors.white,
-                        disabledBackgroundColor: primaryRed.withValues(
+                        disabledBackgroundColor: AppColors.primaryRed.withValues(
                           alpha: 0.35,
                         ),
                         disabledForegroundColor: Colors.white.withValues(

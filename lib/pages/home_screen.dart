@@ -1,10 +1,12 @@
+import 'package:app_duralon/data/catalog_category_tree.dart';
+import 'package:app_duralon/data/home_category_products_source.dart';
 import 'package:app_duralon/data/mock_products.dart';
+import 'package:app_duralon/models/home_product_section.dart';
 import 'package:app_duralon/models/product.dart';
+import 'package:app_duralon/pages/catalogo_screen.dart';
 import 'package:app_duralon/pages/login_screen.dart';
+import 'package:app_duralon/pages/productos_screen.dart';
 import 'package:app_duralon/utils/slide_right_route.dart';
-import 'package:app_duralon/widgets/home/home_header.dart';
-import 'package:app_duralon/widgets/home/horizontal_product_list.dart';
-import 'package:app_duralon/widgets/home/main_categories_banner.dart';
 import 'package:app_duralon/widgets/home/home_side_menu.dart';
 import 'package:flutter/material.dart';
 
@@ -62,140 +64,76 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  List<Product> get _filteredProducts {
-    final query = _searchQuery.trim().toLowerCase();
-    if (query.isEmpty) return mockProducts;
+  List<HomeProductSection> get _homeProductSections {
+    final map = _selectedStoreTab == 0 ? kCatalogHogar : kCatalogIndustrial;
+    final q = _searchQuery.trim().toLowerCase();
+    return map.entries
+        .map((e) {
+          var list = productsForCatalogGroup(e.key, e.value);
+          if (q.isNotEmpty) {
+            list = list
+                .where(
+                  (p) =>
+                      p.name.toLowerCase().contains(q) ||
+                      p.category.toLowerCase().contains(q),
+                )
+                .toList();
+          }
+          return HomeProductSection(
+            categoryId: kCatalogGroupIdByTitle[e.key]!,
+            title: e.key,
+            subtypes: e.value,
+            previewProducts: list,
+          );
+        })
+        .where((s) => s.previewProducts.isNotEmpty)
+        .toList();
+  }
+
+  List<Product> _productsForSection(String section) {
+    final key = section.trim().toLowerCase();
     return mockProducts.where((product) {
-      return product.name.toLowerCase().contains(query) ||
-          product.category.toLowerCase().contains(query);
+      final name = product.name.toLowerCase();
+      final category = product.category.toLowerCase();
+      return name.contains(key) || category.contains(key);
     }).toList();
   }
 
-  Widget _buildStoreTabs() {
-    const labels = ['DURALON', 'DURALON'];
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 2, 16, 10),
-      child: Row(
-        children: List.generate(labels.length, (index) {
-          final isActive = _selectedStoreTab == index;
-          return Expanded(
-            child: InkWell(
-              onTap: () => setState(() => _selectedStoreTab = index),
-              borderRadius: BorderRadius.circular(10),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      labels[index],
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: isActive
-                            ? const Color(0xFF1E2A3A)
-                            : const Color(0xFF74839B),
-                        fontSize: 16,
-                        fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      curve: Curves.easeOut,
-                      height: 3,
-                      width: 74,
-                      decoration: BoxDecoration(
-                        color: isActive ? const Color(0xFFE21026) : Colors.transparent,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }),
+  void _openProductsScreen(BuildContext context, String section) {
+    final sectionProducts = _productsForSection(section);
+    Navigator.push<void>(
+      context,
+      slideRightRoute<void>(
+        ProductosScreen(
+          sectionTitle: section,
+          products: sectionProducts,
+        ),
       ),
     );
   }
 
-  Widget _buildHomeContent(BuildContext context) {
-    return CustomScrollView(
-      slivers: [
-        SliverToBoxAdapter(
-          child: HomeHeader(
-            onMenuTap: _toggleMenu,
-            onScannerTap: () => _showComingSoon(context, 'El escaner'),
-            onCartTap: () => _handleCartTap(context, null),
-            onSearchChanged: (value) => setState(() => _searchQuery = value),
-          ),
+  void _openProductosScreenForCategory(BuildContext context, HomeProductSection section) {
+    final allInCategory = productsForFullCategoryList(section);
+    Navigator.push<void>(
+      context,
+      slideRightRoute<void>(
+        ProductosScreen(
+          sectionTitle: section.title,
+          products: allInCategory,
         ),
-        SliverToBoxAdapter(child: _buildStoreTabs()),
-        const SliverToBoxAdapter(child: MainCategoriesBanner()),
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  _searchQuery.trim().isEmpty
-                      ? 'Productos nuevos'
-                      : 'Resultados para "${_searchQuery.trim()}"',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                ),
-                if (_searchQuery.trim().isEmpty)
-                  FilledButton(
-                    onPressed: () => _showComingSoon(context, 'Ver todos'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFFFFE4E8),
-                      foregroundColor: const Color(0xFFE21026),
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 8,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                    ),
-                    child: const Text(
-                      'Ver todos',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-              ],
-            ),
-          ),
+      ),
+    );
+  }
+
+  void _openCatalogScreen(BuildContext context) {
+    Navigator.push<void>(
+      context,
+      slideRightRoute<void>(
+        CatalogoStandaloneScreen(
+          onCartTap: () => _handleCartTap(context, null),
+          onSectionTap: (section) => _openProductsScreen(context, section),
         ),
-        if (_filteredProducts.isEmpty)
-          const SliverFillRemaining(
-            hasScrollBody: false,
-            child: Center(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text(
-                  'No se encontraron productos con esa busqueda.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Color(0xFF5C6B82),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          )
-        else
-          SliverToBoxAdapter(
-            child: HorizontalProductList(
-              products: _filteredProducts,
-              onAddToCart: (product) => _handleCartTap(context, product),
-            ),
-          ),
-      ],
+      ),
     );
   }
 
@@ -207,7 +145,17 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Stack(
           children: [
             HomeSideMenu(
+              selectedItem: 'Inicio',
               onItemTap: (item) {
+                if (item == 'Inicio') {
+                  _closeMenu();
+                  return;
+                }
+                if (item == 'Catalogo') {
+                  _closeMenu();
+                  _openCatalogScreen(context);
+                  return;
+                }
                 _closeMenu();
                 _showComingSoon(context, item);
               },
@@ -220,14 +168,14 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             AnimatedSlide(
-              duration: const Duration(milliseconds: 280),
-              curve: Curves.easeInOutCubic,
+              duration: const Duration(milliseconds: 340),
+              curve: Curves.easeOutCubic,
               offset: _isMenuOpen ? const Offset(0.72, 0) : Offset.zero,
               child: GestureDetector(
                 onTap: _closeMenu,
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 280),
-                  curve: Curves.easeInOutCubic,
+                  duration: const Duration(milliseconds: 340),
+                  curve: Curves.easeOutCubic,
                   decoration: BoxDecoration(
                     color: const Color(0xFFF6F8FC),
                     borderRadius: BorderRadius.circular(_isMenuOpen ? 26 : 0),
@@ -244,7 +192,21 @@ class _HomeScreenState extends State<HomeScreen> {
                   clipBehavior: Clip.antiAlias,
                   child: IgnorePointer(
                     ignoring: _isMenuOpen,
-                    child: _buildHomeContent(context),
+                    child: CatalogoScreen(
+                      selectedStoreTab: _selectedStoreTab,
+                      searchQuery: _searchQuery,
+                      productSections: _homeProductSections,
+                      onMenuTap: _toggleMenu,
+                      onCartTap: () => _handleCartTap(context, null),
+                      onSearchChanged: (value) =>
+                          setState(() => _searchQuery = value),
+                      onStoreTabChanged: (tabIndex) =>
+                          setState(() => _selectedStoreTab = tabIndex),
+                      onMainCategoriesTap: () => _openCatalogScreen(context),
+                      onCategoryVerTodos: (section) =>
+                          _openProductosScreenForCategory(context, section),
+                      onAddToCart: (product) => _handleCartTap(context, product),
+                    ),
                   ),
                 ),
               ),

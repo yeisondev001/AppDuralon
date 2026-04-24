@@ -1,4 +1,5 @@
 import 'package:app_duralon/models/product.dart';
+import 'package:app_duralon/styles/app_style.dart';
 import 'package:flutter/material.dart';
 
 class HorizontalProductList extends StatelessWidget {
@@ -61,16 +62,24 @@ class HorizontalProductList extends StatelessWidget {
                           'RD\$ ${product.price.toStringAsFixed(2)}',
                           style:
                               Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    color: colors.primary,
+                                    color: Colors.black,
                                     fontWeight: FontWeight.w800,
                                   ),
                         ),
                       ),
                       IconButton(
                         onPressed: () => onAddToCart(product),
-                        icon: const Icon(Icons.shopping_cart_outlined, size: 20),
+                        icon: const Icon(
+                          Icons.add_shopping_cart_rounded,
+                          size: 18,
+                          color: AppColors.primaryRed,
+                        ),
                         tooltip: 'Agregar al carrito',
-                        color: const Color(0xFF1E2A3A),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                          minWidth: 32,
+                          minHeight: 32,
+                        ),
                       ),
                     ],
                   ),

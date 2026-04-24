@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:app_duralon/pages/crear_cuenta_screen.dart';
 import 'package:app_duralon/pages/recuperar_cuenta_screen.dart';
+import 'package:app_duralon/styles/app_style.dart';
 import 'package:app_duralon/utils/slide_right_route.dart';
 
 class IniciarSessionScreen extends StatefulWidget {
@@ -13,15 +14,6 @@ class IniciarSessionScreen extends StatefulWidget {
 }
 
 class _IniciarSessionScreenState extends State<IniciarSessionScreen> {
-  // Misma paleta que login_screen
-  static const Color primaryBlue = Color(0xFF0059B7);
-  static const Color primaryRed = Color(0xFFFF0018);
-  static const Color inputLine = Color(0xFFB6BAC2);
-  static const Color hintColor = Color(0xFFB5B8BE);
-  static const Color secondaryText = Color(0xFF3F4E66);
-
-  static const Color _textDark = Color(0xFF1C1C1C);
-
   /// Fondo rojo muy claro para el aviso de error
   static const Color _errorBg = Color(0xFFFFE8E8);
   static const Color _errorText = Color(0xFFB71C1C);
@@ -112,7 +104,7 @@ class _IniciarSessionScreenState extends State<IniciarSessionScreen> {
       icon: Icon(
         Icons.close,
         size: 18,
-        color: secondaryText.withValues(alpha: 0.8),
+        color: AppColors.secondaryText.withValues(alpha: 0.8),
       ),
       tooltip: 'Borrar',
       onPressed: _vaciarCorreo,
@@ -143,7 +135,7 @@ class _IniciarSessionScreenState extends State<IniciarSessionScreen> {
     // Sin Column+Expanded+ListView: ListView bajo SafeArea con restricción finita
     // del Scaffold (evita error del viewport / SingleChildScrollView interno).
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 255, 0, 0),
+      backgroundColor: AppColors.primaryRed,
       resizeToAvoidBottomInset: true,
       body: ColoredBox(
         color: Colors.white,
@@ -166,7 +158,7 @@ class _IniciarSessionScreenState extends State<IniciarSessionScreen> {
                         icon: Icon(
                           Icons.arrow_back,
                           size: _scaled(28, scale, 22, 30),
-                          color: primaryBlue,
+                          color: AppColors.primaryBlue,
                         ),
                         padding: EdgeInsets.zero,
                         alignment: Alignment.centerLeft,
@@ -193,23 +185,23 @@ class _IniciarSessionScreenState extends State<IniciarSessionScreen> {
                         textInputAction: TextInputAction.next,
                         autofillHints: const [AutofillHints.email],
                         style: TextStyle(
-                          color: _textDark,
+                          color: AppColors.textDark,
                           fontSize: inputFontSize,
                         ),
-                        cursorColor: primaryBlue,
+                        cursorColor: AppColors.primaryBlue,
                         decoration: InputDecoration(
                           hintText: 'Gmail o correo electrónico',
                           hintStyle: TextStyle(
-                            color: hintColor,
+                            color: AppColors.hintColor,
                             fontSize: inputFontSize,
                             fontWeight: FontWeight.w500,
                           ),
                           enabledBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: inputLine, width: 1),
+                            borderSide: BorderSide(color: AppColors.inputLine, width: 1),
                           ),
                           focusedBorder: const UnderlineInputBorder(
                             borderSide: BorderSide(
-                              color: primaryBlue,
+                              color: AppColors.primaryBlue,
                               width: 1.6,
                             ),
                           ),
@@ -222,10 +214,10 @@ class _IniciarSessionScreenState extends State<IniciarSessionScreen> {
                       TextField(
                         controller: _contrasenaController,
                         style: TextStyle(
-                          color: _textDark,
+                          color: AppColors.textDark,
                           fontSize: inputFontSize,
                         ),
-                        cursorColor: primaryBlue,
+                        cursorColor: AppColors.primaryBlue,
                         obscureText: _ocultarContrasena,
                         textInputAction: TextInputAction.done,
                         autofillHints: const [AutofillHints.password],
@@ -237,7 +229,7 @@ class _IniciarSessionScreenState extends State<IniciarSessionScreen> {
                         decoration: InputDecoration(
                           hintText: 'Contraseña',
                           hintStyle: TextStyle(
-                            color: hintColor,
+                            color: AppColors.hintColor,
                             fontSize: inputFontSize,
                             fontWeight: FontWeight.w500,
                           ),
@@ -259,11 +251,11 @@ class _IniciarSessionScreenState extends State<IniciarSessionScreen> {
                                 : 'Ocultar contraseña',
                           ),
                           enabledBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: inputLine, width: 1),
+                            borderSide: BorderSide(color: AppColors.inputLine, width: 1),
                           ),
                           focusedBorder: const UnderlineInputBorder(
                             borderSide: BorderSide(
-                              color: primaryBlue,
+                              color: AppColors.primaryBlue,
                               width: 1.6,
                             ),
                           ),
@@ -282,7 +274,7 @@ class _IniciarSessionScreenState extends State<IniciarSessionScreen> {
                             );
                           },
                           style: TextButton.styleFrom(
-                            foregroundColor: primaryRed,
+                            foregroundColor: AppColors.primaryRed,
                             padding: EdgeInsets.zero,
                           ),
                           child: Text(
@@ -320,7 +312,7 @@ class _IniciarSessionScreenState extends State<IniciarSessionScreen> {
                             color: _errorBg,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: primaryRed.withValues(alpha: 0.28),
+                              color: AppColors.primaryRed.withValues(alpha: 0.28),
                             ),
                           ),
                           child: Row(
@@ -328,7 +320,7 @@ class _IniciarSessionScreenState extends State<IniciarSessionScreen> {
                             children: [
                               Icon(
                                 Icons.error_outline_rounded,
-                                color: primaryRed.withValues(alpha: 0.85),
+                                color: AppColors.primaryRed.withValues(alpha: 0.85),
                                 size: 22,
                               ),
                               const SizedBox(width: 10),
@@ -356,9 +348,9 @@ class _IniciarSessionScreenState extends State<IniciarSessionScreen> {
                               ? _intentarIniciarSesion
                               : null,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryRed,
+                            backgroundColor: AppColors.primaryRed,
                             foregroundColor: Colors.white,
-                            disabledBackgroundColor: primaryRed.withValues(
+                            disabledBackgroundColor: AppColors.primaryRed.withValues(
                               alpha: 0.35,
                             ),
                             disabledForegroundColor: Colors.white.withValues(
@@ -388,7 +380,7 @@ class _IniciarSessionScreenState extends State<IniciarSessionScreen> {
                             Text(
                               '¿Aún no tienes una cuenta? ',
                               style: TextStyle(
-                                color: secondaryText,
+                                color: AppColors.secondaryText,
                                 fontSize: _scaled(18, scale, 16, 20),
                                 fontWeight: FontWeight.w500,
                               ),
@@ -412,7 +404,7 @@ class _IniciarSessionScreenState extends State<IniciarSessionScreen> {
                               child: Text(
                                 'Crear una',
                                 style: TextStyle(
-                                  color: primaryRed,
+                                  color: AppColors.primaryRed,
                                   fontSize: _scaled(18, scale, 16, 20),
                                   fontWeight: FontWeight.w700,
                                 ),

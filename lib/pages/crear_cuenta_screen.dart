@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:app_duralon/pages/iniciar_session_screen.dart';
+import 'package:app_duralon/styles/app_style.dart';
 import 'package:app_duralon/utils/show_terminos_bottom_sheet.dart';
 import 'package:app_duralon/utils/slide_right_route.dart';
 
@@ -12,13 +13,6 @@ class CrearCuentaScreen extends StatefulWidget {
 }
 
 class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
-  static const Color primaryBlue = Color(0xFF0059B7);
-  static const Color primaryRed = Color(0xFFFF0018);
-  static const Color inputLine = Color(0xFFB6BAC2);
-  static const Color hintColor = Color(0xFFB5B8BE);
-  static const Color secondaryText = Color(0xFF3F4E66);
-  static const Color _textDark = Color(0xFF1C1C1C);
-
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _contrasenaController = TextEditingController();
@@ -51,7 +45,7 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
       icon: Icon(
         Icons.close,
         size: 18,
-        color: secondaryText.withValues(alpha: 0.8),
+        color: AppColors.secondaryText.withValues(alpha: 0.8),
       ),
       tooltip: 'Borrar',
       onPressed: onPressed,
@@ -100,7 +94,7 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: const Text('Las contraseñas no coinciden'),
-              backgroundColor: primaryRed.withValues(alpha: 0.9),
+              backgroundColor: AppColors.primaryRed.withValues(alpha: 0.9),
             ),
           );
         }
@@ -155,7 +149,7 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
                       icon: Icon(
                         Icons.arrow_back,
                         size: _s(26, scale, 22, 28),
-                        color: primaryBlue,
+                        color: AppColors.primaryBlue,
                       ),
                     ),
                   ),
@@ -182,7 +176,7 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
                           'Crear una cuenta',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: primaryBlue,
+                            color: AppColors.primaryBlue,
                             fontSize: titleSize,
                             fontWeight: FontWeight.w800,
                             height: 1.2,
@@ -199,7 +193,7 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
                               Text(
                                 '¿Ya tienes una cuenta?',
                                 style: TextStyle(
-                                  color: secondaryText,
+                                  color: AppColors.secondaryText,
                                   fontSize: _s(17, scale, 15, 18),
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -207,7 +201,7 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
                               TextButton(
                                 onPressed: _navegarAIniciarSesion,
                                 style: TextButton.styleFrom(
-                                  foregroundColor: primaryRed,
+                                  foregroundColor: AppColors.primaryRed,
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 4,
                                   ),
@@ -218,7 +212,7 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
                                 child: Text(
                                   'Acceder',
                                   style: TextStyle(
-                                    color: primaryRed,
+                                    color: AppColors.primaryRed,
                                     fontSize: _s(17, scale, 15, 18),
                                     fontWeight: FontWeight.w800,
                                   ),
@@ -239,8 +233,8 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
                         keyboardType: TextInputType.emailAddress,
                         textInputAction: TextInputAction.next,
                         autofillHints: const [AutofillHints.email],
-                        style: TextStyle(color: _textDark, fontSize: inputSize),
-                        cursorColor: primaryBlue,
+                        style: TextStyle(color: AppColors.textDark, fontSize: inputSize),
+                        cursorColor: AppColors.primaryBlue,
                         decoration:
                             _baseDecoration(
                               'Correo electrónico',
@@ -265,8 +259,8 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
                         obscureText: _ocultarContrasena,
                         textInputAction: TextInputAction.next,
                         autofillHints: const [AutofillHints.newPassword],
-                        style: TextStyle(color: _textDark, fontSize: inputSize),
-                        cursorColor: primaryBlue,
+                        style: TextStyle(color: AppColors.textDark, fontSize: inputSize),
+                        cursorColor: AppColors.primaryBlue,
                         decoration: _baseDecoration('Contraseña', inputSize)
                             .copyWith(
                               suffixIcon: _suffixOjoContrasena(
@@ -293,8 +287,8 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
                         obscureText: _ocultarConfirmar,
                         textInputAction: TextInputAction.done,
                         autofillHints: const [AutofillHints.newPassword],
-                        style: TextStyle(color: _textDark, fontSize: inputSize),
-                        cursorColor: primaryBlue,
+                        style: TextStyle(color: AppColors.textDark, fontSize: inputSize),
+                        cursorColor: AppColors.primaryBlue,
                         onFieldSubmitted: (_) {
                           if (_camposLlenos) _crearCuenta();
                         },
@@ -342,7 +336,7 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
                         textAlign: TextAlign.center,
                         TextSpan(
                           style: TextStyle(
-                            color: secondaryText,
+                            color: AppColors.secondaryText,
                             fontSize: _s(14, scale, 12, 15),
                             height: 1.4,
                             fontWeight: FontWeight.w500,
@@ -354,7 +348,7 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
                             TextSpan(
                               text: 'términos y condiciones de uso',
                               style: const TextStyle(
-                                color: primaryRed,
+                                color: AppColors.primaryRed,
                                 fontWeight: FontWeight.w700,
                               ),
                               recognizer: _tapTerminos,
@@ -370,9 +364,9 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
                         child: ElevatedButton(
                           onPressed: _camposLlenos ? _crearCuenta : null,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryRed,
+                            backgroundColor: AppColors.primaryRed,
                             foregroundColor: Colors.white,
-                            disabledBackgroundColor: primaryRed.withValues(
+                            disabledBackgroundColor: AppColors.primaryRed.withValues(
                               alpha: 0.35,
                             ),
                             disabledForegroundColor: Colors.white.withValues(
@@ -414,7 +408,7 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
       onPressed: onToggle,
       icon: Icon(
         mostrar ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-        color: primaryBlue.withValues(alpha: 0.7),
+        color: AppColors.primaryBlue.withValues(alpha: 0.7),
         size: 22,
       ),
       tooltip: mostrar ? 'Mostrar contraseña' : 'Ocultar contraseña',
@@ -425,7 +419,7 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
     return InputDecoration(
       hintText: hint,
       hintStyle: TextStyle(
-        color: hintColor,
+        color: AppColors.hintColor,
         fontSize: size,
         fontWeight: FontWeight.w500,
       ),
@@ -435,16 +429,16 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
         height: 1.3,
       ),
       enabledBorder: const UnderlineInputBorder(
-        borderSide: BorderSide(color: inputLine, width: 1.2),
+        borderSide: BorderSide(color: AppColors.inputLine, width: 1.2),
       ),
       focusedBorder: const UnderlineInputBorder(
-        borderSide: BorderSide(color: primaryBlue, width: 1.8),
+        borderSide: BorderSide(color: AppColors.primaryBlue, width: 1.8),
       ),
       errorBorder: const UnderlineInputBorder(
-        borderSide: BorderSide(color: Color(0xFFFF0018), width: 1.2),
+        borderSide: BorderSide(color: AppColors.primaryRed, width: 1.2),
       ),
       focusedErrorBorder: const UnderlineInputBorder(
-        borderSide: BorderSide(color: Color(0xFFFF0018), width: 1.6),
+        borderSide: BorderSide(color: AppColors.primaryRed, width: 1.6),
       ),
     );
   }

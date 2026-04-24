@@ -2,15 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:app_duralon/pages/crear_cuenta_screen.dart';
 import 'package:app_duralon/pages/home_screen.dart';
 import 'package:app_duralon/pages/iniciar_session_screen.dart';
+import 'package:app_duralon/styles/app_style.dart';
 import 'package:app_duralon/utils/slide_right_route.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
-
-  static const Color primaryBlue = Color(0xFF0059B7);
-  static const Color primaryRed = Color(0xFFFF0018);
-  static const Color tertiaryYellow = Color(0xFFFFE500);
-  static const Color secondaryText = Color(0xFF3F4E66);
 
   static double _scaled(double value, double factor, double min, double max) {
     return (value * factor).clamp(min, max).toDouble();
@@ -34,7 +30,7 @@ class LoginScreen extends StatelessWidget {
             final buttonHeight = _scaled(58, scale, 52, 64);
             final buttonTextSize = _scaled(21, scale, 18, 23);
             final guestTextSize = _scaled(19, scale, 16, 21);
-            final topGap = _scaled(height, 0.06, 18, 52);
+            final topGap = _scaled(height, 0.14, 46, 108);
             final afterLogoGap = _scaled(height, 0.03, 16, 30);
             final sectionGap = _scaled(height, 0.028, 12, 24);
 
@@ -58,7 +54,7 @@ class LoginScreen extends StatelessWidget {
                             '¡Bienvenido!',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: primaryBlue,
+                              color: AppColors.primaryBlue,
                               fontSize: titleSize,
                               fontWeight: FontWeight.bold,
                             ),
@@ -69,7 +65,7 @@ class LoginScreen extends StatelessWidget {
                           textAlign: TextAlign.center,
                           TextSpan(
                             style: TextStyle(
-                              color: secondaryText,
+                              color: AppColors.secondaryText,
                               fontSize: bodySize,
                               height: 1.5,
                               letterSpacing: 0.15,
@@ -105,7 +101,7 @@ class LoginScreen extends StatelessWidget {
                             );
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryRed,
+                            backgroundColor: AppColors.primaryRed,
                             shadowColor: Colors.transparent,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(999),
@@ -134,7 +130,7 @@ class LoginScreen extends StatelessWidget {
                           },
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(
-                              color: primaryBlue,
+                              color: AppColors.primaryBlue,
                               width: 2.2,
                             ),
                             backgroundColor: Colors.white,
@@ -145,7 +141,7 @@ class LoginScreen extends StatelessWidget {
                           child: Text(
                             'Crear una cuenta',
                             style: TextStyle(
-                              color: primaryBlue,
+                              color: AppColors.primaryBlue,
                               fontSize: _scaled(22, scale, 18, 24),
                               fontWeight: FontWeight.w700,
                             ),
@@ -157,7 +153,7 @@ class LoginScreen extends StatelessWidget {
                         'Echar un vistazo como invitado',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: const Color.fromARGB(255, 255, 0, 0),
+                          color: AppColors.primaryRed,
                           fontSize: guestTextSize,
                           fontWeight: FontWeight.w500,
                         ),
@@ -174,7 +170,7 @@ class LoginScreen extends StatelessWidget {
                         icon: Icon(
                           Icons.keyboard_arrow_down_rounded,
                           size: _scaled(34, scale, 28, 40),
-                          color: primaryRed,
+                          color: AppColors.primaryRed,
                         ),
                         tooltip: 'Continuar como invitado',
                       ),
