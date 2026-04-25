@@ -1,3 +1,6 @@
+// Genera [mockProducts] con datos de prueba alineados a [kCatalogHogar] / industrial.
+// Solo debe usarse cuando [AppConfig.useMockCatalog] es true (ver lib/config/app_config.dart).
+// [addRow] repite categoria = subtipo de catalogo; Infantil/Industrial usan bucles fijos.
 import 'package:app_duralon/models/product.dart';
 
 const String _img = 'assets/images/duralon_logo.png';
@@ -8,8 +11,9 @@ final List<Product> mockProducts = _buildMock();
 
 List<Product> _buildMock() {
   final out = <Product>[];
-  var n = 0;
+  var n = 0; // contador de ids m-1, m-2, ...
 
+  /// Crea [count] productos con el mismo [category] (texto = subtipo en catalogo).
   void addRow(String category, int count, String Function(int i) name) {
     for (var i = 1; i <= count; i++) {
       n++;
@@ -25,7 +29,9 @@ List<Product> _buildMock() {
 
   // --- Cocina (10 c/u) ---
   addRow('Envases', 10, (i) => 'Envase hermetico linea pro $i');
-  addRow('Jarras, Vasos, Surtidor de Agua', 10, (i) => 'Jarra y vasos surtidor pack $i');
+  addRow('Jarras', 10, (i) => 'Jarra reforzada linea pro $i');
+  addRow('Vasos', 10, (i) => 'Vaso apilable pack $i');
+  addRow('Surtidor de Agua', 10, (i) => 'Surtidor agua despachador $i L');
   addRow('Escurridores', 10, (i) => 'Escurridor vajilla compacto $i');
   addRow('Escurridores y Plateras', 10, (i) => 'Escurridor platera 2 niveles $i');
   addRow('Embudos', 10, (i) => 'Embudo utilitario $i');
@@ -108,6 +114,8 @@ List<Product> _buildMock() {
   return out;
 }
 
+// Mapea el titulo de grupo (ej. "Cocina", "Infantil") + lista de subtipos a
+// filas concretas de [mockProducts]. Usado en [HomeScreen] y [productsForFullCategoryList].
 /// Productos del mock que pertenecen a un grupo de catalogo (mismas claves que el arbol de categorias).
 List<Product> productsForCatalogGroup(String groupTitle, List<String> subtypes) {
   if (groupTitle == 'Infantil') {

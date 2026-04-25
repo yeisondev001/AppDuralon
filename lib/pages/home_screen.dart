@@ -1,3 +1,9 @@
+// =============================================================================
+// Pantalla de inicio: menu lateral, tabs HOGAR/INDUSTRIAL, secciones por
+// categoria con carruseles de productos, busqueda y navegacion a catalogo,
+// listado de productos y detalle (ProductoScreen).
+// =============================================================================
+import 'package:app_duralon/config/app_config.dart';
 import 'package:app_duralon/data/catalog_category_tree.dart';
 import 'package:app_duralon/data/home_category_products_source.dart';
 import 'package:app_duralon/data/mock_products.dart';
@@ -5,11 +11,16 @@ import 'package:app_duralon/models/home_product_section.dart';
 import 'package:app_duralon/models/product.dart';
 import 'package:app_duralon/pages/catalogo_screen.dart';
 import 'package:app_duralon/pages/login_screen.dart';
+import 'package:app_duralon/pages/producto_screen.dart';
 import 'package:app_duralon/pages/productos_screen.dart';
 import 'package:app_duralon/utils/slide_right_route.dart';
+import 'package:app_duralon/widgets/duralon_guest_cart_dialog.dart';
 import 'package:app_duralon/widgets/home/home_side_menu.dart';
 import 'package:flutter/material.dart';
 
+/// Raiz de la app: [isGuestMode] indica invitado (sin login). Con backend, suele
+/// ser `!auth.isLoggedIn`. Para **cuenta de prueba vs real** en el servidor, usa
+/// [UserAccountType] en el perfil, no solo este bool.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
@@ -25,10 +36,14 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  // --- Menu lateral, texto del buscador, tab 0=Hogar 1=Industrial ---
   bool _isMenuOpen = false;
   String _searchQuery = '';
   int _selectedStoreTab = 0;
 
+  // ---------------------------------------------------------------------------
+  // UI: apertura/cierre del drawer y toques fuera.
+  // ---------------------------------------------------------------------------
   void _toggleMenu() {
     setState(() => _isMenuOpen = !_isMenuOpen);
   }
@@ -39,17 +54,9 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _showLoginRequired(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Debes iniciar sesion para usar carrito o comprar.'),
-      ),
-    );
-  }
-
   void _handleCartTap(BuildContext context, Product? product) {
     if (widget.isGuestMode) {
-      _showLoginRequired(context);
+      showDuralonGuestCartDialog(context);
       return;
     }
     final productName = product == null ? '' : ' (${product.name})';
@@ -64,12 +71,16 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Construye las filas del home: por cada categoria (Cocina, etc.) lista de
+  // productos del mock, filtrada por busqueda si el usuario escribio en el header.
+  // ---------------------------------------------------------------------------
   List<HomeProductSection> get _homeProductSections {
     final map = _selectedStoreTab == 0 ? kCatalogHogar : kCatalogIndustrial;
     final q = _searchQuery.trim().toLowerCase();
     return map.entries
         .map((e) {
-          var list = productsForCatalogGroup(e.key, e.value);
+          var list = productsForHomeCategoryPreview(e.key, e.value);
           if (q.isNotEmpty) {
             list = list
                 .where(
@@ -90,7 +101,16 @@ class _HomeScreenState extends State<HomeScreen> {
         .toList();
   }
 
+  // ---------------------------------------------------------------------------
+  // Productos que coinciden con un "subtipo" al abrirlo desde el catalogo
+  // con acordeones (por nombre o categoria contiene [section]).
+  // ---------------------------------------------------------------------------
+  /// Listado al abrir un subtipo desde el catalogo acordeon. Mock solo en demo.
   List<Product> _productsForSection(String section) {
+    if (!AppConfig.useMockCatalog) {
+      // TODO(Backend): buscar productos por slug de subtipo
+      return const <Product>[];
+    }
     final key = section.trim().toLowerCase();
     return mockProducts.where((product) {
       final name = product.name.toLowerCase();
@@ -99,6 +119,9 @@ class _HomeScreenState extends State<HomeScreen> {
     }).toList();
   }
 
+  // ---------------------------------------------------------------------------
+  // Navegacion: listados y detalle; todas usan [slideRightRoute] (gesto atras iOS).
+  // ---------------------------------------------------------------------------
   void _openProductsScreen(BuildContext context, String section) {
     final sectionProducts = _productsForSection(section);
     Navigator.push<void>(
@@ -107,6 +130,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ProductosScreen(
           sectionTitle: section,
           products: sectionProducts,
+          isGuestMode: widget.isGuestMode,
         ),
       ),
     );
@@ -120,6 +144,19 @@ class _HomeScreenState extends State<HomeScreen> {
         ProductosScreen(
           sectionTitle: section.title,
           products: allInCategory,
+          isGuestMode: widget.isGuestMode,
+        ),
+      ),
+    );
+  }
+
+  void _openProductoScreen(BuildContext context, Product product) {
+    Navigator.push<void>(
+      context,
+      slideRightRoute<void>(
+        ProductoScreen(
+          product: product,
+          isGuestMode: widget.isGuestMode,
         ),
       ),
     );
@@ -130,6 +167,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context,
       slideRightRoute<void>(
         CatalogoStandaloneScreen(
+          isGuestMode: widget.isGuestMode,
           onCartTap: () => _handleCartTap(context, null),
           onSectionTap: (section) => _openProductsScreen(context, section),
         ),
@@ -156,6 +194,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   _openCatalogScreen(context);
                   return;
                 }
+                if (item == 'Mi perfil') {
+                  _closeMenu();
+                  if (widget.isGuestMode) {
+                    showDuralonGuestCartDialog(context);
+                  } else {
+                    _showComingSoon(context, item);
+                  }
+                  return;
+                }
                 _closeMenu();
                 _showComingSoon(context, item);
               },
@@ -167,6 +214,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
+            // --- Contenedor principal: [CatalogoScreen] = header + tabs + secciones ---
             AnimatedSlide(
               duration: const Duration(milliseconds: 340),
               curve: Curves.easeOutCubic,
@@ -205,6 +253,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       onMainCategoriesTap: () => _openCatalogScreen(context),
                       onCategoryVerTodos: (section) =>
                           _openProductosScreenForCategory(context, section),
+                      onProductTap: (product) => _openProductoScreen(context, product),
                       onAddToCart: (product) => _handleCartTap(context, product),
                     ),
                   ),
