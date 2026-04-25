@@ -1,6 +1,8 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:app_duralon/pages/home_screen.dart';
 import 'package:app_duralon/pages/iniciar_session_screen.dart';
+import 'package:app_duralon/services/auth_service.dart';
 import 'package:app_duralon/styles/app_style.dart';
 import 'package:app_duralon/utils/show_terminos_bottom_sheet.dart';
 import 'package:app_duralon/utils/slide_right_route.dart';
@@ -15,8 +17,17 @@ class CrearCuentaScreen extends StatefulWidget {
 class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
+  final _rncController = TextEditingController();
+  final _razonSocialController = TextEditingController();
+  final _contactoController = TextEditingController();
+  final _telefonoController = TextEditingController();
+  final _direccionController = TextEditingController();
   final _contrasenaController = TextEditingController();
   final _confirmarController = TextEditingController();
+  final _authService = AuthService();
+
+  String _tipoContribuyente = 'persona_fisica';
+  bool _creandoCuenta = false;
 
   bool _ocultarContrasena = true;
   bool _ocultarConfirmar = true;
@@ -29,6 +40,11 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
   /// Botón rojo sólido solo con los tres campos con texto (actualización en tiempo real).
   bool get _camposLlenos =>
       _emailController.text.trim().isNotEmpty &&
+      _rncController.text.trim().isNotEmpty &&
+      _razonSocialController.text.trim().isNotEmpty &&
+      _contactoController.text.trim().isNotEmpty &&
+      _telefonoController.text.trim().isNotEmpty &&
+      _direccionController.text.trim().isNotEmpty &&
       _contrasenaController.text.isNotEmpty &&
       _confirmarController.text.isNotEmpty;
 
@@ -57,6 +73,11 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
     super.initState();
     _tapTerminos = TapGestureRecognizer()..onTap = _mostrarTerminosYCondiciones;
     _emailController.addListener(_onTextoCambiado);
+    _rncController.addListener(_onTextoCambiado);
+    _razonSocialController.addListener(_onTextoCambiado);
+    _contactoController.addListener(_onTextoCambiado);
+    _telefonoController.addListener(_onTextoCambiado);
+    _direccionController.addListener(_onTextoCambiado);
     _contrasenaController.addListener(_onTextoCambiado);
     _confirmarController.addListener(_onTextoCambiado);
   }
@@ -64,10 +85,20 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
   @override
   void dispose() {
     _emailController.removeListener(_onTextoCambiado);
+    _rncController.removeListener(_onTextoCambiado);
+    _razonSocialController.removeListener(_onTextoCambiado);
+    _contactoController.removeListener(_onTextoCambiado);
+    _telefonoController.removeListener(_onTextoCambiado);
+    _direccionController.removeListener(_onTextoCambiado);
     _contrasenaController.removeListener(_onTextoCambiado);
     _confirmarController.removeListener(_onTextoCambiado);
     _tapTerminos.dispose();
     _emailController.dispose();
+    _rncController.dispose();
+    _razonSocialController.dispose();
+    _contactoController.dispose();
+    _telefonoController.dispose();
+    _direccionController.dispose();
     _contrasenaController.dispose();
     _confirmarController.dispose();
     super.dispose();
@@ -84,9 +115,9 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
     showTerminosYCondicionesBottomSheet(context);
   }
 
-  void _crearCuenta() {
+  Future<void> _crearCuenta() async {
     FocusScope.of(context).unfocus();
-    if (!_camposLlenos) return;
+    if (!_camposLlenos || _creandoCuenta) return;
 
     if (!(_formKey.currentState?.validate() ?? false)) {
       if (_contrasenaController.text != _confirmarController.text) {
@@ -102,12 +133,53 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
       return;
     }
 
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Cuenta creada (modo demo; conectar con API después)'),
-      ),
-    );
+    setState(() => _creandoCuenta = true);
+    try {
+      await _authService.registerWholesaleCustomer(
+        email: _emailController.text.trim(),
+        password: _contrasenaController.text,
+        rnc: _rncController.text.trim(),
+        taxpayerType: _tipoContribuyente,
+        legalName: _razonSocialController.text.trim(),
+        contactName: _contactoController.text.trim(),
+        phone: _telefonoController.text.trim(),
+        fiscalAddress: _direccionController.text.trim(),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cuenta creada correctamente')),
+      );
+      Navigator.pushAndRemoveUntil<void>(
+        context,
+        slideRightRoute<void>(const HomeScreen(isGuestMode: false)),
+        (route) => false,
+      );
+    } on Exception catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_mapRegistroError(e.toString()))),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _creandoCuenta = false);
+      }
+    }
+  }
+
+  String _mapRegistroError(String message) {
+    if (message.contains('email-already-in-use')) {
+      return 'Este correo ya esta registrado.';
+    }
+    if (message.contains('DuplicateRncException')) {
+      return 'Este RNC ya esta registrado.';
+    }
+    if (message.contains('InvalidRncException')) {
+      return 'El RNC no es valido.';
+    }
+    if (message.contains('weak-password')) {
+      return 'La contrasena es muy debil.';
+    }
+    return 'No se pudo crear la cuenta. Intenta de nuevo.';
   }
 
   @override
@@ -230,31 +302,117 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
                             children: [
                               TextFormField(
                                 controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        textInputAction: TextInputAction.next,
-                        autofillHints: const [AutofillHints.email],
-                        style: TextStyle(color: AppColors.textDark, fontSize: inputSize),
-                        cursorColor: AppColors.primaryBlue,
-                        decoration:
-                            _baseDecoration(
-                              'Correo electrónico',
-                              inputSize,
-                            ).copyWith(
-                              suffixIcon: _emailController.text.isNotEmpty
-                                  ? _iconoBorrar(onPressed: _vaciarCorreo)
-                                  : null,
-                            ),
-                        validator: (v) {
-                          final t = v?.trim() ?? '';
-                          if (t.isEmpty) return 'Ingresa tu correo';
-                          if (!t.contains('@') || t.length < 5) {
-                            return 'Ingresa un correo válido';
-                          }
-                          return null;
-                        },
-                      ),
-                      SizedBox(height: _s(height, 0.02, 14, 22)),
-                      TextFormField(
+                                keyboardType: TextInputType.emailAddress,
+                                textInputAction: TextInputAction.next,
+                                autofillHints: const [AutofillHints.email],
+                                style: TextStyle(color: AppColors.textDark, fontSize: inputSize),
+                                cursorColor: AppColors.primaryBlue,
+                                decoration:
+                                    _baseDecoration(
+                                      'Correo electrónico',
+                                      inputSize,
+                                    ).copyWith(
+                                      suffixIcon: _emailController.text.isNotEmpty
+                                          ? _iconoBorrar(onPressed: _vaciarCorreo)
+                                          : null,
+                                    ),
+                                validator: (v) {
+                                  final t = v?.trim() ?? '';
+                                  if (t.isEmpty) return 'Ingresa tu correo';
+                                  if (!t.contains('@') || t.length < 5) {
+                                    return 'Ingresa un correo válido';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              SizedBox(height: _s(height, 0.02, 14, 22)),
+                              TextFormField(
+                                controller: _rncController,
+                                keyboardType: TextInputType.number,
+                                textInputAction: TextInputAction.next,
+                                style: TextStyle(color: AppColors.textDark, fontSize: inputSize),
+                                cursorColor: AppColors.primaryBlue,
+                                decoration: _baseDecoration('RNC', inputSize),
+                                validator: (v) {
+                                  final rnc = (v ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+                                  if (rnc.isEmpty) return 'Ingresa el RNC';
+                                  if (rnc.length != 9) return 'El RNC debe tener 9 digitos';
+                                  if (!AuthService.isValidDominicanRnc(rnc)) {
+                                    return 'RNC invalido';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              SizedBox(height: _s(height, 0.02, 14, 22)),
+                              DropdownButtonFormField<String>(
+                                initialValue: _tipoContribuyente,
+                                decoration: _baseDecoration('Tipo de empresa', inputSize),
+                                dropdownColor: Colors.white,
+                                style: TextStyle(color: AppColors.textDark, fontSize: inputSize * 0.7),
+                                items: const [
+                                  DropdownMenuItem(value: 'persona_fisica', child: Text('Persona fisica')),
+                                  DropdownMenuItem(value: 'sociedad', child: Text('Sociedad')),
+                                  DropdownMenuItem(value: 'zona_franca', child: Text('Zona franca')),
+                                  DropdownMenuItem(value: 'institucion_gubernamental', child: Text('Institucion gubernamental')),
+                                  DropdownMenuItem(value: 'ong_asfl', child: Text('ONG/ASFL')),
+                                  DropdownMenuItem(value: 'otro', child: Text('Otro')),
+                                ],
+                                onChanged: (value) {
+                                  if (value == null) return;
+                                  setState(() => _tipoContribuyente = value);
+                                },
+                              ),
+                              SizedBox(height: _s(height, 0.02, 14, 22)),
+                              TextFormField(
+                                controller: _razonSocialController,
+                                textInputAction: TextInputAction.next,
+                                style: TextStyle(color: AppColors.textDark, fontSize: inputSize),
+                                cursorColor: AppColors.primaryBlue,
+                                decoration: _baseDecoration('Razon social', inputSize),
+                                validator: (v) {
+                                  if ((v ?? '').trim().isEmpty) return 'Ingresa la razon social';
+                                  return null;
+                                },
+                              ),
+                              SizedBox(height: _s(height, 0.02, 14, 22)),
+                              TextFormField(
+                                controller: _contactoController,
+                                textInputAction: TextInputAction.next,
+                                style: TextStyle(color: AppColors.textDark, fontSize: inputSize),
+                                cursorColor: AppColors.primaryBlue,
+                                decoration: _baseDecoration('Nombre del contacto', inputSize),
+                                validator: (v) {
+                                  if ((v ?? '').trim().isEmpty) return 'Ingresa el contacto principal';
+                                  return null;
+                                },
+                              ),
+                              SizedBox(height: _s(height, 0.02, 14, 22)),
+                              TextFormField(
+                                controller: _telefonoController,
+                                keyboardType: TextInputType.phone,
+                                textInputAction: TextInputAction.next,
+                                style: TextStyle(color: AppColors.textDark, fontSize: inputSize),
+                                cursorColor: AppColors.primaryBlue,
+                                decoration: _baseDecoration('Telefono', inputSize),
+                                validator: (v) {
+                                  if ((v ?? '').trim().isEmpty) return 'Ingresa un telefono';
+                                  return null;
+                                },
+                              ),
+                              SizedBox(height: _s(height, 0.02, 14, 22)),
+                              TextFormField(
+                                controller: _direccionController,
+                                textInputAction: TextInputAction.next,
+                                style: TextStyle(color: AppColors.textDark, fontSize: inputSize),
+                                cursorColor: AppColors.primaryBlue,
+                                decoration: _baseDecoration('Direccion fiscal', inputSize),
+                                validator: (v) {
+                                  if ((v ?? '').trim().isEmpty) return 'Ingresa la direccion fiscal';
+                                  return null;
+                                },
+                              ),
+                              SizedBox(height: _s(height, 0.02, 14, 22)),
+                              TextFormField(
                         controller: _contrasenaController,
                         obscureText: _ocultarContrasena,
                         textInputAction: TextInputAction.next,
@@ -282,7 +440,7 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
                         },
                       ),
                       SizedBox(height: _s(height, 0.02, 14, 22)),
-                      TextFormField(
+                              TextFormField(
                         controller: _confirmarController,
                         obscureText: _ocultarConfirmar,
                         textInputAction: TextInputAction.done,
@@ -313,10 +471,10 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
                           }
                           return null;
                         },
-                      ),
-                    ],
-                  ),
-                ),
+                              ),
+                            ],
+                          ),
+                        ),
                         SizedBox(height: _s(height, 0.02, 12, 20)),
                       ],
                     ),
@@ -362,7 +520,9 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
                         width: double.infinity,
                         height: buttonH,
                         child: ElevatedButton(
-                          onPressed: _camposLlenos ? _crearCuenta : null,
+                          onPressed: (_camposLlenos && !_creandoCuenta)
+                              ? _crearCuenta
+                              : null,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primaryRed,
                             foregroundColor: Colors.white,
@@ -377,13 +537,24 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
                             ),
                             elevation: 0,
                           ),
-                          child: Text(
-                            'Crear cuenta',
-                            style: TextStyle(
-                              fontSize: buttonTxt,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+                          child: _creandoCuenta
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.4,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                )
+                              : Text(
+                                  'Crear cuenta',
+                                  style: TextStyle(
+                                    fontSize: buttonTxt,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
                         ),
                       ),
                     ],

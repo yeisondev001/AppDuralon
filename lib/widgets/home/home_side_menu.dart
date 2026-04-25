@@ -9,11 +9,13 @@ class HomeSideMenu extends StatelessWidget {
     required this.onItemTap,
     this.onLoginTap,
     this.selectedItem = 'Inicio',
+    this.showWholesaleRules = false,
   });
 
   final ValueChanged<String> onItemTap;
   final VoidCallback? onLoginTap;
   final String selectedItem;
+  final bool showWholesaleRules;
 
   @override
   Widget build(BuildContext context) {
@@ -89,6 +91,13 @@ class HomeSideMenu extends StatelessWidget {
               selected: selectedItem == 'Soporte',
               onTap: () => onItemTap('Soporte'),
             ),
+            if (showWholesaleRules)
+              _MenuItem(
+                icon: Icons.tune_rounded,
+                title: 'Reglas mayoristas',
+                selected: selectedItem == 'Reglas mayoristas',
+                onTap: () => onItemTap('Reglas mayoristas'),
+              ),
             const Spacer(),
             _MenuItem(
               icon: Icons.login_rounded,

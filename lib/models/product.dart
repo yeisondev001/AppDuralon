@@ -8,6 +8,8 @@ class Product {
     required this.price,
     required this.imageAsset,
     this.listPrice,
+    this.minOrderQty = 30,
+    this.stepQty = 1,
   });
 
   final String id;
@@ -17,4 +19,8 @@ class Product {
   final String imageAsset;
   /// Precio anterior (tachado en detalle). Nulo = no mostrar.
   final double? listPrice;
+  /// Cantidad minima para venta mayorista (ej: 30 unidades).
+  final int minOrderQty;
+  /// Salto/multiplo de compra (ej: 10 -> 30,40,50...).
+  final int stepQty;
 }

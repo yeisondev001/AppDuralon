@@ -28,6 +28,7 @@ class CatalogoScreen extends StatelessWidget {
     required this.onCategoryVerTodos,
     required this.onProductTap,
     required this.onAddToCart,
+    this.topBannerMessage,
   });
 
   final int selectedStoreTab;
@@ -42,6 +43,7 @@ class CatalogoScreen extends StatelessWidget {
   final ValueChanged<HomeProductSection> onCategoryVerTodos;
   final ValueChanged<Product> onProductTap;
   final ValueChanged<Product> onAddToCart;
+  final String? topBannerMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -113,6 +115,28 @@ class CatalogoScreen extends StatelessWidget {
         SliverToBoxAdapter(
           child: MainCategoriesBanner(onTap: onMainCategoriesTap),
         ),
+        if (topBannerMessage != null)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEAF4FF),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  topBannerMessage!,
+                  style: const TextStyle(
+                    color: Color(0xFF1A4F8A),
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
         if (searchQuery.trim().isNotEmpty)
           SliverToBoxAdapter(
             child: Padding(

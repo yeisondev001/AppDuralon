@@ -7,6 +7,7 @@
 import 'dart:ui' show ImageFilter;
 
 import 'package:app_duralon/models/product.dart';
+import 'package:app_duralon/services/product_rules_service.dart';
 import 'package:app_duralon/styles/app_style.dart';
 import 'package:app_duralon/widgets/duralon_guest_cart_dialog.dart';
 import 'package:flutter/material.dart';
@@ -31,13 +32,42 @@ class ProductoScreen extends StatefulWidget {
 
 class _ProductoScreenState extends State<ProductoScreen> {
   // --- Estado: cantidad a comprar y carrusel de imagenes (hoy 1 sola) ---
-  int _unidades = 1;
+  late int _unidades;
   final PageController _imagePageController = PageController();
+  final ProductRulesService _productRulesService = ProductRulesService();
+  int? _remoteMinOrderQty;
+  int? _remoteStepQty;
 
   Product get _p => widget.product;
+  int get _effectiveMinOrderQty =>
+      _remoteMinOrderQty ?? (_p.minOrderQty > 0 ? _p.minOrderQty : 1);
 
   /// Precio total = precio unitario * unidades.
   double get _total => _p.price * _unidades;
+  int get _stepQty => _remoteStepQty ?? (_p.stepQty <= 0 ? 1 : _p.stepQty);
+
+  @override
+  void initState() {
+    super.initState();
+    _unidades = _effectiveMinOrderQty;
+    _loadWholesaleRules();
+  }
+
+  Future<void> _loadWholesaleRules() async {
+    try {
+      final rule = await _productRulesService.getRuleByProductId(_p.id);
+      if (!mounted || rule == null) return;
+      setState(() {
+        _remoteMinOrderQty = rule.minOrderQty;
+        _remoteStepQty = rule.stepQty;
+        if (_unidades < _effectiveMinOrderQty) {
+          _unidades = _effectiveMinOrderQty;
+        }
+      });
+    } catch (_) {
+      // Si no hay permisos/regla remota, usamos valores locales del modelo.
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // Carrito: invitados no pueden "comprar"; se muestra un aviso.
@@ -49,6 +79,24 @@ class _ProductoScreenState extends State<ProductoScreen> {
   void _onAnadirAlCarrito(BuildContext context) {
     if (widget.isGuestMode) {
       _avisoNecesitaCuenta(context);
+      return;
+    }
+    final minQty = _effectiveMinOrderQty;
+    if (_unidades < minQty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Cantidad minima: $minQty unidades.'),
+        ),
+      );
+      return;
+    }
+    final usesStepRule = _stepQty > 1;
+    if (usesStepRule && (_unidades - minQty) % _stepQty != 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Compra en multiplos de $_stepQty desde $minQty unidades.'),
+        ),
+      );
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
@@ -329,6 +377,16 @@ class _ProductoScreenState extends State<ProductoScreen> {
                               height: 1.2,
                             ),
                           ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Compra minima: $_effectiveMinOrderQty unidades'
+                            '${_stepQty > 1 ? ' | Multiplo: $_stepQty' : ''}',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF6A7482),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                           // Selector de cantidad [1..99] y total calculado.
                           const SizedBox(height: 24),
                           const Text(
@@ -346,8 +404,8 @@ class _ProductoScreenState extends State<ProductoScreen> {
                             children: [
                               _QtyCircleButton(
                                 icon: Icons.remove,
-                                onPressed: _unidades > 1
-                                    ? () => setState(() => _unidades--)
+                                onPressed: _unidades > _effectiveMinOrderQty
+                                    ? () => setState(() => _unidades -= _stepQty)
                                     : null,
                                 highlight: false,
                               ),
@@ -371,8 +429,8 @@ class _ProductoScreenState extends State<ProductoScreen> {
                               ),
                               _QtyCircleButton(
                                 icon: Icons.add,
-                                onPressed: _unidades < 99
-                                    ? () => setState(() => _unidades++)
+                                onPressed: _unidades + _stepQty <= 999
+                                    ? () => setState(() => _unidades += _stepQty)
                                     : null,
                                 highlight: true,
                               ),

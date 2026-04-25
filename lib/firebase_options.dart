@@ -56,4 +56,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'appduralon.firebasestorage.app',
     iosBundleId: 'com.example.appDuralon',
   );
+
 }

@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:app_duralon/pages/home_screen.dart';
 import 'package:app_duralon/pages/crear_cuenta_screen.dart';
 import 'package:app_duralon/pages/recuperar_cuenta_screen.dart';
+import 'package:app_duralon/services/auth_service.dart';
 import 'package:app_duralon/styles/app_style.dart';
 import 'package:app_duralon/utils/slide_right_route.dart';
 
@@ -31,6 +33,8 @@ class _IniciarSessionScreenState extends State<IniciarSessionScreen> {
   bool _ocultarContrasena = true;
   String? _mensajeErrorLogin;
   Timer? _ocultarErrorTimer;
+  bool _iniciandoSesion = false;
+  final _authService = AuthService();
 
   late final TextEditingController _correoController;
   late final TextEditingController _contrasenaController;
@@ -56,33 +60,33 @@ class _IniciarSessionScreenState extends State<IniciarSessionScreen> {
     _contrasenaController.addListener(alCambiarTexto);
   }
 
-  /// Simulación sin backend: solo este correo + contraseña se aceptan (para probar éxito).
-  /// Cualquier otra combinación muestra el aviso en rojo.
-  void _intentarIniciarSesion() {
+  Future<void> _intentarIniciarSesion() async {
     FocusScope.of(context).unfocus();
     final email = _correoController.text.trim();
     final pass = _contrasenaController.text;
+    if (_iniciandoSesion) return;
 
-    // TODO(app): reemplazar por login real con API
-    const demoEmail = 'demo@plasticosduralon.com';
-    const demoPass = 'duralon123';
-
-    if (email == demoEmail && pass == demoPass) {
+    setState(() => _iniciandoSesion = true);
+    try {
+      await _authService.signIn(email: email, password: pass);
       _ocultarErrorTimer?.cancel();
       setState(() => _mensajeErrorLogin = null);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Sesión iniciada (modo demo, sin servidor)'),
-        ),
+      Navigator.pushAndRemoveUntil<void>(
+        context,
+        slideRightRoute<void>(const HomeScreen(isGuestMode: false)),
+        (route) => false,
       );
-      return;
+    } catch (_) {
+      setState(() {
+        _mensajeErrorLogin = _msgCredencialesIncorrectas;
+      });
+      _programarOcultarAvisoError();
+    } finally {
+      if (mounted) {
+        setState(() => _iniciandoSesion = false);
+      }
     }
-
-    setState(() {
-      _mensajeErrorLogin = _msgCredencialesIncorrectas;
-    });
-    _programarOcultarAvisoError();
   }
 
   void _programarOcultarAvisoError() {
@@ -344,7 +348,7 @@ class _IniciarSessionScreenState extends State<IniciarSessionScreen> {
                         width: double.infinity,
                         height: buttonHeight,
                         child: ElevatedButton(
-                          onPressed: _puedeIniciarSesion
+                          onPressed: _puedeIniciarSesion && !_iniciandoSesion
                               ? _intentarIniciarSesion
                               : null,
                           style: ElevatedButton.styleFrom(
@@ -361,13 +365,24 @@ class _IniciarSessionScreenState extends State<IniciarSessionScreen> {
                             ),
                             elevation: 0,
                           ),
-                          child: Text(
-                            'Iniciar sesión',
-                            style: TextStyle(
-                              fontSize: buttonTextSize,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+                          child: _iniciandoSesion
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.4,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                )
+                              : Text(
+                                  'Iniciar sesión',
+                                  style: TextStyle(
+                                    fontSize: buttonTextSize,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
                         ),
                       ),
                       SizedBox(height: _scaled(height, 0.02, 12, 18)),
