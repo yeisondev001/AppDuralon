@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "383683295145",
+    "project_id": "appduralon",
+    "storage_bucket": "appduralon.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:383683295145:android:baef81289eb53114b536b8",
+        "android_client_info": {
+          "package_name": "com.example.app_duralon"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBikChu5xBsW0nIbqiTuRyw6JHvpd2lo6Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
