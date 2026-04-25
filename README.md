@@ -23,6 +23,12 @@ Aplicacion Flutter para catalogo y compra mayorista de articulos plasticos, con 
 - Firebase Authentication
 - Cloud Firestore
 
+## Plataformas soportadas
+
+- Android
+- iOS
+- Web (Chrome y navegadores compatibles; Firebase configurado con app web en el proyecto `appduralon`)
+
 ## Estructura funcional relevante
 
 - `lib/main.dart`: inicializacion de Firebase y arranque de la app
@@ -105,7 +111,7 @@ Campos opcionales:
 flutter pub get
 ```
 
-2. Verificar `firebase_options.dart` generado para Android/iOS.
+2. Verificar `firebase_options.dart` (incluye `android`, `ios` y `web`).
 
 3. Activar en Firebase Console:
 
@@ -134,9 +140,28 @@ npx firebase-tools deploy --only firestore:rules
 
 ## Ejecutar la app
 
+En un dispositivo o emulador conectado:
+
 ```bash
 flutter run
 ```
+
+Solo en navegador (Web):
+
+```bash
+flutter run -d chrome
+```
+
+Si usas otro navegador instalado como dispositivo Flutter:
+
+```bash
+flutter devices
+flutter run -d edge
+```
+
+### Nota Web + Authentication
+
+Para probar login en web, en Firebase Console revisa **Authentication > Settings > Authorized domains** (por defecto suelen estar `localhost` y el dominio del hosting). Si despliegas la app en un dominio propio, agrega ese dominio ahi.
 
 ## Flujo de prueba recomendado
 
