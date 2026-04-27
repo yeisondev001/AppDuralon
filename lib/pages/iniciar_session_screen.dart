@@ -1,6 +1,9 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:app_duralon/pages/home_screen.dart';
 import 'package:app_duralon/pages/crear_cuenta_screen.dart';
 import 'package:app_duralon/pages/recuperar_cuenta_screen.dart';
@@ -34,6 +37,7 @@ class _IniciarSessionScreenState extends State<IniciarSessionScreen> {
   String? _mensajeErrorLogin;
   Timer? _ocultarErrorTimer;
   bool _iniciandoSesion = false;
+  bool _iniciandoConGoogle = false;
   final _authService = AuthService();
 
   late final TextEditingController _correoController;
@@ -85,6 +89,60 @@ class _IniciarSessionScreenState extends State<IniciarSessionScreen> {
     } finally {
       if (mounted) {
         setState(() => _iniciandoSesion = false);
+      }
+    }
+  }
+
+  Future<void> _iniciarConGoogle() async {
+    FocusScope.of(context).unfocus();
+    if (_iniciandoConGoogle || _iniciandoSesion) return;
+
+    setState(() => _iniciandoConGoogle = true);
+    try {
+      // 1. Solo autenticación — no depende de Firestore.
+      final userCredential = await _authService.signInWithGoogle();
+
+      // 2. Navegar primero: el usuario ya está autenticado.
+      _ocultarErrorTimer?.cancel();
+      setState(() => _mensajeErrorLogin = null);
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil<void>(
+        context,
+        slideRightRoute<void>(const HomeScreen(isGuestMode: false)),
+        (route) => false,
+      );
+
+      // 3. Guardar perfil en Firestore en segundo plano (sin bloquear la navegación).
+      if (userCredential.user != null) {
+        _authService.ensureGoogleUserProfile(userCredential.user!).catchError(
+          (Object e) => debugPrint('[AuthService] ensureGoogleUserProfile error: $e'),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      final msg = e.code == 'google-sign-in-no-id-token'
+          ? 'Configuración incompleta. Contacta al soporte.'
+          : 'Error de autenticación: ${e.message ?? e.code}';
+      setState(() => _mensajeErrorLogin = msg);
+      _programarOcultarAvisoError();
+    } catch (e) {
+      final raw = e.toString();
+      // ApiException: 10 → DEVELOPER_ERROR: SHA-1 no registrado en Firebase.
+      // ApiException: 16 → Google Play Services no disponible.
+      final msg = raw.contains('ApiException: 10')
+          ? 'Google Sign-In no está autorizado en este dispositivo. '
+              'El administrador debe registrar la huella SHA-1 en Firebase Console.'
+          : raw.contains('ApiException: 16')
+              ? 'Google Play Services no está disponible en este dispositivo.'
+              : raw.contains('sign_in_canceled') || raw.contains('canceled')
+                  ? null
+                  : 'No se pudo iniciar con Google. Intenta de nuevo.';
+      if (msg != null) {
+        setState(() => _mensajeErrorLogin = msg);
+        _programarOcultarAvisoError();
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _iniciandoConGoogle = false);
       }
     }
   }
@@ -383,6 +441,51 @@ class _IniciarSessionScreenState extends State<IniciarSessionScreen> {
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
+                        ),
+                      ),
+                      SizedBox(height: _scaled(height, 0.016, 8, 12)),
+                      SizedBox(
+                        width: double.infinity,
+                        height: buttonHeight,
+                        child: OutlinedButton.icon(
+                          onPressed: !_iniciandoConGoogle && !_iniciandoSesion
+                              ? _iniciarConGoogle
+                              : null,
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(
+                              color: AppColors.primaryBlue,
+                              width: 1.8,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
+                          icon: _iniciandoConGoogle
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      AppColors.primaryBlue,
+                                    ),
+                                  ),
+                                )
+                              : const FaIcon(
+                                  FontAwesomeIcons.google,
+                                  size: 20,
+                                  color: Color(0xFF4285F4),
+                                ),
+                          label: Text(
+                            _iniciandoConGoogle
+                                ? 'Conectando...'
+                                : 'Continuar con Google',
+                            style: TextStyle(
+                              color: AppColors.primaryBlue,
+                              fontSize: _scaled(18, scale, 16, 20),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
                       ),
                       SizedBox(height: _scaled(height, 0.02, 12, 18)),

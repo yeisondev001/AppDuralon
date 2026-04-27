@@ -12,7 +12,20 @@
           "package_name": "com.example.app_duralon"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "383683295145-qjfqt7ho6af80jl74d1ksq0tqcgmgdv7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.app_duralon",
+            "certificate_hash": "65bfe4eeca0617eb91033e2e2dfa5a7cf9fdb9a0"
+          }
+        },
+        {
+          "client_id": "383683295145-9q5mcj41v9lqqragski0fc99t701shhe.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBikChu5xBsW0nIbqiTuRyw6JHvpd2lo6Q"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "383683295145-9q5mcj41v9lqqragski0fc99t701shhe.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "383683295145-fasjrf9b65o17kgd5qlj9edbvl3pp0hc.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.appDuralon"
+              }
+            }
+          ]
         }
       }
     }

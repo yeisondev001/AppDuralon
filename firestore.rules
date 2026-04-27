@@ -1,48 +1,93 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isOwner(customerId) {
-      return isSignedIn() && request.auth.uid == customerId;
+    function userRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
 
-    function isInternalAdmin() {
-      return isSignedIn() &&
-          exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'sales_admin'];
+    function isCliente() {
+      return isSignedIn() && userRole() == 'cliente';
     }
 
+    function isVendedor() {
+      return isSignedIn() && userRole() == 'vendedor';
+    }
+
+    function isAdmin() {
+      return isSignedIn() && userRole() == 'admin';
+    }
+
+    // vendedor y admin pueden operar internamente
+    function isInterno() {
+      return isSignedIn() && userRole() in ['vendedor', 'admin'];
+    }
+
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ── users ─────────────────────────────────────────────────────────────────
+    // Cada usuario solo puede leer y actualizar su propio documento.
+    // Solo admin puede leer documentos de otros usuarios.
     match /users/{userId} {
-      allow read, create, update: if isSignedIn() && request.auth.uid == userId;
-      allow delete: if false;
+      allow read:   if isSelf(userId) || isAdmin();
+      allow create: if isSelf(userId);
+      allow update: if isSelf(userId) || isAdmin();
+      allow delete: if isAdmin();
     }
 
+    // ── customers ─────────────────────────────────────────────────────────────
+    // Cliente: solo su propio documento.
+    // Vendedor: puede leer todos (para gestionar pedidos/facturas).
+    // Admin: acceso total.
     match /customers/{customerId} {
-      allow read: if isOwner(customerId) || isInternalAdmin();
-      allow create: if isOwner(customerId);
-      allow update: if isOwner(customerId) || isInternalAdmin();
-      allow delete: if false;
+      allow read:   if isSelf(customerId) || isInterno();
+      allow create: if isSelf(customerId);
+      allow update: if isSelf(customerId) || isInterno();
+      allow delete: if isAdmin();
     }
 
-    match /orders/{orderId} {
-      allow read, create: if isSignedIn();
-      allow update: if isInternalAdmin();
-      allow delete: if false;
-    }
-
-    match /invoices/{invoiceId} {
-      allow read: if isSignedIn();
-      allow create, update: if isInternalAdmin();
-      allow delete: if false;
-    }
-
+    // ── products ──────────────────────────────────────────────────────────────
+    // Cualquiera puede ver productos (incluso invitados sin sesión).
+    // Solo vendedor y admin pueden crear/editar/eliminar.
     match /products/{productId} {
-      allow read: if true;
-      allow create, update: if isInternalAdmin();
+      allow read:           if true;
+      allow create, update: if isInterno();
+      allow delete:         if isAdmin();
+    }
+
+    // ── orders ────────────────────────────────────────────────────────────────
+    // Cliente: crear y leer sus propios pedidos.
+    // Vendedor: leer todos los pedidos y actualizarlos (cambiar estado).
+    // Admin: acceso total.
+    match /orders/{orderId} {
+      allow read:   if isSignedIn() && (
+                      resource.data.customerId == request.auth.uid ||
+                      isInterno()
+                    );
+      allow create: if isSignedIn();
+      allow update: if isInterno();
       allow delete: if false;
+    }
+
+    // ── invoices ──────────────────────────────────────────────────────────────
+    // Cliente: solo leer sus propias facturas.
+    // Vendedor: crear y editar facturas.
+    // Admin: acceso total.
+    match /invoices/{invoiceId} {
+      allow read:          if isSignedIn() && (
+                             resource.data.customerId == request.auth.uid ||
+                             isInterno()
+                           );
+      allow create, update: if isInterno();
+      allow delete:        if false;
     }
   }
 }

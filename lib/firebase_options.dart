@@ -51,6 +51,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '383683295145',
     projectId: 'appduralon',
     storageBucket: 'appduralon.firebasestorage.app',
+    iosClientId: '383683295145-fasjrf9b65o17kgd5qlj9edbvl3pp0hc.apps.googleusercontent.com',
     iosBundleId: 'com.example.appDuralon',
   );
 

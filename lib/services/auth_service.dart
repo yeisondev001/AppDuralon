@@ -1,5 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+
 
 class DuplicateRncException implements Exception {}
 
@@ -23,6 +26,96 @@ class AuthService {
       email: email.trim(),
       password: password,
     );
+  }
+
+  Future<UserCredential> signInWithGoogle() async {
+    // ── WEB ──────────────────────────────────────────────────────────────────
+    // En web, GoogleSignIn.instance.supportsAuthenticate() es false.
+    // Firebase maneja el popup completo internamente.
+    if (kIsWeb) {
+      // prompt: 'select_account' fuerza el selector de cuentas de Google
+      // aunque el navegador ya tenga una sesión activa.
+      final provider = GoogleAuthProvider()
+        ..setCustomParameters({'prompt': 'select_account'});
+      return _firebaseAuth.signInWithPopup(provider);
+    }
+
+    // ── MÓVIL (Android / iOS) ─────────────────────────────────────────────
+    // google_sign_in 7.x: authenticate() muestra el selector de cuenta.
+    final GoogleSignInAccount googleUser =
+        await GoogleSignIn.instance.authenticate();
+
+    // idToken: identifica al usuario → necesario para Firebase Auth.
+    // authentication es síncrono en 7.x (no requiere await).
+    final String? idToken = googleUser.authentication.idToken;
+
+    if (idToken == null) {
+      throw FirebaseAuthException(
+        code: 'google-sign-in-no-id-token',
+        message: 'Google Sign-In no devolvió un idToken. '
+            'Verifica que el serverClientId esté configurado en main.dart '
+            'con el "Web client ID" de tu proyecto Firebase.',
+      );
+    }
+
+    // accessToken: necesario para llamadas a APIs de Google (opcional para Firebase).
+    // En 7.x se obtiene con authorizeScopes (puede omitirse si solo necesitas Auth).
+    String? accessToken;
+    try {
+      final clientAuth = await googleUser.authorizationClient.authorizeScopes([
+        'email',
+        'profile',
+      ]);
+      accessToken = clientAuth.accessToken;
+    } catch (_) {
+      // Si la autorización de scopes falla, continuamos solo con idToken.
+    }
+
+    final credential = GoogleAuthProvider.credential(
+      idToken: idToken,
+      accessToken: accessToken,
+    );
+    return _firebaseAuth.signInWithCredential(credential);
+  }
+
+  // Crea los documentos de Firestore la primera vez que el usuario inicia
+  // sesión con Google. En logins posteriores detecta que ya existen y no hace nada.
+  Future<void> ensureGoogleUserProfile(User user) async {
+    final userRef = _firestore.collection('users').doc(user.uid);
+    final snapshot = await userRef.get();
+
+    // Si el documento ya existe, el usuario ya tiene perfil — no sobreescribir.
+    if (snapshot.exists) return;
+
+    final now = FieldValue.serverTimestamp();
+    final customerRef = _firestore.collection('customers').doc(user.uid);
+    final batch = _firestore.batch();
+
+    batch.set(userRef, {
+      'uid': user.uid,
+      'customerId': user.uid,
+      'email': user.email ?? '',
+      'displayName': user.displayName ?? '',
+      'photoURL': user.photoURL ?? '',
+      'role': 'cliente',
+      'status': 'activo',
+      'loginProvider': 'google',
+      'createdAt': now,
+      'updatedAt': now,
+    });
+
+    batch.set(customerRef, {
+      'customerId': user.uid,
+      'contactName': user.displayName ?? '',
+      'billingEmail': user.email ?? '',
+      'status': 'pendiente_validacion',
+      'creditEnabled': false,
+      'loginProvider': 'google',
+      'createdAt': now,
+      'updatedAt': now,
+    });
+
+    await batch.commit();
   }
 
   Future<void> registerWholesaleCustomer({
@@ -79,7 +172,7 @@ class AuthService {
       'uid': user.uid,
       'customerId': user.uid,
       'email': email.trim(),
-      'role': 'owner',
+      'role': 'cliente',
       'status': 'activo',
       'createdAt': now,
       'updatedAt': now,

@@ -11,14 +11,17 @@ import 'package:app_duralon/data/home_category_products_source.dart';
 import 'package:app_duralon/data/mock_products.dart';
 import 'package:app_duralon/models/home_product_section.dart';
 import 'package:app_duralon/models/product.dart';
+import 'package:app_duralon/pages/admin_panel_screen.dart';
 import 'package:app_duralon/pages/admin_wholesale_rules_screen.dart';
+import 'package:app_duralon/pages/perfil_screen.dart';
 import 'package:app_duralon/pages/catalogo_screen.dart';
 import 'package:app_duralon/pages/login_screen.dart';
 import 'package:app_duralon/pages/producto_screen.dart';
 import 'package:app_duralon/pages/productos_screen.dart';
 import 'package:app_duralon/utils/slide_right_route.dart';
 import 'package:app_duralon/widgets/duralon_guest_cart_dialog.dart';
-import 'package:app_duralon/widgets/home/home_side_menu.dart';
+import 'package:app_duralon/widgets/home/home_side_menu.dart'
+    show HomeSideMenu, kSideMenuItemsRequiringAccount;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -46,8 +49,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String _searchQuery = '';
   int _selectedStoreTab = 0;
   bool _canManageWholesaleRules = false;
+  bool _isAdmin = false;
   List<Product> _liveProducts = const <Product>[];
-  bool _liveProductsLoaded = false;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _productsSub;
 
   @override
@@ -71,9 +74,12 @@ class _HomeScreenState extends State<HomeScreen> {
       final userDoc =
           await FirebaseFirestore.instance.collection('users').doc(uid).get();
       final role = userDoc.data()?['role'] as String?;
-      final allowed = role == 'admin' || role == 'sales_admin';
+      final allowed = role == 'admin' || role == 'vendedor';
       if (!mounted) return;
-      setState(() => _canManageWholesaleRules = allowed);
+      setState(() {
+        _canManageWholesaleRules = allowed;
+        _isAdmin = role == 'admin';
+      });
     } catch (_) {
       // En caso de error de red/permisos, ocultamos opciones administrativas.
     }
@@ -111,7 +117,6 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       setState(() {
         _liveProducts = mapped;
-        _liveProductsLoaded = true;
       });
     });
   }
@@ -266,7 +271,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final showGuestLiveInfo = widget.isGuestMode && _liveProductsLoaded;
     return Scaffold(
       backgroundColor: const Color(0xFFF3F5F8),
       body: SafeArea(
@@ -275,9 +279,22 @@ class _HomeScreenState extends State<HomeScreen> {
             HomeSideMenu(
               selectedItem: 'Inicio',
               showWholesaleRules: _canManageWholesaleRules,
+              showAdminPanel: _isAdmin,
               onItemTap: (item) {
                 if (item == 'Inicio') {
                   _closeMenu();
+                  return;
+                }
+                if (item == 'Mi perfil') {
+                  _closeMenu();
+                  if (widget.isGuestMode) {
+                    showDuralonGuestCartDialog(context);
+                    return;
+                  }
+                  Navigator.push<void>(
+                    context,
+                    slideRightRoute<void>(const PerfilScreen()),
+                  );
                   return;
                 }
                 if (item == 'Catalogo') {
@@ -285,13 +302,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   _openCatalogScreen(context);
                   return;
                 }
-                if (item == 'Mi perfil') {
+                if (item == 'Panel de administración') {
                   _closeMenu();
-                  if (widget.isGuestMode) {
-                    showDuralonGuestCartDialog(context);
-                  } else {
-                    _showComingSoon(context, item);
-                  }
+                  Navigator.push<void>(
+                    context,
+                    slideRightRoute<void>(const AdminPanelScreen()),
+                  );
                   return;
                 }
                 if (item == 'Reglas mayoristas') {
@@ -308,6 +324,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     context,
                     slideRightRoute<void>(const AdminWholesaleRulesScreen()),
                   );
+                  return;
+                }
+                if (widget.isGuestMode && kSideMenuItemsRequiringAccount.contains(item)) {
+                  _closeMenu();
+                  showDuralonGuestCartDialog(context);
                   return;
                 }
                 _closeMenu();
@@ -351,11 +372,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       selectedStoreTab: _selectedStoreTab,
                       searchQuery: _searchQuery,
                       productSections: _homeProductSections,
-                      topBannerMessage: showGuestLiveInfo
-                          ? (_useLiveProducts
-                              ? 'Modo invitado: catalogo en tiempo real (solo lectura).'
-                              : 'Modo invitado: sin datos remotos, mostrando catalogo de prueba.')
-                          : null,
                       onMenuTap: _toggleMenu,
                       onCartTap: () => _handleCartTap(context, null),
                       onSearchChanged: (value) =>

@@ -49,6 +49,20 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Google Sign-In: esquema de redirección requerido por el SDK de Google.
+	     Valor = ID de cliente iOS invertido (REVERSED_CLIENT_ID).
+	     Fuente: firebase_options.dart → FirebaseOptions.ios.iosClientId invertido. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.383683295145-fasjrf9b65o17kgd5qlj9edbvl3pp0hc</string>
+			</array>
+		</dict>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

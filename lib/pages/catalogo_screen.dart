@@ -1,5 +1,6 @@
 // [CatalogoScreen]: contenido de la mitad deslizante en [HomeScreen] (no es el catalogo
 // acordeon). [CatalogoStandaloneScreen] es otra ruta, pantalla completa con arbol.
+import 'package:app_duralon/data/catalog_category_icons.dart';
 import 'package:app_duralon/data/catalog_category_tree.dart';
 import 'package:app_duralon/models/home_product_section.dart';
 import 'package:app_duralon/models/product.dart';
@@ -10,7 +11,8 @@ import 'package:app_duralon/widgets/home/home_header.dart';
 import 'package:app_duralon/widgets/home/horizontal_product_list.dart';
 import 'package:app_duralon/widgets/home/main_categories_banner.dart';
 import 'package:app_duralon/widgets/duralon_guest_cart_dialog.dart';
-import 'package:app_duralon/widgets/home/home_side_menu.dart';
+import 'package:app_duralon/widgets/home/home_side_menu.dart'
+    show HomeSideMenu, kSideMenuItemsRequiringAccount;
 import 'package:flutter/material.dart';
 
 /// Home embebido: buscador, tabs Hogar/Industrial, banner y filas con carruseles.
@@ -28,7 +30,6 @@ class CatalogoScreen extends StatelessWidget {
     required this.onCategoryVerTodos,
     required this.onProductTap,
     required this.onAddToCart,
-    this.topBannerMessage,
   });
 
   final int selectedStoreTab;
@@ -43,7 +44,6 @@ class CatalogoScreen extends StatelessWidget {
   final ValueChanged<HomeProductSection> onCategoryVerTodos;
   final ValueChanged<Product> onProductTap;
   final ValueChanged<Product> onAddToCart;
-  final String? topBannerMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -115,28 +115,6 @@ class CatalogoScreen extends StatelessWidget {
         SliverToBoxAdapter(
           child: MainCategoriesBanner(onTap: onMainCategoriesTap),
         ),
-        if (topBannerMessage != null)
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEAF4FF),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  topBannerMessage!,
-                  style: const TextStyle(
-                    color: Color(0xFF1A4F8A),
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ),
         if (searchQuery.trim().isNotEmpty)
           SliverToBoxAdapter(
             child: Padding(
@@ -190,6 +168,12 @@ class CatalogoScreen extends StatelessWidget {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Icon(
+                          iconForCatalogGroup(section.title),
+                          size: 26,
+                          color: const Color(0xFF262E3A),
+                        ),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             section.title,
@@ -309,13 +293,9 @@ class _CatalogoStandaloneScreenState extends State<CatalogoStandaloneScreen> {
                   _closeMenu();
                   return;
                 }
-                if (item == 'Mi perfil') {
+                if (widget.isGuestMode && kSideMenuItemsRequiringAccount.contains(item)) {
                   _closeMenu();
-                  if (widget.isGuestMode) {
-                    showDuralonGuestCartDialog(context);
-                  } else {
-                    _showComingSoon('Mi perfil');
-                  }
+                  showDuralonGuestCartDialog(context);
                   return;
                 }
                 _closeMenu();
@@ -471,10 +451,10 @@ class _CatalogoStandaloneScreenState extends State<CatalogoStandaloneScreen> {
                             ),
                             child: Row(
                               children: [
-                                const Icon(
-                                  Icons.inventory_2_outlined,
+                                Icon(
+                                  iconForCatalogGroup(category),
                                   size: 28,
-                                  color: Color(0xFF262E3A),
+                                  color: const Color(0xFF262E3A),
                                 ),
                                 const SizedBox(width: 14),
                                 Expanded(
