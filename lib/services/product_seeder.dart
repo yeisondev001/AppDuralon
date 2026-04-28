@@ -83,7 +83,7 @@ class ProductSeeder {
     },
     {
       'id': 'hogar',
-      'title': 'Hogar',
+      'title': 'Artículos del Hogar',
       'tab': 'hogar',
       'order': 2,
       'subtypes': [
