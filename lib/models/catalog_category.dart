@@ -1,0 +1,65 @@
+// Representa una categoría del catálogo almacenada en Firestore
+// (colección `catalog_categories`).
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+class CatalogCategory {
+  const CatalogCategory({
+    required this.id,
+    required this.title,
+    required this.tab,
+    required this.order,
+    required this.subtypes,
+  });
+
+  /// ID estable en Firestore (ej: "cocina", "articulos_hogar").
+  final String id;
+
+  /// Nombre visible (ej: "Cocina", "Artículos del Hogar").
+  final String title;
+
+  /// Tab al que pertenece: "hogar" | "industrial".
+  final String tab;
+
+  /// Posición de ordenamiento en la lista.
+  final int order;
+
+  /// Subtipos que muestra este grupo (ej: ["Envases", "Jarras"]).
+  final List<String> subtypes;
+
+  factory CatalogCategory.fromFirestore(
+      DocumentSnapshot<Map<String, dynamic>> doc) {
+    final d = doc.data() ?? const {};
+    return CatalogCategory(
+      id: doc.id,
+      title: d['title'] as String? ?? doc.id,
+      tab: d['tab'] as String? ?? 'hogar',
+      order: (d['order'] as num?)?.toInt() ?? 0,
+      subtypes: List<String>.from(d['subtypes'] as List? ?? const []),
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return <String, dynamic>{
+      'title': title,
+      'tab': tab,
+      'order': order,
+      'subtypes': subtypes,
+    };
+  }
+
+  CatalogCategory copyWith({
+    String? id,
+    String? title,
+    String? tab,
+    int? order,
+    List<String>? subtypes,
+  }) {
+    return CatalogCategory(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      tab: tab ?? this.tab,
+      order: order ?? this.order,
+      subtypes: subtypes ?? this.subtypes,
+    );
+  }
+}

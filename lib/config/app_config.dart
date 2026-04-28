@@ -25,13 +25,13 @@ class AppConfig {
   // ---------------------------------------------------------------------------
   // Punto único: cambia solo esto al pasar a tienda en vivo (o usa flavors).
   // ---------------------------------------------------------------------------
-  static const AppEnvironment environment = AppEnvironment.demo;
+  static const AppEnvironment environment = AppEnvironment.production;
 
   static bool get isDemoMode => environment == AppEnvironment.demo;
   static bool get isProduction => environment == AppEnvironment.production;
 
-  /// Catálogo desde [mock_products] / lógica local. En producción, false → API.
-  static bool get useMockCatalog => isDemoMode;
+  /// Siempre false en producción: los productos y catálogos vienen de Firebase.
+  static bool get useMockCatalog => false;
 
   /// Llamadas HTTP (cuando conectes el backend). Ahora no se usa; doc para URL única.
   static String get apiBaseUrl {

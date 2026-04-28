@@ -24,13 +24,23 @@ Future<void> main() async {
   );
 
   // ── Crashlytics ───────────────────────────────────────────────────────────
-  // Captura errores del framework Flutter (widgets, rendering, etc.).
-  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
-  // Captura errores async fuera del framework (Isolate raíz, futures sin catch).
-  PlatformDispatcher.instance.onError = (error, stack) {
-    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-    return true;
-  };
+  // Crashlytics solo disponible en móvil (no en web).
+  if (!kIsWeb) {
+    // Habilitado en todos los modos para poder probar desde el panel de admin.
+    // Cuando la app pase a producción, cambiar a: !kDebugMode
+    await FirebaseCrashlytics.instance
+        .setCrashlyticsCollectionEnabled(true);
+
+    // Captura errores del framework Flutter (widgets, rendering, etc.).
+    FlutterError.onError =
+        FirebaseCrashlytics.instance.recordFlutterFatalError;
+
+    // Captura errores async fuera del framework (Isolate raíz, futures sin catch).
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
+  }
 
   // Inicializar Google Sign-In (google_sign_in 7.x).
   // En web se omite: Firebase maneja el popup directamente con signInWithPopup.

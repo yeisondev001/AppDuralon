@@ -1,5 +1,10 @@
+import 'package:app_duralon/models/catalog_category.dart';
+import 'package:app_duralon/services/catalog_service.dart';
+import 'package:app_duralon/services/product_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
+import 'package:app_duralon/models/product.dart';
 import 'package:app_duralon/styles/app_style.dart';
 
 class AdminPanelScreen extends StatefulWidget {
@@ -16,7 +21,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 2, vsync: this);
+    _tabs = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -53,9 +58,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
           indicatorColor: AppColors.primaryBlue,
           tabs: const [
             Tab(icon: Icon(Icons.people_outline_rounded), text: 'Usuarios'),
-            Tab(
-                icon: Icon(Icons.inventory_2_outlined),
-                text: 'Productos'),
+            Tab(icon: Icon(Icons.category_outlined), text: 'Catálogos'),
+            Tab(icon: Icon(Icons.inventory_2_outlined), text: 'Productos'),
+            Tab(icon: Icon(Icons.bug_report_outlined), text: 'Pruebas'),
           ],
         ),
       ),
@@ -63,7 +68,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
         controller: _tabs,
         children: const [
           _UsuariosTab(),
+          _CatalogosTab(),
           _ProductosTab(),
+          _PruebasTab(),
         ],
       ),
     );
@@ -275,7 +282,6 @@ class _UserCard extends StatelessWidget {
         padding: const EdgeInsets.all(14),
         child: Row(
           children: [
-            // Avatar
             CircleAvatar(
               radius: 24,
               backgroundColor: const Color(0xFFD6E4F0),
@@ -293,7 +299,6 @@ class _UserCard extends StatelessWidget {
                   : null,
             ),
             const SizedBox(width: 12),
-            // Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -310,8 +315,7 @@ class _UserCard extends StatelessWidget {
                   const SizedBox(height: 5),
                   Row(
                     children: [
-                      _SmallBadge(
-                          label: roleLabel, color: roleColor),
+                      _SmallBadge(label: roleLabel, color: roleColor),
                       if (status.isNotEmpty) ...[
                         const SizedBox(width: 6),
                         _SmallBadge(
@@ -326,7 +330,6 @@ class _UserCard extends StatelessWidget {
                 ],
               ),
             ),
-            // Acciones
             Column(
               children: [
                 IconButton(
@@ -351,93 +354,62 @@ class _UserCard extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// PESTAÑA PRODUCTOS
+// PESTAÑA CATÁLOGOS
 // ═══════════════════════════════════════════════════════════════════════════════
-class _ProductosTab extends StatelessWidget {
-  const _ProductosTab();
+class _CatalogosTab extends StatefulWidget {
+  const _CatalogosTab();
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF3F5F8),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primaryBlue,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text('Nuevo producto',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-        onPressed: () => _showProductDialog(context, null, null),
-      ),
-      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: FirebaseFirestore.instance.collection('products').snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return const Center(
-              child: Text('Error al cargar productos.',
-                  style: TextStyle(color: Color(0xFFC62828))),
-            );
-          }
-          if (!snapshot.hasData) {
-            return const Center(
-                child:
-                    CircularProgressIndicator(color: AppColors.primaryBlue));
-          }
-          final docs = snapshot.data!.docs;
-          if (docs.isEmpty) {
-            return const Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.inventory_2_outlined,
-                      size: 56, color: Color(0xFFB0BEC5)),
-                  SizedBox(height: 12),
-                  Text('No hay productos aún.',
-                      style: TextStyle(color: Color(0xFF8A94A6))),
-                ],
-              ),
-            );
-          }
-          return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-            itemCount: docs.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
-            itemBuilder: (context, i) {
-              final doc = docs[i];
-              return _ProductCard(
-                id: doc.id,
-                data: doc.data(),
-                onEdit: () => _showProductDialog(context, doc.id, doc.data()),
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-
-  void _showProductDialog(
-      BuildContext context, String? id, Map<String, dynamic>? data) {
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => _ProductDialog(id: id, data: data),
-    );
-  }
+  State<_CatalogosTab> createState() => _CatalogosTabState();
 }
 
-class _ProductCard extends StatelessWidget {
-  const _ProductCard(
-      {required this.id, required this.data, required this.onEdit});
-  final String id;
-  final Map<String, dynamic> data;
-  final VoidCallback onEdit;
+class _CatalogosTabState extends State<_CatalogosTab> {
+  bool _seeding = false;
 
-  Future<void> _delete(BuildContext context) async {
+  Future<void> _seed() async {
+    setState(() => _seeding = true);
+    try {
+      await CatalogService.seedFromLocalData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Catálogos cargados en Firebase correctamente.'),
+            backgroundColor: Color(0xFF2E7D32),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al cargar catálogos: $e'),
+            backgroundColor: const Color(0xFFC62828),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _seeding = false);
+    }
+  }
+
+  void _showCategoryDialog(BuildContext ctx,
+      {CatalogCategory? existing}) {
+    showDialog<void>(
+      context: ctx,
+      barrierDismissible: false,
+      builder: (_) => _CatalogDialog(existing: existing),
+    );
+  }
+
+  Future<void> _deleteCategory(
+      BuildContext context, CatalogCategory cat) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Eliminar producto'),
+        title: const Text('Eliminar categoría'),
         content: Text(
-            '¿Seguro que deseas eliminar "${data['name'] ?? id}"?'),
+          '¿Eliminar "${cat.title}"?\n\nLos productos asociados no se borran.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -454,7 +426,557 @@ class _ProductCard extends StatelessWidget {
     );
     if (confirmed != true) return;
     try {
-      await FirebaseFirestore.instance.collection('products').doc(id).delete();
+      await CatalogService.delete(cat.id);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Categoría eliminada.'),
+            backgroundColor: Color(0xFF2E7D32),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: const Color(0xFFC62828),
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF3F5F8),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: AppColors.primaryBlue,
+        icon: const Icon(Icons.add_rounded, color: Colors.white),
+        label: const Text('Nueva categoría',
+            style:
+                TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+        onPressed: () => _showCategoryDialog(context),
+      ),
+      body: StreamBuilder<List<CatalogCategory>>(
+        stream: CatalogService.streamAll(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(
+              child: Text('Error: ${snapshot.error}',
+                  style: const TextStyle(color: Color(0xFFC62828))),
+            );
+          }
+          final cats = snapshot.data;
+          if (cats == null) {
+            return const Center(
+                child:
+                    CircularProgressIndicator(color: AppColors.primaryBlue));
+          }
+          return Column(
+            children: [
+              // Banner de carga inicial
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE3F2FD),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline_rounded,
+                          color: AppColors.primaryBlue, size: 18),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Text(
+                          'Carga las categorías por defecto desde el árbol de catálogo '
+                          'local. Ejecuta una sola vez para inicializar Firebase.',
+                          style: TextStyle(
+                              fontSize: 12, color: AppColors.primaryBlue),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primaryBlue,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                        ),
+                        onPressed: _seeding ? null : _seed,
+                        child: _seeding
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Text('Cargar',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (cats.isEmpty)
+                const Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.category_outlined,
+                            size: 56, color: Color(0xFFB0BEC5)),
+                        SizedBox(height: 12),
+                        Text('No hay categorías en Firebase aún.',
+                            style: TextStyle(color: Color(0xFF8A94A6))),
+                        SizedBox(height: 6),
+                        Text(
+                          'Presiona "Cargar" para inicializar con los datos por defecto.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              fontSize: 12, color: Color(0xFF8A94A6)),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                Expanded(
+                  child: ListView.separated(
+                    padding:
+                        const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                    itemCount: cats.length,
+                    separatorBuilder: (_, __) =>
+                        const SizedBox(height: 10),
+                    itemBuilder: (context, i) {
+                      final cat = cats[i];
+                      return _CatalogCard(
+                        category: cat,
+                        onEdit: () =>
+                            _showCategoryDialog(context, existing: cat),
+                        onDelete: () =>
+                            _deleteCategory(context, cat),
+                      );
+                    },
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _CatalogCard extends StatelessWidget {
+  const _CatalogCard(
+      {required this.category,
+      required this.onEdit,
+      required this.onDelete});
+  final CatalogCategory category;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final isHogar = category.tab == 'hogar';
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: isHogar
+                    ? const Color(0xFFFFECEC)
+                    : AppColors.lightBlue,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                isHogar
+                    ? Icons.home_outlined
+                    : Icons.factory_outlined,
+                color: isHogar
+                    ? AppColors.primaryRed
+                    : AppColors.primaryBlue,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(category.title,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: Color(0xFF1A2230))),
+                  const SizedBox(height: 3),
+                  Wrap(
+                    spacing: 4,
+                    runSpacing: 2,
+                    children: category.subtypes
+                        .take(4)
+                        .map((s) => _SmallBadge(
+                              label: s,
+                              color: isHogar
+                                  ? AppColors.primaryRed
+                                  : AppColors.primaryBlue,
+                            ))
+                        .toList()
+                      ..addAll(
+                        category.subtypes.length > 4
+                            ? [
+                                _SmallBadge(
+                                    label:
+                                        '+${category.subtypes.length - 4}',
+                                    color: const Color(0xFF9E9E9E))
+                              ]
+                            : [],
+                      ),
+                  ),
+                  const SizedBox(height: 3),
+                  _SmallBadge(
+                    label: isHogar ? 'HOGAR' : 'INDUSTRIAL',
+                    color: isHogar
+                        ? AppColors.primaryRed
+                        : AppColors.primaryBlue,
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              children: [
+                IconButton(
+                  tooltip: 'Editar',
+                  icon: const Icon(Icons.edit_outlined,
+                      color: AppColors.primaryBlue),
+                  onPressed: onEdit,
+                ),
+                IconButton(
+                  tooltip: 'Eliminar',
+                  icon: const Icon(Icons.delete_outline_rounded,
+                      color: Color(0xFFC62828)),
+                  onPressed: onDelete,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Diálogo agregar / editar categoría ───────────────────────────────────────
+class _CatalogDialog extends StatefulWidget {
+  const _CatalogDialog({this.existing});
+  final CatalogCategory? existing;
+
+  @override
+  State<_CatalogDialog> createState() => _CatalogDialogState();
+}
+
+class _CatalogDialogState extends State<_CatalogDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _id;
+  late final TextEditingController _title;
+  late final TextEditingController _order;
+  late final TextEditingController _subtypes;
+  late String _tab;
+  bool _saving = false;
+
+  bool get _isEditing => widget.existing != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.existing;
+    _id = TextEditingController(text: e?.id ?? '');
+    _title = TextEditingController(text: e?.title ?? '');
+    _order = TextEditingController(text: (e?.order ?? 0).toString());
+    _subtypes = TextEditingController(
+        text: e?.subtypes.join('\n') ?? '');
+    _tab = e?.tab ?? 'hogar';
+  }
+
+  @override
+  void dispose() {
+    _id.dispose();
+    _title.dispose();
+    _order.dispose();
+    _subtypes.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _saving = true);
+
+    final subtypesList = _subtypes.text
+        .split('\n')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+
+    try {
+      final data = {
+        'title': _title.text.trim(),
+        'tab': _tab,
+        'order': int.tryParse(_order.text.trim()) ?? 0,
+        'subtypes': subtypesList,
+      };
+      if (_isEditing) {
+        await CatalogService.update(widget.existing!.id, data);
+      } else {
+        final cat = CatalogCategory(
+          id: _id.text.trim(),
+          title: _title.text.trim(),
+          tab: _tab,
+          order: int.tryParse(_order.text.trim()) ?? 0,
+          subtypes: subtypesList,
+        );
+        await CatalogService.add(cat);
+      }
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: const Color(0xFFC62828),
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(
+          _isEditing ? 'Editar categoría' : 'Nueva categoría'),
+      content: SizedBox(
+        width: 360,
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (!_isEditing)
+                  _Field(
+                    controller: _id,
+                    label: 'ID (ej: cocina)',
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Requerido';
+                      if (RegExp(r'\s').hasMatch(v.trim())) {
+                        return 'Sin espacios (usa _)';
+                      }
+                      return null;
+                    },
+                  ),
+                _Field(
+                  controller: _title,
+                  label: 'Título visible',
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: DropdownButtonFormField<String>(
+                    value: _tab,
+                    decoration: const InputDecoration(
+                      labelText: 'Tab',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      isDense: true,
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'hogar', child: Text('Hogar')),
+                      DropdownMenuItem(
+                          value: 'industrial',
+                          child: Text('Industrial')),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) setState(() => _tab = v);
+                    },
+                  ),
+                ),
+                _Field(
+                  controller: _order,
+                  label: 'Orden de aparición',
+                  keyboardType: TextInputType.number,
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: TextFormField(
+                    controller: _subtypes,
+                    maxLines: 6,
+                    decoration: const InputDecoration(
+                      labelText: 'Subtipos (uno por línea)',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      isDense: true,
+                      hintText: 'Envases\nJarras\nVasos...',
+                    ),
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty)
+                            ? 'Agrega al menos un subtipo'
+                            : null,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primaryBlue),
+          onPressed: _saving ? null : _save,
+          child: _saving
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white),
+                )
+              : Text(_isEditing ? 'Guardar' : 'Agregar'),
+        ),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PESTAÑA PRODUCTOS
+// ═══════════════════════════════════════════════════════════════════════════════
+class _ProductosTab extends StatelessWidget {
+  const _ProductosTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF3F5F8),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: AppColors.primaryBlue,
+        icon: const Icon(Icons.add_rounded, color: Colors.white),
+        label: const Text('Nuevo producto',
+            style: TextStyle(
+                color: Colors.white, fontWeight: FontWeight.w700)),
+        onPressed: () => _showProductDialog(context, null),
+      ),
+      body: StreamBuilder<List<Product>>(
+        stream: ProductService.streamAdmin(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return const Center(
+              child: Text('Error al cargar productos.',
+                  style: TextStyle(color: Color(0xFFC62828))),
+            );
+          }
+          if (!snapshot.hasData) {
+            return const Center(
+                child: CircularProgressIndicator(
+                    color: AppColors.primaryBlue));
+          }
+          final products = snapshot.data!;
+          if (products.isEmpty) {
+            return const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.inventory_2_outlined,
+                      size: 56, color: Color(0xFFB0BEC5)),
+                  SizedBox(height: 12),
+                  Text('No hay productos aún.',
+                      style: TextStyle(color: Color(0xFF8A94A6))),
+                ],
+              ),
+            );
+          }
+          return ListView.separated(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+            itemCount: products.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            itemBuilder: (context, i) {
+              final product = products[i];
+              return _ProductCard(
+                product: product,
+                onEdit: () => _showProductDialog(context, product),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  void _showProductDialog(BuildContext context, Product? product) {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _ProductDialog(product: product),
+    );
+  }
+}
+
+class _ProductCard extends StatelessWidget {
+  const _ProductCard({required this.product, required this.onEdit});
+  final Product product;
+  final VoidCallback onEdit;
+
+  Future<void> _delete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar producto'),
+        content:
+            Text('¿Seguro que deseas eliminar "${product.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFFC62828)),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ProductService.delete(product.id);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -475,92 +997,128 @@ class _ProductCard extends StatelessWidget {
     }
   }
 
+  Future<void> _toggleActive(BuildContext context) async {
+    try {
+      await ProductService.setActive(product.id,
+          active: !product.isActive);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: const Color(0xFFC62828),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final name = data['name'] as String? ?? 'Sin nombre';
-    final category = data['category'] as String? ?? '—';
-    final rawPrice = data['price'];
-    final price = rawPrice is num ? rawPrice.toDouble() : 0.0;
-    final minQty = data['minOrderQty'];
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Row(
-          children: [
-            // Ícono categoría
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: AppColors.lightBlue,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.inventory_2_outlined,
-                  color: AppColors.primaryBlue),
+    return Opacity(
+      opacity: product.isActive ? 1.0 : 0.55,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                          color: Color(0xFF1A2230))),
-                  Text(category,
-                      style: const TextStyle(
-                          fontSize: 12, color: Color(0xFF8A94A6))),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Text(
-                        'RD\$ ${price.toStringAsFixed(2)}',
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppColors.lightBlue,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.inventory_2_outlined,
+                    color: AppColors.primaryBlue),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(product.name,
                         style: const TextStyle(
                             fontWeight: FontWeight.w700,
-                            color: AppColors.primaryBlue,
-                            fontSize: 14),
-                      ),
-                      if (minQty != null) ...[
+                            fontSize: 15,
+                            color: Color(0xFF1A2230))),
+                    Text(product.category,
+                        style: const TextStyle(
+                            fontSize: 12, color: Color(0xFF8A94A6))),
+                    if (product.catalogId != null)
+                      Text('ID: ${product.catalogId} · Tab: ${product.tab ?? '—'}',
+                          style: const TextStyle(
+                              fontSize: 11, color: Color(0xFFB0BEC5))),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Text(
+                          'RD\$ ${product.price.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primaryBlue,
+                              fontSize: 14),
+                        ),
                         const SizedBox(width: 8),
-                        Text('Min: $minQty uds',
+                        Text('Min: ${product.minOrderQty} uds',
                             style: const TextStyle(
-                                fontSize: 11, color: Color(0xFF8A94A6))),
+                                fontSize: 11,
+                                color: Color(0xFF8A94A6))),
+                        const SizedBox(width: 8),
+                        _SmallBadge(
+                          label: product.isActive ? 'Activo' : 'Inactivo',
+                          color: product.isActive
+                              ? const Color(0xFF2E7D32)
+                              : const Color(0xFF9E9E9E),
+                        ),
                       ],
-                    ],
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                children: [
+                  IconButton(
+                    tooltip: 'Editar',
+                    icon: const Icon(Icons.edit_outlined,
+                        color: AppColors.primaryBlue),
+                    onPressed: onEdit,
+                  ),
+                  IconButton(
+                    tooltip: product.isActive
+                        ? 'Desactivar'
+                        : 'Activar',
+                    icon: Icon(
+                      product.isActive
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      color: product.isActive
+                          ? const Color(0xFF9E9E9E)
+                          : const Color(0xFF2E7D32),
+                    ),
+                    onPressed: () => _toggleActive(context),
+                  ),
+                  IconButton(
+                    tooltip: 'Eliminar',
+                    icon: const Icon(Icons.delete_outline_rounded,
+                        color: Color(0xFFC62828)),
+                    onPressed: () => _delete(context),
                   ),
                 ],
               ),
-            ),
-            Column(
-              children: [
-                IconButton(
-                  tooltip: 'Editar',
-                  icon: const Icon(Icons.edit_outlined,
-                      color: AppColors.primaryBlue),
-                  onPressed: onEdit,
-                ),
-                IconButton(
-                  tooltip: 'Eliminar',
-                  icon: const Icon(Icons.delete_outline_rounded,
-                      color: Color(0xFFC62828)),
-                  onPressed: () => _delete(context),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -569,9 +1127,8 @@ class _ProductCard extends StatelessWidget {
 
 // ─── Diálogo agregar / editar producto ────────────────────────────────────────
 class _ProductDialog extends StatefulWidget {
-  const _ProductDialog({this.id, this.data});
-  final String? id;
-  final Map<String, dynamic>? data;
+  const _ProductDialog({this.product});
+  final Product? product;
 
   @override
   State<_ProductDialog> createState() => _ProductDialogState();
@@ -580,37 +1137,64 @@ class _ProductDialog extends StatefulWidget {
 class _ProductDialogState extends State<_ProductDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _name;
-  late final TextEditingController _category;
   late final TextEditingController _price;
   late final TextEditingController _listPrice;
   late final TextEditingController _minQty;
   late final TextEditingController _stepQty;
-  bool _saving = false;
 
-  bool get _isEditing => widget.id != null;
+  List<CatalogCategory> _catalogs = const [];
+  CatalogCategory? _selectedCatalog;
+  String? _selectedSubtype;
+  bool _saving = false;
+  bool _loadingCatalogs = true;
+
+  bool get _isEditing => widget.product != null;
 
   @override
   void initState() {
     super.initState();
-    final d = widget.data;
-    _name = TextEditingController(text: d?['name'] as String? ?? '');
-    _category = TextEditingController(text: d?['category'] as String? ?? '');
-    final rawPrice = d?['price'];
-    final rawList = d?['listPrice'];
+    final p = widget.product;
+    _name = TextEditingController(text: p?.name ?? '');
     _price = TextEditingController(
-        text: rawPrice is num ? rawPrice.toStringAsFixed(2) : '');
+        text: p != null ? p.price.toStringAsFixed(2) : '');
     _listPrice = TextEditingController(
-        text: rawList is num ? rawList.toStringAsFixed(2) : '');
-    _minQty = TextEditingController(
-        text: (d?['minOrderQty'] ?? 1).toString());
-    _stepQty = TextEditingController(
-        text: (d?['stepQty'] ?? 1).toString());
+        text: p?.listPrice != null
+            ? p!.listPrice!.toStringAsFixed(2)
+            : '');
+    _minQty =
+        TextEditingController(text: (p?.minOrderQty ?? 1).toString());
+    _stepQty =
+        TextEditingController(text: (p?.stepQty ?? 1).toString());
+    _loadCatalogs();
+  }
+
+  Future<void> _loadCatalogs() async {
+    try {
+      final all = await Future.wait([
+        CatalogService.fetchByTab('hogar'),
+        CatalogService.fetchByTab('industrial'),
+      ]);
+      final cats = [...all[0], ...all[1]];
+      if (!mounted) return;
+      setState(() {
+        _catalogs = cats;
+        _loadingCatalogs = false;
+        if (_isEditing && widget.product!.catalogId != null) {
+          _selectedCatalog = cats.firstWhere(
+            (c) => c.id == widget.product!.catalogId,
+            orElse: () => cats.first,
+          );
+          _selectedSubtype = widget.product!.category;
+        }
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loadingCatalogs = false);
+    }
   }
 
   @override
   void dispose() {
     _name.dispose();
-    _category.dispose();
     _price.dispose();
     _listPrice.dispose();
     _minQty.dispose();
@@ -624,25 +1208,25 @@ class _ProductDialogState extends State<_ProductDialog> {
 
     final payload = <String, dynamic>{
       'name': _name.text.trim(),
-      'category': _category.text.trim(),
+      'category': _selectedSubtype ?? '',
       'price': double.parse(_price.text.trim()),
       'minOrderQty': int.tryParse(_minQty.text.trim()) ?? 1,
       'stepQty': int.tryParse(_stepQty.text.trim()) ?? 1,
-      'updatedAt': FieldValue.serverTimestamp(),
     };
+    if (_selectedCatalog != null) {
+      payload['catalogId'] = _selectedCatalog!.id;
+      payload['tab'] = _selectedCatalog!.tab;
+    }
     final listPriceText = _listPrice.text.trim();
     if (listPriceText.isNotEmpty) {
       payload['listPrice'] = double.tryParse(listPriceText);
     }
 
     try {
-      final col = FirebaseFirestore.instance.collection('products');
       if (_isEditing) {
-        await col.doc(widget.id).update(payload);
+        await ProductService.update(widget.product!.id, payload);
       } else {
-        payload['createdAt'] = FieldValue.serverTimestamp();
-        payload['imageAsset'] = 'assets/images/duralon_logo.png';
-        await col.add(payload);
+        await ProductService.add(payload);
       }
       if (mounted) Navigator.pop(context);
     } catch (e) {
@@ -674,14 +1258,70 @@ class _ProductDialogState extends State<_ProductDialog> {
                   controller: _name,
                   label: 'Nombre',
                   validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+                      (v == null || v.trim().isEmpty)
+                          ? 'Requerido'
+                          : null,
                 ),
-                _Field(
-                  controller: _category,
-                  label: 'Categoría',
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Requerido' : null,
-                ),
+                // Dropdown catálogo padre
+                if (_loadingCatalogs)
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 12),
+                    child: LinearProgressIndicator(),
+                  )
+                else ...[
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: DropdownButtonFormField<CatalogCategory>(
+                      value: _selectedCatalog,
+                      decoration: const InputDecoration(
+                        labelText: 'Categoría del catálogo',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                        isDense: true,
+                      ),
+                      items: _catalogs
+                          .map((c) => DropdownMenuItem(
+                                value: c,
+                                child: Text(
+                                    '${c.title} (${c.tab == 'hogar' ? 'Hogar' : 'Industrial'})'),
+                              ))
+                          .toList(),
+                      onChanged: (c) {
+                        setState(() {
+                          _selectedCatalog = c;
+                          _selectedSubtype = null;
+                        });
+                      },
+                      validator: (v) =>
+                          v == null ? 'Selecciona una categoría' : null,
+                    ),
+                  ),
+                  if (_selectedCatalog != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: DropdownButtonFormField<String>(
+                        value: _selectedSubtype,
+                        decoration: const InputDecoration(
+                          labelText: 'Subtipo',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
+                          isDense: true,
+                        ),
+                        items: _selectedCatalog!.subtypes
+                            .map((s) => DropdownMenuItem(
+                                  value: s,
+                                  child: Text(s),
+                                ))
+                            .toList(),
+                        onChanged: (s) =>
+                            setState(() => _selectedSubtype = s),
+                        validator: (v) =>
+                            v == null ? 'Selecciona un subtipo' : null,
+                      ),
+                    ),
+                ],
                 _Field(
                   controller: _price,
                   label: 'Precio (RD\$)',
@@ -765,6 +1405,275 @@ class _Field extends StatelessWidget {
           isDense: true,
         ),
       ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PESTAÑA PRUEBAS
+// ═══════════════════════════════════════════════════════════════════════════════
+class _PruebasTab extends StatefulWidget {
+  const _PruebasTab();
+
+  @override
+  State<_PruebasTab> createState() => _PruebasTabState();
+}
+
+class _PruebasTabState extends State<_PruebasTab> {
+  bool _crashlyticsSending = false;
+  String? _resultado;
+
+  Future<void> _enviarErrorPrueba() async {
+    setState(() {
+      _crashlyticsSending = true;
+      _resultado = null;
+    });
+    try {
+      await FirebaseCrashlytics.instance.recordError(
+        Exception('Error de prueba desde el panel de admin'),
+        StackTrace.current,
+        reason: 'Test manual desde _PruebasTab',
+        fatal: false,
+      );
+      await FirebaseCrashlytics.instance.sendUnsentReports();
+      if (mounted) {
+        setState(() => _resultado =
+            '✓ Reporte enviado. Revisa Firebase Console → Crashlytics.');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _resultado = '✗ Error al enviar: $e');
+      }
+    } finally {
+      if (mounted) setState(() => _crashlyticsSending = false);
+    }
+  }
+
+  void _forzarCrashFatal() {
+    showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Crash fatal'),
+        content: const Text(
+          'Esto cerrará la app inmediatamente.\n'
+          'Vuelve a abrirla para que se envíe el reporte a Firebase.\n\n'
+          '¿Continuar?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFFC62828)),
+            onPressed: () {
+              Navigator.pop(ctx, true);
+              Future<void>.delayed(const Duration(milliseconds: 300), () {
+                FirebaseCrashlytics.instance.crash();
+              });
+            },
+            child: const Text('Sí, crashear'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF3E0),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.bug_report_outlined,
+                          color: Color(0xFFE65100)),
+                    ),
+                    const SizedBox(width: 12),
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Firebase Crashlytics',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1A2230),
+                          ),
+                        ),
+                        Text(
+                          'Prueba el reporte de errores',
+                          style: TextStyle(
+                              fontSize: 12, color: Color(0xFF8A94A6)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 24, indent: 18, endIndent: 18),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Error no fatal',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A2230)),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Envía un error de prueba a Firebase sin cerrar la app. '
+                      'Aparece en Crashlytics como "Non-fatal".',
+                      style: TextStyle(
+                          fontSize: 12, color: Color(0xFF8A94A6)),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFFE65100),
+                          side:
+                              const BorderSide(color: Color(0xFFE65100)),
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: _crashlyticsSending
+                            ? null
+                            : _enviarErrorPrueba,
+                        icon: _crashlyticsSending
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFFE65100)),
+                              )
+                            : const Icon(Icons.send_outlined),
+                        label: const Text('Enviar error de prueba'),
+                      ),
+                    ),
+                    if (_resultado != null) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: _resultado!.startsWith('✓')
+                              ? const Color(0xFFE8F5E9)
+                              : const Color(0xFFFFEBEE),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          _resultado!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: _resultado!.startsWith('✓')
+                                ? const Color(0xFF2E7D32)
+                                : const Color(0xFFC62828),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const Divider(height: 1, indent: 18, endIndent: 18),
+              Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Crash fatal',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A2230)),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Cierra la app inmediatamente. Vuelve a abrirla para '
+                      'que se envíe el reporte. Aparece en Crashlytics como "Fatal".',
+                      style: TextStyle(
+                          fontSize: 12, color: Color(0xFF8A94A6)),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFC62828),
+                          foregroundColor: Colors.white,
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: _forzarCrashFatal,
+                        icon: const Icon(Icons.warning_amber_rounded),
+                        label: const Text(
+                          'Forzar crash fatal',
+                          style:
+                              TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE3F2FD),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.info_outline_rounded,
+                  color: AppColors.primaryBlue, size: 18),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Los reportes aparecen en Firebase Console → Crashlytics '
+                  'en 1-2 minutos. En modo debug los errores no fatales '
+                  'se envían, pero los crashes fatales requieren modo release.',
+                  style: TextStyle(
+                      fontSize: 12, color: AppColors.primaryBlue),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

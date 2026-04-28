@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:app_duralon/pages/login_screen.dart';
 import 'package:app_duralon/utils/slide_right_route.dart';
+import 'package:app_duralon/utils/show_quienes_somos_bottom_sheet.dart';
 import 'package:app_duralon/utils/show_terminos_bottom_sheet.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -222,7 +223,7 @@ class _HomeSideMenuState extends State<HomeSideMenu> {
               ),
 
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+              padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
@@ -232,6 +233,27 @@ class _HomeSideMenuState extends State<HomeSideMenu> {
                     padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     child: Text(
                       'Términos y condiciones',
+                      style: TextStyle(
+                        color: Color(0xFF7D8798),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () => showQuienesSomosBottomSheet(context),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: Text(
+                      'Quiénes somos',
                       style: TextStyle(
                         color: Color(0xFF7D8798),
                         fontSize: 15,

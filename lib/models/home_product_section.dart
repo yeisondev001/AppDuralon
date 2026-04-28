@@ -1,5 +1,5 @@
-// Una fila del home: titulo de grupo (Cocina, etc.) + productos de preview
-// y metadatos para el backend. Ver [kCatalogHogar] y [kCatalogGroupIdByTitle].
+// Una fila del home: titulo de grupo (Cocina, etc.) + productos de preview.
+// El [categoryId] corresponde al ID del documento en `catalog_categories` en Firestore.
 import 'package:app_duralon/models/product.dart';
 
 class HomeProductSection {
@@ -10,15 +10,15 @@ class HomeProductSection {
     required this.previewProducts,
   });
 
-  /// Id estable para el backend, p. ej. `GET /v1/categories/cocina/products`.
+  /// ID del documento en la colección `catalog_categories` de Firestore.
   final String categoryId;
 
-  /// Titulo visible (debe coincidir con claves de [kCatalogHogar] / [kCatalogIndustrial] mientras dure el mock).
+  /// Título visible de la categoría (ej: "Cocina", "Artículos del Hogar").
   final String title;
 
-  /// Subtipos del arbol; el mock resuelve con [productsForCatalogGroup].
+  /// Subtipos del catálogo que agrupa esta sección.
   final List<String> subtypes;
 
-  /// Productos en carrusel (preview); puede ser un subconjunto o filtrado por busqueda.
+  /// Productos en carrusel (preview); puede ser un subconjunto o filtrado por búsqueda.
   final List<Product> previewProducts;
 }

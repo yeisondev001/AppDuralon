@@ -1,10 +1,13 @@
 // [CatalogoScreen]: contenido de la mitad deslizante en [HomeScreen] (no es el catalogo
 // acordeon). [CatalogoStandaloneScreen] es otra ruta, pantalla completa con arbol.
+import 'dart:async';
+
 import 'package:app_duralon/data/catalog_category_icons.dart';
-import 'package:app_duralon/data/catalog_category_tree.dart';
+import 'package:app_duralon/models/catalog_category.dart';
 import 'package:app_duralon/models/home_product_section.dart';
 import 'package:app_duralon/models/product.dart';
 import 'package:app_duralon/pages/login_screen.dart';
+import 'package:app_duralon/services/catalog_service.dart';
 import 'package:app_duralon/styles/app_style.dart';
 import 'package:app_duralon/utils/slide_right_route.dart';
 import 'package:app_duralon/widgets/home/home_header.dart';
@@ -238,42 +241,67 @@ class CatalogoStandaloneScreen extends StatefulWidget {
   final ValueChanged<String> onSectionTap;
 
   @override
-  State<CatalogoStandaloneScreen> createState() => _CatalogoStandaloneScreenState();
+  State<CatalogoStandaloneScreen> createState() =>
+      _CatalogoStandaloneScreenState();
 }
 
-class _CatalogoStandaloneScreenState extends State<CatalogoStandaloneScreen> {
+class _CatalogoStandaloneScreenState
+    extends State<CatalogoStandaloneScreen> {
   bool _isMenuOpen = false;
   int _selectedTab = 0;
   String _searchQuery = '';
   String? _expandedCategory;
 
-  void _toggleMenu() {
-    setState(() => _isMenuOpen = !_isMenuOpen);
+  List<CatalogCategory> _catalogs = const [];
+  bool _catalogsLoaded = false;
+  StreamSubscription<List<CatalogCategory>>? _catalogsSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _catalogsSub = CatalogService.streamAll().listen(
+      (cats) {
+        if (!mounted) return;
+        setState(() {
+          _catalogs = cats;
+          _catalogsLoaded = true;
+        });
+      },
+      onError: (_) {
+        if (mounted) setState(() => _catalogsLoaded = true);
+      },
+    );
   }
 
+  @override
+  void dispose() {
+    _catalogsSub?.cancel();
+    super.dispose();
+  }
+
+  void _toggleMenu() => setState(() => _isMenuOpen = !_isMenuOpen);
+
   void _closeMenu() {
-    if (_isMenuOpen) {
-      setState(() => _isMenuOpen = false);
-    }
+    if (_isMenuOpen) setState(() => _isMenuOpen = false);
   }
 
   void _showComingSoon(String feature) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature estara disponible pronto.')),
+      SnackBar(content: Text('$feature estará disponible pronto.')),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final query = _searchQuery.trim().toLowerCase();
+    final tab = _selectedTab == 0 ? 'hogar' : 'industrial';
 
-    final categories = _selectedTab == 0 ? kCatalogHogar : kCatalogIndustrial;
-    final filteredCategories = categories.entries.where((entry) {
+    final filteredCategories = _catalogs.where((cat) {
+      if (cat.tab != tab) return false;
       if (query.isEmpty) return true;
-      final categoryMatch = entry.key.toLowerCase().contains(query);
-      final subtypeMatch = entry.value.any(
-        (subtype) => subtype.toLowerCase().contains(query),
-      );
+      final categoryMatch = cat.title.toLowerCase().contains(query);
+      final subtypeMatch =
+          cat.subtypes.any((s) => s.toLowerCase().contains(query));
       return categoryMatch || subtypeMatch;
     }).toList();
 
@@ -424,92 +452,114 @@ class _CatalogoStandaloneScreenState extends State<CatalogoStandaloneScreen> {
               ),
             ),
             const SizedBox(height: 10),
-            Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(14, 8, 14, 20),
-                itemBuilder: (_, i) {
-                  final entry = filteredCategories[i];
-                  final category = entry.key;
-                  final subtypes = entry.value;
-                  final isExpanded = _expandedCategory == category;
-                  return Material(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    child: Column(
-                      children: [
-                        InkWell(
-                          borderRadius: BorderRadius.circular(14),
-                          onTap: () {
-                            setState(() {
-                              _expandedCategory = isExpanded ? null : category;
-                            });
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 16,
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  iconForCatalogGroup(category),
-                                  size: 28,
-                                  color: const Color(0xFF262E3A),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Text(
-                                    category,
-                                    style: const TextStyle(
-                                      fontSize: 17,
-                                      fontWeight: FontWeight.w600,
+            if (!_catalogsLoaded)
+              const Expanded(
+                child: Center(
+                  child: CircularProgressIndicator(
+                      color: AppColors.primaryBlue),
+                ),
+              )
+            else if (filteredCategories.isEmpty)
+              const Expanded(
+                child: Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text(
+                      'No hay categorías disponibles.\n'
+                      'Un administrador debe cargarlas desde el Panel de administración.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          color: Color(0xFF8A94A6), fontSize: 14),
+                    ),
+                  ),
+                ),
+              )
+            else
+              Expanded(
+                child: ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(14, 8, 14, 20),
+                  itemBuilder: (_, i) {
+                    final cat = filteredCategories[i];
+                    final isExpanded = _expandedCategory == cat.id;
+                    return Material(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      child: Column(
+                        children: [
+                          InkWell(
+                            borderRadius: BorderRadius.circular(14),
+                            onTap: () {
+                              setState(() {
+                                _expandedCategory =
+                                    isExpanded ? null : cat.id;
+                              });
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 16),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    iconForCatalogGroup(cat.title),
+                                    size: 28,
+                                    color: const Color(0xFF262E3A),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Text(
+                                      cat.title,
+                                      style: const TextStyle(
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                Icon(
-                                  isExpanded
-                                      ? Icons.keyboard_arrow_up_rounded
-                                      : Icons.keyboard_arrow_down_rounded,
-                                  color: AppColors.primaryRed,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        AnimatedCrossFade(
-                          firstChild: const SizedBox.shrink(),
-                          secondChild: Padding(
-                            padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-                            child: Column(
-                              children: subtypes.map((subtype) {
-                                return ListTile(
-                                  dense: true,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                  ),
-                                  leading: const Icon(
-                                    Icons.chevron_right_rounded,
+                                  Icon(
+                                    isExpanded
+                                        ? Icons.keyboard_arrow_up_rounded
+                                        : Icons.keyboard_arrow_down_rounded,
                                     color: AppColors.primaryRed,
                                   ),
-                                  title: Text(subtype),
-                                  onTap: () => widget.onSectionTap(subtype),
-                                );
-                              }).toList(),
+                                ],
+                              ),
                             ),
                           ),
-                          crossFadeState: isExpanded
-                              ? CrossFadeState.showSecond
-                              : CrossFadeState.showFirst,
-                          duration: const Duration(milliseconds: 200),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemCount: filteredCategories.length,
+                          AnimatedCrossFade(
+                            firstChild: const SizedBox.shrink(),
+                            secondChild: Padding(
+                              padding:
+                                  const EdgeInsets.fromLTRB(14, 0, 14, 12),
+                              child: Column(
+                                children: cat.subtypes.map((subtype) {
+                                  return ListTile(
+                                    dense: true,
+                                    contentPadding:
+                                        const EdgeInsets.symmetric(
+                                            horizontal: 8),
+                                    leading: const Icon(
+                                      Icons.chevron_right_rounded,
+                                      color: AppColors.primaryRed,
+                                    ),
+                                    title: Text(subtype),
+                                    onTap: () =>
+                                        widget.onSectionTap(subtype),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                            crossFadeState: isExpanded
+                                ? CrossFadeState.showSecond
+                                : CrossFadeState.showFirst,
+                            duration: const Duration(milliseconds: 200),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
+                  itemCount: filteredCategories.length,
+                ),
               ),
-            ),
                     ],
                   ),
                 ),

@@ -2,13 +2,12 @@
 // Pantalla de inicio: menu lateral, tabs HOGAR/INDUSTRIAL, secciones por
 // categoria con carruseles de productos, busqueda y navegacion a catalogo,
 // listado de productos y detalle (ProductoScreen).
+// Usa Firebase Firestore en tiempo real para TODOS los usuarios (invitado y
+// autenticado). Los archivos mock se conservan solo para pruebas locales.
 // =============================================================================
 import 'dart:async';
 
-import 'package:app_duralon/config/app_config.dart';
-import 'package:app_duralon/data/catalog_category_tree.dart';
-import 'package:app_duralon/data/home_category_products_source.dart';
-import 'package:app_duralon/data/mock_products.dart';
+import 'package:app_duralon/models/catalog_category.dart';
 import 'package:app_duralon/models/home_product_section.dart';
 import 'package:app_duralon/models/product.dart';
 import 'package:app_duralon/pages/admin_panel_screen.dart';
@@ -18,6 +17,9 @@ import 'package:app_duralon/pages/catalogo_screen.dart';
 import 'package:app_duralon/pages/login_screen.dart';
 import 'package:app_duralon/pages/producto_screen.dart';
 import 'package:app_duralon/pages/productos_screen.dart';
+import 'package:app_duralon/services/catalog_service.dart';
+import 'package:app_duralon/services/product_service.dart';
+import 'package:app_duralon/styles/app_style.dart';
 import 'package:app_duralon/utils/slide_right_route.dart';
 import 'package:app_duralon/widgets/duralon_guest_cart_dialog.dart';
 import 'package:app_duralon/widgets/home/home_side_menu.dart'
@@ -26,9 +28,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-/// Raiz de la app: [isGuestMode] indica invitado (sin login). Con backend, suele
-/// ser `!auth.isLoggedIn`. Para **cuenta de prueba vs real** en el servidor, usa
-/// [UserAccountType] en el perfil, no solo este bool.
+/// Raiz de la app: [isGuestMode] indica invitado (sin login).
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
@@ -44,98 +44,146 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // --- Menu lateral, texto del buscador, tab 0=Hogar 1=Industrial ---
   bool _isMenuOpen = false;
   String _searchQuery = '';
   int _selectedStoreTab = 0;
   bool _canManageWholesaleRules = false;
   bool _isAdmin = false;
-  List<Product> _liveProducts = const <Product>[];
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _productsSub;
+
+  // ── Datos de Firebase ────────────────────────────────────────────────────────
+  List<Product> _products = const [];
+  List<CatalogCategory> _catalogs = const [];
+  bool _productsLoaded = false;
+  bool _catalogsLoaded = false;
+
+  StreamSubscription<List<Product>>? _productsSub;
+  StreamSubscription<List<CatalogCategory>>? _catalogsSub;
+
+  bool get _isLoading => !_productsLoaded || !_catalogsLoaded;
 
   @override
   void initState() {
     super.initState();
     _loadRolePermissions();
-    _startLiveProductsIfGuest();
+    _startProductsStream();
+    _startCatalogsStream();
   }
 
   @override
   void dispose() {
     _productsSub?.cancel();
+    _catalogsSub?.cancel();
     super.dispose();
   }
 
+  // ── Permisos de rol (solo usuarios autenticados) ──────────────────────────────
   Future<void> _loadRolePermissions() async {
     if (widget.isGuestMode) return;
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
     try {
-      final userDoc =
-          await FirebaseFirestore.instance.collection('users').doc(uid).get();
-      final role = userDoc.data()?['role'] as String?;
-      final allowed = role == 'admin' || role == 'vendedor';
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+      final role = doc.data()?['role'] as String?;
       if (!mounted) return;
       setState(() {
-        _canManageWholesaleRules = allowed;
+        _canManageWholesaleRules = role == 'admin' || role == 'vendedor';
         _isAdmin = role == 'admin';
       });
-    } catch (_) {
-      // En caso de error de red/permisos, ocultamos opciones administrativas.
-    }
+    } catch (_) {}
   }
 
-  void _startLiveProductsIfGuest() {
-    if (!widget.isGuestMode) return;
-    _productsSub = FirebaseFirestore.instance
-        .collection('products')
-        .snapshots()
-        .listen((snapshot) {
-      final mapped = snapshot.docs.map((doc) {
-        final data = doc.data();
-        final rawPrice = data['price'];
-        final rawListPrice = data['listPrice'];
-        final rawMin = data['minOrderQty'];
-        final rawStep = data['stepQty'];
-        return Product(
-          id: doc.id,
-          name: (data['name'] as String?)?.trim().isNotEmpty == true
-              ? data['name'] as String
-              : 'Producto ${doc.id}',
-          category: (data['category'] as String?)?.trim().isNotEmpty == true
-              ? data['category'] as String
-              : 'General',
-          price: rawPrice is num ? rawPrice.toDouble() : 0,
-          imageAsset: (data['imageAsset'] as String?)?.trim().isNotEmpty == true
-              ? data['imageAsset'] as String
-              : 'assets/images/duralon_logo.png',
-          listPrice: rawListPrice is num ? rawListPrice.toDouble() : null,
-          minOrderQty: rawMin is int ? rawMin : 30,
-          stepQty: rawStep is int ? rawStep : 1,
-        );
-      }).toList();
-      if (!mounted) return;
-      setState(() {
-        _liveProducts = mapped;
-      });
-    });
+  // ── Streams de Firebase ───────────────────────────────────────────────────────
+
+  void _startProductsStream() {
+    _productsSub = ProductService.streamAll().listen(
+      (products) {
+        if (!mounted) return;
+        setState(() {
+          _products = products;
+          _productsLoaded = true;
+        });
+      },
+      onError: (_) {
+        if (!mounted) return;
+        setState(() => _productsLoaded = true);
+      },
+    );
   }
 
-  bool get _useLiveProducts => widget.isGuestMode && _liveProducts.isNotEmpty;
-
-  List<Product> get _productPool => _useLiveProducts ? _liveProducts : mockProducts;
-
-  // ---------------------------------------------------------------------------
-  // UI: apertura/cierre del drawer y toques fuera.
-  // ---------------------------------------------------------------------------
-  void _toggleMenu() {
-    setState(() => _isMenuOpen = !_isMenuOpen);
+  void _startCatalogsStream() {
+    _catalogsSub = CatalogService.streamAll().listen(
+      (cats) {
+        if (!mounted) return;
+        setState(() {
+          _catalogs = cats;
+          _catalogsLoaded = true;
+        });
+      },
+      onError: (_) {
+        if (!mounted) return;
+        setState(() => _catalogsLoaded = true);
+      },
+    );
   }
+
+  // ── Secciones del home ────────────────────────────────────────────────────────
+
+  /// Categorías del tab activo (hogar | industrial) desde Firebase.
+  List<CatalogCategory> get _activeCatalogs {
+    final tab = _selectedStoreTab == 0 ? 'hogar' : 'industrial';
+    return _catalogs.where((c) => c.tab == tab).toList();
+  }
+
+  /// Construye las secciones del home a partir de los catálogos y productos de Firebase.
+  List<HomeProductSection> get _homeProductSections {
+    final q = _searchQuery.trim().toLowerCase();
+    return _activeCatalogs.map((cat) {
+      var list = _productsForCatalog(cat);
+      if (q.isNotEmpty) {
+        list = list
+            .where((p) =>
+                p.name.toLowerCase().contains(q) ||
+                p.category.toLowerCase().contains(q))
+            .toList();
+      }
+      return HomeProductSection(
+        categoryId: cat.id,
+        title: cat.title,
+        subtypes: cat.subtypes,
+        previewProducts: list,
+      );
+    }).where((s) => s.previewProducts.isNotEmpty).toList();
+  }
+
+  /// Productos que pertenecen a una categoría del catálogo.
+  /// Prioriza el campo [catalogId]; si no existe usa matching por subtipos.
+  List<Product> _productsForCatalog(CatalogCategory cat) {
+    final byId = _products.where((p) => p.catalogId == cat.id).toList();
+    if (byId.isNotEmpty) return byId;
+    final subtypeSet = cat.subtypes.map((s) => s.toLowerCase()).toSet();
+    return _products
+        .where((p) => subtypeSet.contains(p.category.toLowerCase()))
+        .toList();
+  }
+
+  /// Productos de un subtipo específico (para el acordeón del catálogo).
+  List<Product> _productsForSection(String section) {
+    final key = section.trim().toLowerCase();
+    return _products.where((p) {
+      return p.name.toLowerCase().contains(key) ||
+          p.category.toLowerCase().contains(key);
+    }).toList();
+  }
+
+  // ── UI helpers ────────────────────────────────────────────────────────────────
+
+  void _toggleMenu() => setState(() => _isMenuOpen = !_isMenuOpen);
 
   void _closeMenu() {
-    if (_isMenuOpen) {
-      setState(() => _isMenuOpen = false);
-    }
+    if (_isMenuOpen) setState(() => _isMenuOpen = false);
   }
 
   void _handleCartTap(BuildContext context, Product? product) {
@@ -143,101 +191,50 @@ class _HomeScreenState extends State<HomeScreen> {
       showDuralonGuestCartDialog(context);
       return;
     }
-    final productName = product == null ? '' : ' (${product.name})';
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Agregado al carrito$productName')),
-    );
+    final name = product == null ? '' : ' (${product.name})';
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('Agregado al carrito$name')));
   }
 
   void _showComingSoon(BuildContext context, String feature) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature estara disponible pronto.')),
+      SnackBar(content: Text('$feature estará disponible pronto.')),
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Construye las filas del home: por cada categoria (Cocina, etc.) lista de
-  // productos del mock, filtrada por busqueda si el usuario escribio en el header.
-  // ---------------------------------------------------------------------------
-  List<HomeProductSection> get _homeProductSections {
-    final map = _selectedStoreTab == 0 ? kCatalogHogar : kCatalogIndustrial;
-    final q = _searchQuery.trim().toLowerCase();
-    return map.entries
-        .map((e) {
-          var list = _productsForCatalogGroupFromPool(e.key, e.value);
-          if (q.isNotEmpty) {
-            list = list
-                .where(
-                  (p) =>
-                      p.name.toLowerCase().contains(q) ||
-                      p.category.toLowerCase().contains(q),
-                )
-                .toList();
-          }
-          return HomeProductSection(
-            categoryId: kCatalogGroupIdByTitle[e.key]!,
-            title: e.key,
-            subtypes: e.value,
-            previewProducts: list,
-          );
-        })
-        .where((s) => s.previewProducts.isNotEmpty)
-        .toList();
-  }
+  // ── Navegación ────────────────────────────────────────────────────────────────
 
-  // ---------------------------------------------------------------------------
-  // Productos que coinciden con un "subtipo" al abrirlo desde el catalogo
-  // con acordeones (por nombre o categoria contiene [section]).
-  // ---------------------------------------------------------------------------
-  /// Listado al abrir un subtipo desde el catalogo acordeon. Mock solo en demo.
-  List<Product> _productsForSection(String section) {
-    if (_useLiveProducts) {
-      final key = section.trim().toLowerCase();
-      return _productPool.where((product) {
-        final name = product.name.toLowerCase();
-        final category = product.category.toLowerCase();
-        return name.contains(key) || category.contains(key);
-      }).toList();
-    }
-    if (!AppConfig.useMockCatalog) {
-      // TODO(Backend): buscar productos por slug de subtipo
-      return const <Product>[];
-    }
-    final key = section.trim().toLowerCase();
-    return mockProducts.where((product) {
-      final name = product.name.toLowerCase();
-      final category = product.category.toLowerCase();
-      return name.contains(key) || category.contains(key);
-    }).toList();
-  }
-
-  // ---------------------------------------------------------------------------
-  // Navegacion: listados y detalle; todas usan [slideRightRoute] (gesto atras iOS).
-  // ---------------------------------------------------------------------------
   void _openProductsScreen(BuildContext context, String section) {
-    final sectionProducts = _productsForSection(section);
     Navigator.push<void>(
       context,
       slideRightRoute<void>(
         ProductosScreen(
           sectionTitle: section,
-          products: sectionProducts,
+          products: _productsForSection(section),
           isGuestMode: widget.isGuestMode,
         ),
       ),
     );
   }
 
-  void _openProductosScreenForCategory(BuildContext context, HomeProductSection section) {
-    final allInCategory = _useLiveProducts
-        ? _productsForCatalogGroupFromPool(section.title, section.subtypes)
-        : productsForFullCategoryList(section);
+  void _openProductosScreenForCategory(
+      BuildContext context, HomeProductSection section) {
+    final cat = _catalogs.firstWhere(
+      (c) => c.id == section.categoryId,
+      orElse: () => CatalogCategory(
+        id: section.categoryId,
+        title: section.title,
+        tab: 'hogar',
+        order: 0,
+        subtypes: section.subtypes,
+      ),
+    );
     Navigator.push<void>(
       context,
       slideRightRoute<void>(
         ProductosScreen(
           sectionTitle: section.title,
-          products: allInCategory,
+          products: _productsForCatalog(cat),
           isGuestMode: widget.isGuestMode,
         ),
       ),
@@ -248,10 +245,7 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.push<void>(
       context,
       slideRightRoute<void>(
-        ProductoScreen(
-          product: product,
-          isGuestMode: widget.isGuestMode,
-        ),
+        ProductoScreen(product: product, isGuestMode: widget.isGuestMode),
       ),
     );
   }
@@ -269,6 +263,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ── Build ─────────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -281,20 +277,15 @@ class _HomeScreenState extends State<HomeScreen> {
               showWholesaleRules: _canManageWholesaleRules,
               showAdminPanel: _isAdmin,
               onItemTap: (item) {
-                if (item == 'Inicio') {
-                  _closeMenu();
-                  return;
-                }
+                if (item == 'Inicio') { _closeMenu(); return; }
                 if (item == 'Mi perfil') {
                   _closeMenu();
                   if (widget.isGuestMode) {
                     showDuralonGuestCartDialog(context);
                     return;
                   }
-                  Navigator.push<void>(
-                    context,
-                    slideRightRoute<void>(const PerfilScreen()),
-                  );
+                  Navigator.push<void>(context,
+                      slideRightRoute<void>(const PerfilScreen()));
                   return;
                 }
                 if (item == 'Catalogo') {
@@ -304,29 +295,24 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
                 if (item == 'Panel de administración') {
                   _closeMenu();
-                  Navigator.push<void>(
-                    context,
-                    slideRightRoute<void>(const AdminPanelScreen()),
-                  );
+                  Navigator.push<void>(context,
+                      slideRightRoute<void>(const AdminPanelScreen()));
                   return;
                 }
                 if (item == 'Reglas mayoristas') {
                   _closeMenu();
                   if (!_canManageWholesaleRules) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('No tienes permisos para reglas mayoristas.'),
-                      ),
-                    );
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('No tienes permisos para reglas mayoristas.'),
+                    ));
                     return;
                   }
-                  Navigator.push<void>(
-                    context,
-                    slideRightRoute<void>(const AdminWholesaleRulesScreen()),
-                  );
+                  Navigator.push<void>(context,
+                      slideRightRoute<void>(const AdminWholesaleRulesScreen()));
                   return;
                 }
-                if (widget.isGuestMode && kSideMenuItemsRequiringAccount.contains(item)) {
+                if (widget.isGuestMode &&
+                    kSideMenuItemsRequiringAccount.contains(item)) {
                   _closeMenu();
                   showDuralonGuestCartDialog(context);
                   return;
@@ -337,12 +323,9 @@ class _HomeScreenState extends State<HomeScreen> {
               onLoginTap: () {
                 _closeMenu();
                 Navigator.push<void>(
-                  context,
-                  slideRightRoute<void>(const LoginScreen()),
-                );
+                    context, slideRightRoute<void>(const LoginScreen()));
               },
             ),
-            // --- Contenedor principal: [CatalogoScreen] = header + tabs + secciones ---
             AnimatedSlide(
               duration: const Duration(milliseconds: 340),
               curve: Curves.easeOutCubic,
@@ -354,7 +337,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   curve: Curves.easeOutCubic,
                   decoration: BoxDecoration(
                     color: const Color(0xFFF6F8FC),
-                    borderRadius: BorderRadius.circular(_isMenuOpen ? 26 : 0),
+                    borderRadius:
+                        BorderRadius.circular(_isMenuOpen ? 26 : 0),
                     boxShadow: _isMenuOpen
                         ? [
                             BoxShadow(
@@ -368,22 +352,31 @@ class _HomeScreenState extends State<HomeScreen> {
                   clipBehavior: Clip.antiAlias,
                   child: IgnorePointer(
                     ignoring: _isMenuOpen,
-                    child: CatalogoScreen(
-                      selectedStoreTab: _selectedStoreTab,
-                      searchQuery: _searchQuery,
-                      productSections: _homeProductSections,
-                      onMenuTap: _toggleMenu,
-                      onCartTap: () => _handleCartTap(context, null),
-                      onSearchChanged: (value) =>
-                          setState(() => _searchQuery = value),
-                      onStoreTabChanged: (tabIndex) =>
-                          setState(() => _selectedStoreTab = tabIndex),
-                      onMainCategoriesTap: () => _openCatalogScreen(context),
-                      onCategoryVerTodos: (section) =>
-                          _openProductosScreenForCategory(context, section),
-                      onProductTap: (product) => _openProductoScreen(context, product),
-                      onAddToCart: (product) => _handleCartTap(context, product),
-                    ),
+                    child: _isLoading
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                                color: AppColors.primaryBlue),
+                          )
+                        : CatalogoScreen(
+                            selectedStoreTab: _selectedStoreTab,
+                            searchQuery: _searchQuery,
+                            productSections: _homeProductSections,
+                            onMenuTap: _toggleMenu,
+                            onCartTap: () => _handleCartTap(context, null),
+                            onSearchChanged: (v) =>
+                                setState(() => _searchQuery = v),
+                            onStoreTabChanged: (i) =>
+                                setState(() => _selectedStoreTab = i),
+                            onMainCategoriesTap: () =>
+                                _openCatalogScreen(context),
+                            onCategoryVerTodos: (section) =>
+                                _openProductosScreenForCategory(
+                                    context, section),
+                            onProductTap: (p) =>
+                                _openProductoScreen(context, p),
+                            onAddToCart: (p) =>
+                                _handleCartTap(context, p),
+                          ),
                   ),
                 ),
               ),
@@ -392,26 +385,5 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
-  }
-
-  List<Product> _productsForCatalogGroupFromPool(
-    String groupTitle,
-    List<String> subtypes,
-  ) {
-    if (groupTitle == 'Infantil') {
-      return _productPool
-          .where((p) => p.category.toLowerCase() == 'infantil')
-          .toList();
-    }
-    if (groupTitle == 'Industrial') {
-      final industrial = <String>{'crates', 'otros', 'pallets', 'industrial'};
-      return _productPool
-          .where((p) => industrial.contains(p.category.toLowerCase()))
-          .toList();
-    }
-    final set = subtypes.map((s) => s.toLowerCase()).toSet();
-    return _productPool
-        .where((p) => set.contains(p.category.toLowerCase()))
-        .toList();
   }
 }
