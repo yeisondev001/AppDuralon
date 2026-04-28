@@ -2,6 +2,7 @@ import 'package:app_duralon/models/catalog_category.dart';
 import 'package:app_duralon/models/product.dart';
 import 'package:app_duralon/models/product_variant.dart';
 import 'package:app_duralon/services/catalog_service.dart';
+import 'package:app_duralon/services/product_seeder.dart';
 import 'package:app_duralon/services/product_service.dart';
 import 'package:app_duralon/styles/app_style.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -366,6 +367,8 @@ class _CatalogosTab extends StatefulWidget {
 
 class _CatalogosTabState extends State<_CatalogosTab> {
   bool _seeding = false;
+  bool _seedingCatalog = false;
+  String _catalogProgress = '';
 
   Future<void> _seed() async {
     setState(() => _seeding = true);
@@ -390,6 +393,45 @@ class _CatalogosTabState extends State<_CatalogosTab> {
       }
     } finally {
       if (mounted) setState(() => _seeding = false);
+    }
+  }
+
+  Future<void> _seedCatalog2026() async {
+    setState(() {
+      _seedingCatalog = true;
+      _catalogProgress = 'Iniciando…';
+    });
+    try {
+      await ProductSeeder.seedCatalog2026(
+        onProgress: (msg) {
+          if (mounted) setState(() => _catalogProgress = msg);
+        },
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('¡Catálogo 2026 cargado exitosamente en Firebase!'),
+            backgroundColor: Color(0xFF2E7D32),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al cargar catálogo 2026: $e'),
+            backgroundColor: const Color(0xFFC62828),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _seedingCatalog = false;
+          _catalogProgress = '';
+        });
+      }
     }
   }
 
@@ -519,6 +561,67 @@ class _CatalogosTabState extends State<_CatalogosTab> {
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700)),
                       ),
+                    ],
+                  ),
+                ),
+              ),
+              // ── Banner Catálogo 2026 ──────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF8E1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFFFCC02)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.inventory_2_rounded,
+                              color: Color(0xFFF57F17), size: 18),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Text(
+                              'Catálogo Duralon 2026 — Carga categorías y productos completos '
+                              '(~200 productos). Solo ejecutar una vez.',
+                              style: TextStyle(
+                                  fontSize: 12, color: Color(0xFF795548)),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFFF57F17),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                            ),
+                            onPressed: _seedingCatalog ? null : _seedCatalog2026,
+                            child: _seedingCatalog
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2, color: Colors.white),
+                                  )
+                                : const Text('Cargar 2026',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700)),
+                          ),
+                        ],
+                      ),
+                      if (_seedingCatalog && _catalogProgress.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8, left: 28),
+                          child: Text(
+                            _catalogProgress,
+                            style: const TextStyle(
+                                fontSize: 11, color: Color(0xFF795548)),
+                          ),
+                        ),
                     ],
                   ),
                 ),
