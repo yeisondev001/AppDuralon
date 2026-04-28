@@ -2,7 +2,7 @@
 /// Se guarda como array embebido dentro del documento de `products`.
 class ProductVariant {
   const ProductVariant({
-    required this.sku,
+    required this.codigo,
     required this.ean,
     required this.color,
     this.size,
@@ -15,8 +15,8 @@ class ProductVariant {
     this.isActive = true,
   });
 
-  /// Código interno (ej: "ENV-PRO-RJ-500").
-  final String sku;
+  /// Código interno del producto (ej: "E3600").
+  final String codigo;
 
   /// Código de barras EAN.
   final String ean;
@@ -63,38 +63,38 @@ class ProductVariant {
   factory ProductVariant.fromMap(Map<String, dynamic> m) {
     final rawDims = m['dimensions'] as Map<String, dynamic>? ?? {};
     return ProductVariant(
-      sku:               m['sku']  as String? ?? '',
-      ean:               m['ean']  as String? ?? '',
-      color:             m['color'] as String? ?? 'Sin color',
-      size:              m['size']  as String?,
+      codigo:            m['codigo'] as String? ?? m['sku'] as String? ?? '',
+      ean:               m['ean']    as String? ?? '',
+      color:             m['color']  as String? ?? 'Sin color',
+      size:              m['size']   as String?,
       dimensions:        rawDims.map((k, v) => MapEntry(k, (v as num).toDouble())),
       packQty:           (m['packQty']   as num?)?.toInt() ?? 1,
       palletQty:         (m['palletQty'] as num?)?.toInt() ?? 1,
-      priceRetail:       (m['priceRetail']       as num?)?.toDouble() ?? 0,
-      priceDistributor:  (m['priceDistributor']  as num?)?.toDouble() ?? 0,
-      stock:             (m['stock'] as num?)?.toInt() ?? 0,
+      priceRetail:       (m['priceRetail']      as num?)?.toDouble() ?? 0,
+      priceDistributor:  (m['priceDistributor'] as num?)?.toDouble() ?? 0,
+      stock:             (m['stock']    as num?)?.toInt() ?? 0,
       isActive:          m['isActive'] as bool? ?? true,
     );
   }
 
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
-      'sku':   sku,
-      'ean':   ean,
-      'color': color,
+      'codigo': codigo,
+      'ean':    ean,
+      'color':  color,
       if (size != null) 'size': size,
       if (dimensions.isNotEmpty) 'dimensions': dimensions,
-      'packQty':   packQty,
-      'palletQty': palletQty,
-      'priceRetail':      priceRetail,
-      'priceDistributor': priceDistributor,
+      'packQty':           packQty,
+      'palletQty':         palletQty,
+      'priceRetail':       priceRetail,
+      'priceDistributor':  priceDistributor,
       'stock':    stock,
       'isActive': isActive,
     };
   }
 
   ProductVariant copyWith({
-    String? sku,
+    String? codigo,
     String? ean,
     String? color,
     String? size,
@@ -107,7 +107,7 @@ class ProductVariant {
     bool? isActive,
   }) {
     return ProductVariant(
-      sku:              sku              ?? this.sku,
+      codigo:           codigo           ?? this.codigo,
       ean:              ean              ?? this.ean,
       color:            color            ?? this.color,
       size:             size             ?? this.size,

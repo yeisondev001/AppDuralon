@@ -1534,7 +1534,7 @@ class _ProductDialogState extends State<_ProductDialog> {
                                   ),
                                 ),
                                 Text(
-                                  'SKU: ${v.sku}  EAN: ${v.ean}',
+                                  'Código: ${v.codigo}  EAN: ${v.ean}',
                                   style: const TextStyle(
                                       fontSize: 11,
                                       color: Color(0xFF8A94A6)),
@@ -1616,7 +1616,7 @@ class _VariantDialog extends StatefulWidget {
 class _VariantDialogState extends State<_VariantDialog> {
   final _formKey = GlobalKey<FormState>();
 
-  late final TextEditingController _sku;
+  late final TextEditingController _codigo;
   late final TextEditingController _ean;
   late final TextEditingController _color;
   late final TextEditingController _size;
@@ -1637,7 +1637,7 @@ class _VariantDialogState extends State<_VariantDialog> {
   void initState() {
     super.initState();
     final e = widget.existing;
-    _sku        = TextEditingController(text: e?.sku ?? '');
+    _codigo        = TextEditingController(text: e?.codigo ?? '');
     _ean        = TextEditingController(text: e?.ean ?? '');
     _color      = TextEditingController(text: e?.color ?? '');
     _size       = TextEditingController(text: e?.size ?? '');
@@ -1657,7 +1657,7 @@ class _VariantDialogState extends State<_VariantDialog> {
 
   @override
   void dispose() {
-    for (final c in [_sku,_ean,_color,_size,_largo,_ancho,_alto,_peso,
+    for (final c in [_codigo,_ean,_color,_size,_largo,_ancho,_alto,_peso,
                      _packQty,_palletQty,_priceRetail,_priceDist,_stock]) {
       c.dispose();
     }
@@ -1674,7 +1674,7 @@ class _VariantDialogState extends State<_VariantDialog> {
     if (_peso.text.trim().isNotEmpty)  dims['peso']  = double.parse(_peso.text.trim());
 
     final variant = ProductVariant(
-      sku:              _sku.text.trim(),
+      codigo:              _codigo.text.trim(),
       ean:              _ean.text.trim(),
       color:            _color.text.trim(),
       size:             _size.text.trim().isNotEmpty ? _size.text.trim() : null,
@@ -1705,8 +1705,8 @@ class _VariantDialogState extends State<_VariantDialog> {
                 // Identificación
                 const _SectionLabel('Identificación'),
                 _Field(
-                  controller: _sku,
-                  label: 'SKU (código interno)',
+                  controller: _codigo,
+                  label: 'Código (código interno)',
                   validator: (v) =>
                       (v == null || v.trim().isEmpty) ? 'Requerido' : null,
                 ),
