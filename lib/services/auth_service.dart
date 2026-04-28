@@ -7,6 +7,8 @@ import 'package:google_sign_in/google_sign_in.dart';
 class DuplicateRncException implements Exception {}
 
 class InvalidRncException implements Exception {}
+class DuplicateIdentificationException implements Exception {}
+class InvalidIdentificationException implements Exception {}
 
 class AuthService {
   AuthService({
@@ -78,6 +80,18 @@ class AuthService {
     return _firebaseAuth.signInWithCredential(credential);
   }
 
+  Future<UserCredential> signInWithApple() async {
+    final provider = OAuthProvider('apple.com');
+    provider.addScope('email');
+    provider.addScope('name');
+
+    if (kIsWeb) {
+      return _firebaseAuth.signInWithPopup(provider);
+    }
+
+    return _firebaseAuth.signInWithProvider(provider);
+  }
+
   // Crea los documentos de Firestore la primera vez que el usuario inicia
   // sesión con Google. En logins posteriores detecta que ya existen y no hace nada.
   Future<void> ensureGoogleUserProfile(User user) async {
@@ -121,20 +135,23 @@ class AuthService {
   Future<void> registerWholesaleCustomer({
     required String email,
     required String password,
-    required String rnc,
+    required String identification,
     required String taxpayerType,
-    required String legalName,
-    required String contactName,
+    required String fullName,
+    required String city,
+    required String country,
     required String phone,
     required String fiscalAddress,
   }) async {
-    final normalizedRnc = _normalizeRnc(rnc);
-    if (!isValidDominicanRnc(normalizedRnc)) {
-      throw InvalidRncException();
+    final normalizedIdentification = _normalizeDigits(identification);
+    final idType = _identificationType(normalizedIdentification);
+    if (idType == null) {
+      throw InvalidIdentificationException();
     }
-    final rncAlreadyInUse = await _isRncAlreadyRegistered(normalizedRnc);
-    if (rncAlreadyInUse) {
-      throw DuplicateRncException();
+    final idAlreadyInUse =
+        await _isIdentificationAlreadyRegistered(normalizedIdentification);
+    if (idAlreadyInUse) {
+      throw DuplicateIdentificationException();
     }
     final credential = await _firebaseAuth.createUserWithEmailAndPassword(
       email: email.trim(),
@@ -155,14 +172,23 @@ class AuthService {
     final batch = _firestore.batch();
     batch.set(customerRef, {
       'customerId': user.uid,
-      'rnc': rnc.trim(),
-      'rncNormalized': normalizedRnc,
+      'identification': identification.trim(),
+      'identificationNormalized': normalizedIdentification,
+      'identificationType': idType,
+      if (idType == 'rnc') 'rnc': identification.trim(),
+      if (idType == 'rnc') 'rncNormalized': normalizedIdentification,
+      if (idType == 'cedula') 'cedula': identification.trim(),
+      if (idType == 'cedula') 'cedulaNormalized': normalizedIdentification,
       'taxpayerType': taxpayerType,
-      'legalName': legalName.trim(),
-      'contactName': contactName.trim(),
+      'fullName': fullName.trim(),
+      // Compatibilidad con el modelo anterior:
+      'legalName': fullName.trim(),
+      'contactName': fullName.trim(),
       'phone': phone.trim(),
       'billingEmail': email.trim(),
       'fiscalAddress': fiscalAddress.trim(),
+      'city': city.trim(),
+      'country': country.trim(),
       'status': 'pendiente_validacion',
       'creditEnabled': false,
       'createdAt': now,
@@ -180,17 +206,45 @@ class AuthService {
     await batch.commit();
   }
 
-  String _normalizeRnc(String rnc) {
-    return rnc.replaceAll(RegExp(r'[^0-9]'), '');
+  String _normalizeDigits(String value) {
+    return value.replaceAll(RegExp(r'[^0-9]'), '');
   }
 
-  Future<bool> _isRncAlreadyRegistered(String normalizedRnc) async {
+  String? _identificationType(String normalized) {
+    if (normalized.length == 9 && isValidDominicanRnc(normalized)) {
+      return 'rnc';
+    }
+    if (normalized.length == 11 && _isValidDominicanCedula(normalized)) {
+      return 'cedula';
+    }
+    return null;
+  }
+
+  Future<bool> _isIdentificationAlreadyRegistered(
+    String normalizedIdentification,
+  ) async {
     final snapshot = await _firestore
         .collection('customers')
-        .where('rncNormalized', isEqualTo: normalizedRnc)
+        .where(
+          'identificationNormalized',
+          isEqualTo: normalizedIdentification,
+        )
         .limit(1)
         .get();
     return snapshot.docs.isNotEmpty;
+  }
+
+  bool _isValidDominicanCedula(String normalizedCedula) {
+    if (normalizedCedula.length != 11) return false;
+    final digits = normalizedCedula.split('').map(int.parse).toList();
+    const weights = [1, 2, 1, 2, 1, 2, 1, 2, 1, 2];
+    var sum = 0;
+    for (var i = 0; i < 10; i++) {
+      final product = digits[i] * weights[i];
+      sum += product > 9 ? product - 9 : product;
+    }
+    final verifier = (10 - (sum % 10)) % 10;
+    return verifier == digits[10];
   }
 
   static bool isValidDominicanRnc(String rawRnc) {
