@@ -1,11 +1,12 @@
 import 'package:app_duralon/models/catalog_category.dart';
+import 'package:app_duralon/models/product.dart';
+import 'package:app_duralon/models/product_variant.dart';
 import 'package:app_duralon/services/catalog_service.dart';
 import 'package:app_duralon/services/product_service.dart';
+import 'package:app_duralon/styles/app_style.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
-import 'package:app_duralon/models/product.dart';
-import 'package:app_duralon/styles/app_style.dart';
 
 class AdminPanelScreen extends StatefulWidget {
   const AdminPanelScreen({super.key});
@@ -1137,6 +1138,7 @@ class _ProductDialog extends StatefulWidget {
 class _ProductDialogState extends State<_ProductDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _name;
+  late final TextEditingController _description;
   late final TextEditingController _price;
   late final TextEditingController _listPrice;
   late final TextEditingController _minQty;
@@ -1145,6 +1147,7 @@ class _ProductDialogState extends State<_ProductDialog> {
   List<CatalogCategory> _catalogs = const [];
   CatalogCategory? _selectedCatalog;
   String? _selectedSubtype;
+  List<ProductVariant> _variants = [];
   bool _saving = false;
   bool _loadingCatalogs = true;
 
@@ -1155,16 +1158,14 @@ class _ProductDialogState extends State<_ProductDialog> {
     super.initState();
     final p = widget.product;
     _name = TextEditingController(text: p?.name ?? '');
+    _description = TextEditingController(text: p?.description ?? '');
     _price = TextEditingController(
         text: p != null ? p.price.toStringAsFixed(2) : '');
     _listPrice = TextEditingController(
-        text: p?.listPrice != null
-            ? p!.listPrice!.toStringAsFixed(2)
-            : '');
-    _minQty =
-        TextEditingController(text: (p?.minOrderQty ?? 1).toString());
-    _stepQty =
-        TextEditingController(text: (p?.stepQty ?? 1).toString());
+        text: p?.listPrice != null ? p!.listPrice!.toStringAsFixed(2) : '');
+    _minQty  = TextEditingController(text: (p?.minOrderQty ?? 1).toString());
+    _stepQty = TextEditingController(text: (p?.stepQty ?? 1).toString());
+    _variants = List.from(p?.variants ?? []);
     _loadCatalogs();
   }
 
@@ -1195,6 +1196,7 @@ class _ProductDialogState extends State<_ProductDialog> {
   @override
   void dispose() {
     _name.dispose();
+    _description.dispose();
     _price.dispose();
     _listPrice.dispose();
     _minQty.dispose();
@@ -1209,18 +1211,20 @@ class _ProductDialogState extends State<_ProductDialog> {
     final payload = <String, dynamic>{
       'name': _name.text.trim(),
       'category': _selectedSubtype ?? '',
-      'price': double.parse(_price.text.trim()),
+      'price': double.tryParse(_price.text.trim()) ?? 0,
       'minOrderQty': int.tryParse(_minQty.text.trim()) ?? 1,
       'stepQty': int.tryParse(_stepQty.text.trim()) ?? 1,
+      if (_description.text.trim().isNotEmpty)
+        'description': _description.text.trim(),
+      if (_selectedCatalog != null) ...{
+        'catalogId': _selectedCatalog!.id,
+        'tab': _selectedCatalog!.tab,
+      },
+      if (_listPrice.text.trim().isNotEmpty)
+        'listPrice': double.tryParse(_listPrice.text.trim()),
+      if (_variants.isNotEmpty)
+        'variants': _variants.map((v) => v.toMap()).toList(),
     };
-    if (_selectedCatalog != null) {
-      payload['catalogId'] = _selectedCatalog!.id;
-      payload['tab'] = _selectedCatalog!.tab;
-    }
-    final listPriceText = _listPrice.text.trim();
-    if (listPriceText.isNotEmpty) {
-      payload['listPrice'] = double.tryParse(listPriceText);
-    }
 
     try {
       if (_isEditing) {
@@ -1232,14 +1236,32 @@ class _ProductDialogState extends State<_ProductDialog> {
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al guardar: $e'),
-            backgroundColor: const Color(0xFFC62828),
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error al guardar: $e'),
+          backgroundColor: const Color(0xFFC62828),
+        ));
       }
     }
+  }
+
+  Future<void> _openVariantDialog({ProductVariant? existing, int? index}) async {
+    final result = await showDialog<ProductVariant>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _VariantDialog(existing: existing),
+    );
+    if (result == null) return;
+    setState(() {
+      if (index != null) {
+        _variants[index] = result;
+      } else {
+        _variants.add(result);
+      }
+    });
+  }
+
+  void _removeVariant(int index) {
+    setState(() => _variants.removeAt(index));
   }
 
   @override
@@ -1247,22 +1269,27 @@ class _ProductDialogState extends State<_ProductDialog> {
     return AlertDialog(
       title: Text(_isEditing ? 'Editar producto' : 'Nuevo producto'),
       content: SizedBox(
-        width: 360,
+        width: 380,
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // ── Datos básicos ──────────────────────────────
                 _Field(
                   controller: _name,
-                  label: 'Nombre',
+                  label: 'Nombre del producto',
                   validator: (v) =>
-                      (v == null || v.trim().isEmpty)
-                          ? 'Requerido'
-                          : null,
+                      (v == null || v.trim().isEmpty) ? 'Requerido' : null,
                 ),
-                // Dropdown catálogo padre
+                _Field(
+                  controller: _description,
+                  label: 'Descripción (opcional)',
+                  maxLines: 2,
+                ),
+                // ── Catálogo y subtipo ─────────────────────────
                 if (_loadingCatalogs)
                   const Padding(
                     padding: EdgeInsets.only(bottom: 12),
@@ -1287,12 +1314,10 @@ class _ProductDialogState extends State<_ProductDialog> {
                                     '${c.title} (${c.tab == 'hogar' ? 'Hogar' : 'Industrial'})'),
                               ))
                           .toList(),
-                      onChanged: (c) {
-                        setState(() {
-                          _selectedCatalog = c;
-                          _selectedSubtype = null;
-                        });
-                      },
+                      onChanged: (c) => setState(() {
+                        _selectedCatalog = c;
+                        _selectedSubtype = null;
+                      }),
                       validator: (v) =>
                           v == null ? 'Selecciona una categoría' : null,
                     ),
@@ -1322,21 +1347,20 @@ class _ProductDialogState extends State<_ProductDialog> {
                       ),
                     ),
                 ],
+                // ── Precio general (fallback sin variantes) ────
                 _Field(
                   controller: _price,
-                  label: 'Precio (RD\$)',
+                  label: 'Precio base (RD\$)',
                   keyboardType: TextInputType.number,
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) return 'Requerido';
-                    if (double.tryParse(v.trim()) == null) {
-                      return 'Número inválido';
-                    }
+                    if (double.tryParse(v.trim()) == null) return 'Número inválido';
                     return null;
                   },
                 ),
                 _Field(
                   controller: _listPrice,
-                  label: 'Precio anterior (opcional)',
+                  label: 'Precio anterior / tachado (opcional)',
                   keyboardType: TextInputType.number,
                 ),
                 _Field(
@@ -1346,9 +1370,111 @@ class _ProductDialogState extends State<_ProductDialog> {
                 ),
                 _Field(
                   controller: _stepQty,
-                  label: 'Multiplo de compra',
+                  label: 'Múltiplo de compra',
                   keyboardType: TextInputType.number,
                 ),
+
+                // ── Variantes ──────────────────────────────────
+                const Divider(height: 24),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Variantes (color / tamaño)',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          color: Color(0xFF1A2230),
+                        ),
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => _openVariantDialog(),
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: const Text('Agregar'),
+                      style: TextButton.styleFrom(
+                          foregroundColor: AppColors.primaryBlue),
+                    ),
+                  ],
+                ),
+                if (_variants.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      'Sin variantes. El precio base aplica a todos los clientes.',
+                      style: TextStyle(
+                          fontSize: 12, color: Colors.grey.shade500),
+                    ),
+                  )
+                else
+                  ...List.generate(_variants.length, (i) {
+                    final v = _variants[i];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F5F8),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFDDE3EE)),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${v.color}${v.size != null ? ' · ${v.size}' : ''}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                Text(
+                                  'SKU: ${v.sku}  EAN: ${v.ean}',
+                                  style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Color(0xFF8A94A6)),
+                                ),
+                                Text(
+                                  'Minorista: RD\$${v.priceRetail.toStringAsFixed(0)}/caja  '
+                                  'Dist.: RD\$${v.priceDistributor.toStringAsFixed(0)}/caja',
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                                Text(
+                                  '${v.packQty} uds/caja · ${v.palletQty} cajas/pallet · Stock: ${v.stock}',
+                                  style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Color(0xFF8A94A6)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Column(
+                            children: [
+                              IconButton(
+                                constraints:
+                                    const BoxConstraints(minWidth: 36, minHeight: 36),
+                                padding: EdgeInsets.zero,
+                                icon: const Icon(Icons.edit_outlined,
+                                    size: 18, color: AppColors.primaryBlue),
+                                onPressed: () =>
+                                    _openVariantDialog(existing: v, index: i),
+                              ),
+                              IconButton(
+                                constraints:
+                                    const BoxConstraints(minWidth: 36, minHeight: 36),
+                                padding: EdgeInsets.zero,
+                                icon: const Icon(Icons.delete_outline_rounded,
+                                    size: 18, color: Color(0xFFC62828)),
+                                onPressed: () => _removeVariant(i),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
               ],
             ),
           ),
@@ -1360,19 +1486,258 @@ class _ProductDialogState extends State<_ProductDialog> {
           child: const Text('Cancelar'),
         ),
         FilledButton(
-          style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primaryBlue),
+          style: FilledButton.styleFrom(backgroundColor: AppColors.primaryBlue),
           onPressed: _saving ? null : _save,
           child: _saving
               ? const SizedBox(
                   width: 18,
                   height: 18,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white),
-                )
+                      strokeWidth: 2, color: Colors.white))
               : Text(_isEditing ? 'Guardar' : 'Agregar'),
         ),
       ],
+    );
+  }
+}
+
+// ─── Diálogo de variante ───────────────────────────────────────────────────────
+class _VariantDialog extends StatefulWidget {
+  const _VariantDialog({this.existing});
+  final ProductVariant? existing;
+
+  @override
+  State<_VariantDialog> createState() => _VariantDialogState();
+}
+
+class _VariantDialogState extends State<_VariantDialog> {
+  final _formKey = GlobalKey<FormState>();
+
+  late final TextEditingController _sku;
+  late final TextEditingController _ean;
+  late final TextEditingController _color;
+  late final TextEditingController _size;
+  late final TextEditingController _largo;
+  late final TextEditingController _ancho;
+  late final TextEditingController _alto;
+  late final TextEditingController _peso;
+  late final TextEditingController _packQty;
+  late final TextEditingController _palletQty;
+  late final TextEditingController _priceRetail;
+  late final TextEditingController _priceDist;
+  late final TextEditingController _stock;
+  bool _isActive = true;
+
+  bool get _isEditing => widget.existing != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.existing;
+    _sku        = TextEditingController(text: e?.sku ?? '');
+    _ean        = TextEditingController(text: e?.ean ?? '');
+    _color      = TextEditingController(text: e?.color ?? '');
+    _size       = TextEditingController(text: e?.size ?? '');
+    _largo      = TextEditingController(text: e?.largo?.toString() ?? '');
+    _ancho      = TextEditingController(text: e?.ancho?.toString() ?? '');
+    _alto       = TextEditingController(text: e?.alto?.toString() ?? '');
+    _peso       = TextEditingController(text: e?.peso?.toString() ?? '');
+    _packQty    = TextEditingController(text: (e?.packQty  ?? 1).toString());
+    _palletQty  = TextEditingController(text: (e?.palletQty ?? 1).toString());
+    _priceRetail = TextEditingController(
+        text: e != null ? e.priceRetail.toStringAsFixed(2) : '');
+    _priceDist  = TextEditingController(
+        text: e != null ? e.priceDistributor.toStringAsFixed(2) : '');
+    _stock      = TextEditingController(text: (e?.stock ?? 0).toString());
+    _isActive   = e?.isActive ?? true;
+  }
+
+  @override
+  void dispose() {
+    for (final c in [_sku,_ean,_color,_size,_largo,_ancho,_alto,_peso,
+                     _packQty,_palletQty,_priceRetail,_priceDist,_stock]) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  void _confirm() {
+    if (!_formKey.currentState!.validate()) return;
+
+    final dims = <String, double>{};
+    if (_largo.text.trim().isNotEmpty) dims['largo'] = double.parse(_largo.text.trim());
+    if (_ancho.text.trim().isNotEmpty) dims['ancho'] = double.parse(_ancho.text.trim());
+    if (_alto.text.trim().isNotEmpty)  dims['alto']  = double.parse(_alto.text.trim());
+    if (_peso.text.trim().isNotEmpty)  dims['peso']  = double.parse(_peso.text.trim());
+
+    final variant = ProductVariant(
+      sku:              _sku.text.trim(),
+      ean:              _ean.text.trim(),
+      color:            _color.text.trim(),
+      size:             _size.text.trim().isNotEmpty ? _size.text.trim() : null,
+      dimensions:       dims,
+      packQty:          int.tryParse(_packQty.text.trim())   ?? 1,
+      palletQty:        int.tryParse(_palletQty.text.trim()) ?? 1,
+      priceRetail:      double.tryParse(_priceRetail.text.trim()) ?? 0,
+      priceDistributor: double.tryParse(_priceDist.text.trim())   ?? 0,
+      stock:            int.tryParse(_stock.text.trim()) ?? 0,
+      isActive:         _isActive,
+    );
+    Navigator.pop(context, variant);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(_isEditing ? 'Editar variante' : 'Nueva variante'),
+      content: SizedBox(
+        width: 360,
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Identificación
+                const _SectionLabel('Identificación'),
+                _Field(
+                  controller: _sku,
+                  label: 'SKU (código interno)',
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+                ),
+                _Field(
+                  controller: _ean,
+                  label: 'EAN (código de barras)',
+                  keyboardType: TextInputType.number,
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+                ),
+                // Color y tamaño
+                const _SectionLabel('Color y tamaño'),
+                _Field(
+                  controller: _color,
+                  label: 'Color (ej: Rojo, Surtido)',
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+                ),
+                _Field(
+                  controller: _size,
+                  label: 'Tamaño (ej: 500ml, 1L) — opcional',
+                ),
+                // Dimensiones
+                const _SectionLabel('Dimensiones (cm/kg) — opcionales'),
+                Row(children: [
+                  Expanded(child: _Field(controller: _largo, label: 'Largo',
+                      keyboardType: TextInputType.number)),
+                  const SizedBox(width: 8),
+                  Expanded(child: _Field(controller: _ancho, label: 'Ancho',
+                      keyboardType: TextInputType.number)),
+                ]),
+                Row(children: [
+                  Expanded(child: _Field(controller: _alto, label: 'Alto',
+                      keyboardType: TextInputType.number)),
+                  const SizedBox(width: 8),
+                  Expanded(child: _Field(controller: _peso, label: 'Peso (kg)',
+                      keyboardType: TextInputType.number)),
+                ]),
+                // Empaque y pallet
+                const _SectionLabel('Empaque y logística'),
+                Row(children: [
+                  Expanded(child: _Field(
+                    controller: _packQty,
+                    label: 'Uds / caja',
+                    keyboardType: TextInputType.number,
+                    validator: (v) =>
+                        (v == null || int.tryParse(v.trim()) == null)
+                            ? 'Requerido'
+                            : null,
+                  )),
+                  const SizedBox(width: 8),
+                  Expanded(child: _Field(
+                    controller: _palletQty,
+                    label: 'Cajas / pallet',
+                    keyboardType: TextInputType.number,
+                    validator: (v) =>
+                        (v == null || int.tryParse(v.trim()) == null)
+                            ? 'Requerido'
+                            : null,
+                  )),
+                ]),
+                _Field(
+                  controller: _stock,
+                  label: 'Stock (cajas disponibles)',
+                  keyboardType: TextInputType.number,
+                ),
+                // Precios
+                const _SectionLabel('Precios (RD\$ por caja)'),
+                Row(children: [
+                  Expanded(child: _Field(
+                    controller: _priceRetail,
+                    label: 'Minorista',
+                    keyboardType: TextInputType.number,
+                    validator: (v) =>
+                        (v == null || double.tryParse(v.trim()) == null)
+                            ? 'Requerido'
+                            : null,
+                  )),
+                  const SizedBox(width: 8),
+                  Expanded(child: _Field(
+                    controller: _priceDist,
+                    label: 'Distribuidor',
+                    keyboardType: TextInputType.number,
+                    validator: (v) =>
+                        (v == null || double.tryParse(v.trim()) == null)
+                            ? 'Requerido'
+                            : null,
+                  )),
+                ]),
+                // Activo
+                SwitchListTile(
+                  value: _isActive,
+                  onChanged: (v) => setState(() => _isActive = v),
+                  title: const Text('Variante activa', style: TextStyle(fontSize: 14)),
+                  contentPadding: EdgeInsets.zero,
+                  activeThumbColor: AppColors.primaryBlue,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: AppColors.primaryBlue),
+          onPressed: _confirm,
+          child: Text(_isEditing ? 'Guardar' : 'Agregar'),
+        ),
+      ],
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 8),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF8A94A6),
+          letterSpacing: 0.5,
+        ),
+      ),
     );
   }
 }
@@ -1383,11 +1748,13 @@ class _Field extends StatelessWidget {
     required this.label,
     this.keyboardType,
     this.validator,
+    this.maxLines = 1,
   });
   final TextEditingController controller;
   final String label;
   final TextInputType? keyboardType;
   final String? Function(String?)? validator;
+  final int maxLines;
 
   @override
   Widget build(BuildContext context) {
@@ -1397,6 +1764,7 @@ class _Field extends StatelessWidget {
         controller: controller,
         keyboardType: keyboardType,
         validator: validator,
+        maxLines: maxLines,
         decoration: InputDecoration(
           labelText: label,
           border: const OutlineInputBorder(),

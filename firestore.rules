@@ -2,51 +2,49 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════
+    // HELPERS
+    // ═══════════════════════════════════════════════════════════
 
-    function isSignedIn() {
+    function isAuth() {
       return request.auth != null;
     }
 
+    function uid() {
+      return request.auth.uid;
+    }
+
+    function isSelf(userId) {
+      return isAuth() && uid() == userId;
+    }
+
     function userRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      return get(/databases/$(database)/documents/users/$(uid())).data.role;
     }
 
-    function isCliente() {
-      return isSignedIn() && userRole() == 'cliente';
-    }
+    // Roles de usuario
+    function isMinorista()    { return isAuth() && userRole() == 'cliente_minorista'; }
+    function isDistribuidor() { return isAuth() && userRole() == 'cliente_distribuidor'; }
+    function isVendedor()     { return isAuth() && userRole() == 'vendedor'; }
+    function isAdmin()        { return isAuth() && userRole() == 'admin'; }
 
-    function isVendedor() {
-      return isSignedIn() && userRole() == 'vendedor';
-    }
+    // Agrupaciones
+    function isCliente()  { return isMinorista() || isDistribuidor(); }
+    function isInterno()  { return isVendedor()  || isAdmin(); }
 
-    function isAdmin() {
-      return isSignedIn() && userRole() == 'admin';
-    }
-
-    // vendedor y admin pueden operar internamente
-    function isInterno() {
-      return isSignedIn() && userRole() in ['vendedor', 'admin'];
-    }
-
-    function isSelf(uid) {
-      return isSignedIn() && request.auth.uid == uid;
-    }
-
-    // ── users ─────────────────────────────────────────────────────────────────
-    // Cada usuario solo puede leer y actualizar su propio documento.
-    // Solo admin puede leer documentos de otros usuarios.
+    // ═══════════════════════════════════════════════════════════
+    // users
+    // ═══════════════════════════════════════════════════════════
     match /users/{userId} {
-      allow read:   if isSelf(userId) || isAdmin();
+      allow read:   if isSelf(userId) || isInterno();
       allow create: if isSelf(userId);
       allow update: if isSelf(userId) || isAdmin();
       allow delete: if isAdmin();
     }
 
-    // ── customers ─────────────────────────────────────────────────────────────
-    // Cliente: solo su propio documento.
-    // Vendedor: puede leer todos (para gestionar pedidos/facturas).
-    // Admin: acceso total.
+    // ═══════════════════════════════════════════════════════════
+    // customers  (perfil extendido de cliente, mismo UID)
+    // ═══════════════════════════════════════════════════════════
     match /customers/{customerId} {
       allow read:   if isSelf(customerId) || isInterno();
       allow create: if isSelf(customerId);
@@ -54,40 +52,73 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // ── products ──────────────────────────────────────────────────────────────
-    // Cualquiera puede ver productos (incluso invitados sin sesión).
-    // Solo vendedor y admin pueden crear/editar/eliminar.
-    match /products/{productId} {
-      allow read:           if true;
-      allow create, update: if isInterno();
-      allow delete:         if isAdmin();
+    // ═══════════════════════════════════════════════════════════
+    // catalog_categories
+    // Público para lectura (catálogo visible incluso sin sesión).
+    // Solo admin puede modificar.
+    // ═══════════════════════════════════════════════════════════
+    match /catalog_categories/{catId} {
+      allow read:            if true;
+      allow create, update:  if isAdmin();
+      allow delete:          if isAdmin();
     }
 
-    // ── orders ────────────────────────────────────────────────────────────────
-    // Cliente: crear y leer sus propios pedidos.
-    // Vendedor: leer todos los pedidos y actualizarlos (cambiar estado).
+    // ═══════════════════════════════════════════════════════════
+    // products
+    // Lectura pública. Escritura solo para internos (vendedor/admin).
+    // ═══════════════════════════════════════════════════════════
+    match /products/{productId} {
+      allow read:            if true;
+      allow create, update:  if isInterno();
+      allow delete:          if isAdmin();
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // orders
+    // Cliente: crea y lee sus propios pedidos. Puede editar si status='pendiente'.
+    // Vendedor: lee y actualiza todos los pedidos.
     // Admin: acceso total.
+    // ═══════════════════════════════════════════════════════════
     match /orders/{orderId} {
-      allow read:   if isSignedIn() && (
-                      resource.data.customerId == request.auth.uid ||
-                      isInterno()
-                    );
-      allow create: if isSignedIn();
-      allow update: if isInterno();
+      allow read: if isAuth() && (
+        resource.data.userId == uid() || isInterno()
+      );
+      allow create: if isAuth() &&
+        request.resource.data.userId == uid();
+      allow update: if isInterno() || (
+        isCliente() &&
+        resource.data.userId == uid() &&
+        resource.data.status == 'pendiente'
+      );
       allow delete: if false;
     }
 
-    // ── invoices ──────────────────────────────────────────────────────────────
-    // Cliente: solo leer sus propias facturas.
-    // Vendedor: crear y editar facturas.
-    // Admin: acceso total.
+    // ═══════════════════════════════════════════════════════════
+    // invoices  (facturas generadas por ventas)
+    // ═══════════════════════════════════════════════════════════
     match /invoices/{invoiceId} {
-      allow read:          if isSignedIn() && (
-                             resource.data.customerId == request.auth.uid ||
-                             isInterno()
-                           );
+      allow read: if isAuth() && (
+        resource.data.userId == uid() || isInterno()
+      );
       allow create, update: if isInterno();
-      allow delete:        if false;
+      allow delete:         if false;
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // product_rules  (reglas mayoristas por producto)
+    // ═══════════════════════════════════════════════════════════
+    match /product_rules/{ruleId} {
+      allow read:            if isAuth();
+      allow create, update:  if isInterno();
+      allow delete:          if isAdmin();
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // app_config  (configuración global: banners, avisos, etc.)
+    // ═══════════════════════════════════════════════════════════
+    match /app_config/{docId} {
+      allow read:   if true;
+      allow write:  if isAdmin();
     }
   }
 }
