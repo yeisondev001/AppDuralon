@@ -376,8 +376,10 @@ class _CatalogosTab extends StatefulWidget {
 
 class _CatalogosTabState extends State<_CatalogosTab> {
   bool _seeding = false;
-  bool _seedingCatalog = false;
-  String _catalogProgress = '';
+  bool _seedingHogarCatalog = false;
+  bool _seedingIndustrialCatalog = false;
+  String _hogarCatalogProgress = '';
+  String _industrialCatalogProgress = '';
 
   Future<void> _seed() async {
     setState(() => _seeding = true);
@@ -405,21 +407,21 @@ class _CatalogosTabState extends State<_CatalogosTab> {
     }
   }
 
-  Future<void> _seedCatalog2026() async {
+  Future<void> _seedCatalogHogar2026() async {
     setState(() {
-      _seedingCatalog = true;
-      _catalogProgress = 'Iniciando…';
+      _seedingHogarCatalog = true;
+      _hogarCatalogProgress = 'Iniciando…';
     });
     try {
-      await ProductSeeder.seedCatalog2026(
+      await ProductSeeder.seedCatalogHogar2026(
         onProgress: (msg) {
-          if (mounted) setState(() => _catalogProgress = msg);
+          if (mounted) setState(() => _hogarCatalogProgress = msg);
         },
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('¡Catálogo 2026 cargado exitosamente en Firebase!'),
+            content: Text('¡Catálogo Hogar 2026 cargado exitosamente en Firebase!'),
             backgroundColor: Color(0xFF2E7D32),
             duration: Duration(seconds: 4),
           ),
@@ -429,7 +431,7 @@ class _CatalogosTabState extends State<_CatalogosTab> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al cargar catálogo 2026: $e'),
+            content: Text('Error al cargar catálogo Hogar 2026: $e'),
             backgroundColor: const Color(0xFFC62828),
           ),
         );
@@ -437,8 +439,47 @@ class _CatalogosTabState extends State<_CatalogosTab> {
     } finally {
       if (mounted) {
         setState(() {
-          _seedingCatalog = false;
-          _catalogProgress = '';
+          _seedingHogarCatalog = false;
+          _hogarCatalogProgress = '';
+        });
+      }
+    }
+  }
+
+  Future<void> _seedCatalogIndustrial2025() async {
+    setState(() {
+      _seedingIndustrialCatalog = true;
+      _industrialCatalogProgress = 'Iniciando…';
+    });
+    try {
+      await ProductSeeder.seedCatalogIndustrial2025(
+        onProgress: (msg) {
+          if (mounted) setState(() => _industrialCatalogProgress = msg);
+        },
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('¡Catálogo Industrial 2025 cargado exitosamente en Firebase!'),
+            backgroundColor: Color(0xFF2E7D32),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al cargar catálogo Industrial 2025: $e'),
+            backgroundColor: const Color(0xFFC62828),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _seedingIndustrialCatalog = false;
+          _industrialCatalogProgress = '';
         });
       }
     }
@@ -574,7 +615,7 @@ class _CatalogosTabState extends State<_CatalogosTab> {
                   ),
                 ),
               ),
-              // ── Banner Catálogo 2026 ──────────────────────────
+              // ── Banner Catálogo Hogar 2026 ────────────────────
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: Container(
@@ -594,8 +635,8 @@ class _CatalogosTabState extends State<_CatalogosTab> {
                           const SizedBox(width: 10),
                           const Expanded(
                             child: Text(
-                              'Catálogo Duralon 2026 — Carga categorías y productos completos '
-                              '(~200 productos). Solo ejecutar una vez.',
+                              'Catálogo Hogar 2026 — Carga categorías y productos de hogar '
+                              '(Cocina, Hogar, Jardinería, Muebles e Infantil).',
                               style: TextStyle(
                                   fontSize: 12, color: Color(0xFF795548)),
                             ),
@@ -607,28 +648,95 @@ class _CatalogosTabState extends State<_CatalogosTab> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 12, vertical: 8),
                             ),
-                            onPressed: _seedingCatalog ? null : _seedCatalog2026,
-                            child: _seedingCatalog
+                            onPressed:
+                                _seedingHogarCatalog ? null : _seedCatalogHogar2026,
+                            child: _seedingHogarCatalog
                                 ? const SizedBox(
                                     width: 16,
                                     height: 16,
                                     child: CircularProgressIndicator(
                                         strokeWidth: 2, color: Colors.white),
                                   )
-                                : const Text('Cargar 2026',
+                                : Text(
+                                    'Cargar Hogar (${ProductSeeder.hogarProductsCount})',
                                     style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w700)),
                           ),
                         ],
                       ),
-                      if (_seedingCatalog && _catalogProgress.isNotEmpty)
+                      if (_seedingHogarCatalog && _hogarCatalogProgress.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 8, left: 28),
                           child: Text(
-                            _catalogProgress,
+                            _hogarCatalogProgress,
                             style: const TextStyle(
                                 fontSize: 11, color: Color(0xFF795548)),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              // ── Banner Catálogo Industrial 2025 ───────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF81C784)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.warehouse_rounded,
+                              color: Color(0xFF2E7D32), size: 18),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Text(
+                              'Catálogo Industrial 2025 — Carga Cajones, Paletas y Otros.',
+                              style: TextStyle(
+                                  fontSize: 12, color: Color(0xFF1B5E20)),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF2E7D32),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                            ),
+                            onPressed: _seedingIndustrialCatalog
+                                ? null
+                                : _seedCatalogIndustrial2025,
+                            child: _seedingIndustrialCatalog
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2, color: Colors.white),
+                                  )
+                                : Text(
+                                    'Cargar Industrial (${ProductSeeder.industrialProductsCount})',
+                                    style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700),
+                                  ),
+                          ),
+                        ],
+                      ),
+                      if (_seedingIndustrialCatalog &&
+                          _industrialCatalogProgress.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8, left: 28),
+                          child: Text(
+                            _industrialCatalogProgress,
+                            style: const TextStyle(
+                                fontSize: 11, color: Color(0xFF1B5E20)),
                           ),
                         ),
                     ],

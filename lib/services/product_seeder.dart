@@ -8,12 +8,24 @@ class ProductSeeder {
 
   static final _db = FirebaseFirestore.instance;
 
-  // ── Punto de entrada ──────────────────────────────────────────
-  static Future<void> seedCatalog2026({
+  static int get hogarProductsCount =>
+      _productsCocina.length +
+      _productsHogar.length +
+      _productsJardineria.length +
+      _productsMuebles.length +
+      _productsInfantil.length;
+
+  static int get industrialProductsCount =>
+      _productsIndustrialCrates.length +
+      _productsIndustrialOtros.length +
+      _productsIndustrialPallets.length;
+
+  // ── Cargas por catálogo ───────────────────────────────────────
+  static Future<void> seedCatalogHogar2026({
     void Function(String msg)? onProgress,
   }) async {
-    onProgress?.call('Cargando categorías…');
-    await _seedCategories();
+    onProgress?.call('Cargando categorías de Hogar…');
+    await _seedCategoriesByTab('hogar');
     onProgress?.call('Cargando productos de Cocina…');
     await _seedBatch(_productsCocina);
     onProgress?.call('Cargando productos de Hogar…');
@@ -24,19 +36,35 @@ class ProductSeeder {
     await _seedBatch(_productsMuebles);
     onProgress?.call('Cargando productos Infantil…');
     await _seedBatch(_productsInfantil);
+    onProgress?.call('¡Catálogo Hogar 2026 cargado!');
+  }
+
+  static Future<void> seedCatalogIndustrial2025({
+    void Function(String msg)? onProgress,
+  }) async {
+    onProgress?.call('Cargando categorías de Industrial…');
+    await _seedCategoriesByTab('industrial');
     onProgress?.call('Cargando Cajones Industriales…');
     await _seedBatch(_productsIndustrialCrates);
     onProgress?.call('Cargando Conos y Accesorios Industriales…');
     await _seedBatch(_productsIndustrialOtros);
     onProgress?.call('Cargando Paletas Industriales…');
     await _seedBatch(_productsIndustrialPallets);
+    onProgress?.call('¡Catálogo Industrial 2025 cargado!');
+  }
+
+  // Compatibilidad hacia atrás
+  static Future<void> seedCatalog2026({
+    void Function(String msg)? onProgress,
+  }) async {
+    await seedCatalogHogar2026(onProgress: onProgress);
+    await seedCatalogIndustrial2025(onProgress: onProgress);
     onProgress?.call('¡Catálogos Hogar e Industrial cargados!');
   }
 
-  // ── Categorías ────────────────────────────────────────────────
-  static Future<void> _seedCategories() async {
+  static Future<void> _seedCategoriesByTab(String tab) async {
     final batch = _db.batch();
-    for (final c in _categories) {
+    for (final c in _categories.where((e) => e['tab'] == tab)) {
       batch.set(
         _db.collection('catalog_categories').doc(c['id'] as String),
         c,
