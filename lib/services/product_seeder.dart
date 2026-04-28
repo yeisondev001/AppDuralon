@@ -24,7 +24,13 @@ class ProductSeeder {
     await _seedBatch(_productsMuebles);
     onProgress?.call('Cargando productos Infantil…');
     await _seedBatch(_productsInfantil);
-    onProgress?.call('¡Catálogo 2026 cargado!');
+    onProgress?.call('Cargando Cajones Industriales…');
+    await _seedBatch(_productsIndustrialCrates);
+    onProgress?.call('Cargando Conos y Accesorios Industriales…');
+    await _seedBatch(_productsIndustrialOtros);
+    onProgress?.call('Cargando Paletas Industriales…');
+    await _seedBatch(_productsIndustrialPallets);
+    onProgress?.call('¡Catálogos Hogar e Industrial cargados!');
   }
 
   // ── Categorías ────────────────────────────────────────────────
@@ -121,6 +127,28 @@ class ProductSeeder {
       'order': 5,
       'subtypes': ['Sillas Infantiles', 'Baños y Sanitarios', 'Banquetas'],
     },
+    // ── Categorías Industriales ──────────────────────────────────
+    {
+      'id': 'crates',
+      'title': 'Cajones Industriales',
+      'tab': 'industrial',
+      'order': 1,
+      'subtypes': ['Cajón Estándar', 'Cajón Reciclado', 'Cajón Grande', 'Caja Logística'],
+    },
+    {
+      'id': 'otros_ind',
+      'title': 'Otros',
+      'tab': 'industrial',
+      'order': 2,
+      'subtypes': ['Conos', 'Accesorios Industriales'],
+    },
+    {
+      'id': 'pallets',
+      'title': 'Paletas',
+      'tab': 'industrial',
+      'order': 3,
+      'subtypes': ['Paleta Exportación', 'Paleta Racking', 'Paleta Carga Pesada', 'Paleta Estándar'],
+    },
   ];
 
   // ════════════════════════════════════════════════════════════════
@@ -131,11 +159,13 @@ class ProductSeeder {
     required String name,
     required String category,
     required String catalogId,
+    String tab = 'hogar',
     String ean = '',
     String color = 'Varios',
     double largo = 0,
     double ancho = 0,
     double alto = 0,
+    double peso = 0,
     int packQty = 1,
     int palletQty = 1,
     String description = '',
@@ -145,7 +175,7 @@ class ProductSeeder {
         'name': name,
         'category': category,
         'catalogId': catalogId,
-        'tab': 'hogar',
+        'tab': tab,
         'ean': ean,
         'color': color,
         'price': 0.0,
@@ -159,7 +189,8 @@ class ProductSeeder {
         'dimensions': {
           if (largo > 0) 'largo': largo,
           if (ancho > 0) 'ancho': ancho,
-          if (alto > 0) 'alto': alto,
+          if (alto  > 0) 'alto':  alto,
+          if (peso  > 0) 'peso':  peso,
         },
       };
 
@@ -975,5 +1006,154 @@ class ProductSeeder {
     _p(codigo:'CU12DB', name:'Cubeta L-12 Duralon Infantil Blanco', category:'Baños y Sanitarios', catalogId:'infantil',
        ean:'7468365006434', color:'Blanco', ancho:31, alto:33, packQty:12, palletQty:240,
        description:'Cubeta L-12 Duralon para uso infantil color Blanco. Ideal para el baño del bebé.'),
+  ];
+
+  // ════════════════════════════════════════════════════════════════
+  // CATÁLOGO INDUSTRIAL — Cajones (Crates)
+  // ════════════════════════════════════════════════════════════════
+  static final _productsIndustrialCrates = <Map<String, dynamic>>[
+    // ── Cajón Estándar ───────────────────────────────────────────
+    _p(codigo:'HU332I', name:'Cajón 33×33×27 cm', category:'Cajón Estándar', catalogId:'crates', tab:'industrial',
+       color:'Varios', largo:33, ancho:33, alto:27, packQty:1, palletQty:63,
+       description:'Cajón de transporte estándar 33×33×27 cm. Apilable y resistente para distribución y almacenamiento industrial.'),
+    _p(codigo:'HU333', name:'Cajón 36×36×36 cm', category:'Cajón Estándar', catalogId:'crates', tab:'industrial',
+       color:'Varios', largo:36, ancho:36, alto:36, packQty:1, palletQty:54,
+       description:'Cajón de transporte estándar 36×36×36 cm. Diseño cuadrado ideal para productos uniformes.'),
+    _p(codigo:'HU432R', name:'Cajón 46×30×20 cm', category:'Cajón Estándar', catalogId:'crates', tab:'industrial',
+       color:'Varios', largo:46, ancho:30, alto:20, packQty:1, palletQty:80,
+       description:'Cajón de transporte estándar 46×30×20 cm. Tamaño medio, apto para frutas, vegetales y manufactura.'),
+    _p(codigo:'HU32R', name:'Cajón 46×33×24 cm', category:'Cajón Estándar', catalogId:'crates', tab:'industrial',
+       color:'Varios', largo:46, ancho:33, alto:24, packQty:1, palletQty:63,
+       description:'Cajón de transporte estándar 46×33×24 cm. Versátil para cadenas de suministro y distribución.'),
+    _p(codigo:'HU432', name:'Cajón Lechero 48×33×28 cm', category:'Cajón Estándar', catalogId:'crates', tab:'industrial',
+       color:'Varios', largo:48, ancho:33, alto:28, packQty:1, palletQty:42,
+       description:'Cajón lechero 48×33×28 cm. Diseñado especialmente para la industria láctea y distribución de bebidas.'),
+    _p(codigo:'HU532', name:'Cajón 57×37×26 cm AP/ENC', category:'Cajón Estándar', catalogId:'crates', tab:'industrial',
+       color:'Varios', largo:57, ancho:37, alto:26, packQty:1, palletQty:100,
+       description:'Cajón apilable y encajable 57×37×26 cm. Sistema AP/ENC permite apilar y encajar para optimizar espacio.'),
+    _p(codigo:'HU645', name:'Cajón 60×40×25 cm', category:'Cajón Estándar', catalogId:'crates', tab:'industrial',
+       color:'Varios', largo:60, ancho:40, alto:25, packQty:1, palletQty:48,
+       description:'Cajón de transporte estándar 60×40×25 cm. Formato europeo 60×40 compatible con pallets estándar.'),
+    _p(codigo:'HU643', name:'Cajón 60×40×32 cm', category:'Cajón Estándar', catalogId:'crates', tab:'industrial',
+       color:'Varios', largo:60, ancho:40, alto:32, packQty:1, palletQty:48,
+       description:'Cajón de transporte estándar 60×40×32 cm. Mayor capacidad de almacenamiento en formato europeo.'),
+    _p(codigo:'HAP64', name:'Cajón 66×47×28 cm AP/ENC VIR', category:'Cajón Estándar', catalogId:'crates', tab:'industrial',
+       color:'Varios', largo:66, ancho:47, alto:28, packQty:1, palletQty:100,
+       description:'Cajón apilable y encajable 66×47×28 cm, material virgen. Para aplicaciones que requieren alta higiene y pureza del material.'),
+    _p(codigo:'HU644E', name:'Cajón 60×40×40 cm ECO AP/ENC', category:'Cajón Estándar', catalogId:'crates', tab:'industrial',
+       color:'Varios', largo:60, ancho:40, alto:40, packQty:1, palletQty:80,
+       description:'Cajón ECO apilable y encajable 60×40×40 cm. Mayor altura para productos voluminosos. Material eco-friendly.'),
+    _p(codigo:'HU6415', name:'Cajón 60×40×14.5 cm', category:'Cajón Estándar', catalogId:'crates', tab:'industrial',
+       color:'Varios', largo:60, ancho:40, alto:14.5, packQty:1, palletQty:80,
+       description:'Cajón plano 60×40×14.5 cm. Ideal para productos de baja altura como pan, repostería y productos planos.'),
+    _p(codigo:'HU642', name:'Cajón 60×40×12 cm', category:'Cajón Estándar', catalogId:'crates', tab:'industrial',
+       color:'Varios', largo:60, ancho:40, alto:12, packQty:1, palletQty:100,
+       description:'Cajón plano 60×40×12 cm. Muy bajo perfil, apto para distribución de productos panaderos y similar.'),
+    // ── Cajón Reciclado ──────────────────────────────────────────
+    _p(codigo:'H642R', name:'Cajón 46×31×20 cm Reciclado', category:'Cajón Reciclado', catalogId:'crates', tab:'industrial',
+       color:'Varios', largo:46, ancho:31, alto:20, packQty:1, palletQty:80,
+       description:'Cajón de transporte reciclado 46×31×20 cm. Fabricado con material HDPE 100% reciclado de República Dominicana.'),
+    _p(codigo:'HUDURA', name:'Cajón 49×33×29 cm Abierto Reciclado', category:'Cajón Reciclado', catalogId:'crates', tab:'industrial',
+       color:'Varios', largo:49, ancho:33, alto:29, packQty:1, palletQty:64,
+       description:'Cajón abierto reciclado 49×33×29 cm. Diseño abierto facilita carga y descarga. Material 100% reciclado.'),
+    _p(codigo:'HUCEDU', name:'Cajón 49×33×29 cm Cerrado Reciclado', category:'Cajón Reciclado', catalogId:'crates', tab:'industrial',
+       color:'Varios', largo:49, ancho:33, alto:29, packQty:1, palletQty:64,
+       description:'Cajón cerrado reciclado 49×33×29 cm. Paredes sólidas para mayor protección del contenido. Material 100% reciclado.'),
+    _p(codigo:'H532R', name:'Cajón 52×35×25 cm AP/ENC Reciclado', category:'Cajón Reciclado', catalogId:'crates', tab:'industrial',
+       color:'Varios', largo:52, ancho:35, alto:25, packQty:1, palletQty:120,
+       description:'Cajón apilable y encajable reciclado 52×35×25 cm. Alta eficiencia de paletizado con 120 unidades por pallet.'),
+    _p(codigo:'H643CR', name:'Cajón 60×40×34 cm AP/ANC Cerrado Reciclado', category:'Cajón Reciclado', catalogId:'crates', tab:'industrial',
+       color:'Varios', largo:60, ancho:40, alto:34, packQty:1, palletQty:80,
+       description:'Cajón cerrado apilable y ancho reciclado 60×40×34 cm. Paredes sólidas, 100% material reciclado.'),
+    _p(codigo:'H643AR', name:'Cajón 60×40×34 cm AP/ANC Abierto Reciclado', category:'Cajón Reciclado', catalogId:'crates', tab:'industrial',
+       color:'Varios', largo:60, ancho:40, alto:34, packQty:1, palletQty:80,
+       description:'Cajón abierto apilable y ancho reciclado 60×40×34 cm. Ventilado, ideal para frutas y vegetales.'),
+    _p(codigo:'H642CR', name:'Cajón 60×40×12 cm Cerrado Reciclado', category:'Cajón Reciclado', catalogId:'crates', tab:'industrial',
+       color:'Varios', largo:60, ancho:40, alto:12, packQty:1, palletQty:250,
+       description:'Cajón cerrado plano reciclado 60×40×12 cm. Muy alto rendimiento: 250 unidades por pallet.'),
+    _p(codigo:'HU4624E', name:'Cajón 60×40×24 cm Reciclado', category:'Cajón Reciclado', catalogId:'crates', tab:'industrial',
+       color:'Varios', largo:60, ancho:40, alto:24, packQty:1, palletQty:48,
+       description:'Cajón reciclado 60×40×24 cm. Altura media, equilibrio entre capacidad y eficiencia de transporte.'),
+    // ── Cajón Grande ─────────────────────────────────────────────
+    _p(codigo:'HU864R', name:'Cajón Grande 83×62×49 cm Reciclado', category:'Cajón Grande', catalogId:'crates', tab:'industrial',
+       color:'Varios', largo:83, ancho:62, alto:49, packQty:1, palletQty:8,
+       description:'Cajón grande reciclado 83×62×49 cm. Para productos de gran volumen. Fabricado con HDPE 100% reciclado.'),
+    _p(codigo:'H750R', name:'Cajón Grande 76×56×49 cm Reciclado', category:'Cajón Grande', catalogId:'crates', tab:'industrial',
+       color:'Varios', largo:76, ancho:56, alto:49, packQty:1, palletQty:8,
+       description:'Cajón grande reciclado 76×56×49 cm. Alta capacidad para distribución de productos industriales.'),
+    _p(codigo:'HU175E', name:'Cajón Extra Grande 100×72×58 cm', category:'Cajón Grande', catalogId:'crates', tab:'industrial',
+       color:'Varios', largo:100, ancho:72, alto:58, packQty:1, palletQty:8,
+       description:'Cajón extra grande 100×72×58 cm (1000×720×580 mm). Para logística pesada de gran volumen.'),
+    // ── Caja Logística ───────────────────────────────────────────
+    _p(codigo:'CL643', name:'Caja Logística 60×40×32 cm', category:'Caja Logística', catalogId:'crates', tab:'industrial',
+       color:'Varios', largo:60, ancho:40, alto:32, packQty:1, palletQty:80,
+       description:'Caja logística 60×40×32 cm. Diseño cerrado de alta resistencia para cadenas de suministro y logística.'),
+  ];
+
+  // ════════════════════════════════════════════════════════════════
+  // CATÁLOGO INDUSTRIAL — Otros (Conos y Accesorios)
+  // ════════════════════════════════════════════════════════════════
+  static final _productsIndustrialOtros = <Map<String, dynamic>>[
+    _p(codigo:'CO224', name:'Cono de Seguridad 28×28×47 cm', category:'Conos', catalogId:'otros_ind', tab:'industrial',
+       ean:'7468365005574', color:'Varios', largo:28, ancho:28, alto:47, packQty:1, palletQty:672,
+       description:'Cono de seguridad industrial 28×28×47 cm. Alta visibilidad para señalización de áreas de trabajo y desvíos.'),
+    _p(codigo:'CO336', name:'Cono de Seguridad 35×35×69 cm', category:'Conos', catalogId:'otros_ind', tab:'industrial',
+       ean:'7468365005628', color:'Varios', largo:35, ancho:35, alto:69, packQty:1, palletQty:405,
+       description:'Cono de seguridad industrial 35×35×69 cm. Tamaño grande para mayor visibilidad en vías, obras y zonas industriales.'),
+  ];
+
+  // ════════════════════════════════════════════════════════════════
+  // CATÁLOGO INDUSTRIAL — Paletas (Pallets)
+  // ════════════════════════════════════════════════════════════════
+  static final _productsIndustrialPallets = <Map<String, dynamic>>[
+    // ── Paleta Exportación ───────────────────────────────────────
+    _p(codigo:'1210R', name:'Paleta Exportación 120×100×14 cm', category:'Paleta Exportación', catalogId:'pallets', tab:'industrial',
+       color:'Negro', largo:120, ancho:100, alto:14, peso:7.6, packQty:1, palletQty:1,
+       description:'Paleta de exportación una vía 120×100×14 cm. Material 100% HDPE reciclado de República Dominicana. Carga dinámica: 500 kg. Carga estática: 2000 kg.'),
+    _p(codigo:'P1109R', name:'Paleta Exportación 110×90×14 cm', category:'Paleta Exportación', catalogId:'pallets', tab:'industrial',
+       color:'Negro', largo:110, ancho:90, alto:14, peso:7.8, packQty:1, palletQty:1,
+       description:'Paleta de exportación una vía 110×90×14 cm. Material 100% HDPE reciclado de República Dominicana. Carga dinámica: 500 kg. Carga estática: 2000 kg.'),
+    _p(codigo:'P1111R', name:'Paleta Exportación 110×110×14 cm', category:'Paleta Exportación', catalogId:'pallets', tab:'industrial',
+       color:'Negro', largo:110, ancho:110, alto:14, peso:8.2, packQty:1, palletQty:1,
+       description:'Paleta de exportación una vía 110×110×14 cm. Material 100% HDPE reciclado de República Dominicana. Carga dinámica: 500 kg. Carga estática: 2000 kg.'),
+    _p(codigo:'P110LR', name:'Paleta Exportación 120×100×15 cm HD', category:'Paleta Exportación', catalogId:'pallets', tab:'industrial',
+       color:'Negro', largo:120, ancho:100, alto:15, peso:9.5, packQty:1, palletQty:1,
+       description:'Paleta de exportación una vía 120×100×15 cm, alta carga. Material 100% HDPE reciclado. Carga dinámica: 1000 kg. Carga estática: 2000 kg.'),
+    // ── Paleta Estándar ──────────────────────────────────────────
+    _p(codigo:'P1008R', name:'Paleta 100×80×17 cm Reciclada', category:'Paleta Estándar', catalogId:'pallets', tab:'industrial',
+       color:'Negro', largo:100, ancho:80, alto:17, peso:14.2, packQty:1, palletQty:1,
+       description:'Paleta industrial 100×80×17 cm. Material 100% HDPE reciclado de República Dominicana o virgen. Carga dinámica: 1000 kg. Carga estática: 4000 kg. Racking: 700 kg.'),
+    _p(codigo:'P1108R', name:'Paleta 110×80×17 cm Reciclada', category:'Paleta Estándar', catalogId:'pallets', tab:'industrial',
+       color:'Negro', largo:110, ancho:80, alto:17, peso:14.2, packQty:1, palletQty:1,
+       description:'Paleta industrial 110×80×17 cm. Material 100% HDPE reciclado de República Dominicana o virgen. Carga dinámica: 1000 kg. Carga estática: 4000 kg. Racking: 700 kg.'),
+    _p(codigo:'P40R2N', name:'Paleta 40×44×6.5 pulgadas', category:'Paleta Estándar', catalogId:'pallets', tab:'industrial',
+       color:'Negro', largo:101, ancho:112, alto:17, packQty:1, palletQty:1,
+       description:'Paleta heavy duty 40×44 pulgadas (≈102×112 cm). Carga dinámica: 1000 kg. Carga estática: 3000 kg. Racking: 400 kg.'),
+    _p(codigo:'P44R2N', name:'Paleta Heavy Duty 44×48×6.5 pulgadas', category:'Paleta Carga Pesada', catalogId:'pallets', tab:'industrial',
+       color:'Negro', largo:112, ancho:122, alto:17, packQty:1, palletQty:1,
+       description:'Paleta heavy duty 44×48 pulgadas (≈112×122 cm). Carga dinámica: 1000 kg. Carga estática: 3000 kg. Racking: 400 kg.'),
+    _p(codigo:'P4048', name:'Paleta Heavy Duty 44×48×6.5 pulgadas', category:'Paleta Carga Pesada', catalogId:'pallets', tab:'industrial',
+       color:'Negro', largo:112, ancho:122, alto:17, packQty:1, palletQty:1,
+       description:'Paleta heavy duty 44×48 pulgadas (≈112×122 cm). Alta resistencia. Carga dinámica: 2125 kg. Carga estática: 6500 kg. Racking: 1000 kg.'),
+    // ── Paleta Racking ───────────────────────────────────────────
+    _p(codigo:'P10RP', name:'Paleta Racking 3 Corredores 120×100×15 cm (con tubo)', category:'Paleta Racking', catalogId:'pallets', tab:'industrial',
+       color:'Negro', largo:120, ancho:100, alto:15, peso:19.3, packQty:1, palletQty:1,
+       description:'Paleta racking de tres corredores 120×100×15 cm con tubo. Material 100% HDPE reciclado. Carga dinámica: 1000 kg. Carga estática: 2500 kg. Racking con tubo: 1000 kg.'),
+    _p(codigo:'P10R', name:'Paleta Racking 3 Corredores 120×100×15 cm', category:'Paleta Racking', catalogId:'pallets', tab:'industrial',
+       color:'Negro', largo:120, ancho:100, alto:15, peso:13.7, packQty:1, palletQty:1,
+       description:'Paleta racking de tres corredores 120×100×15 cm. Material 100% HDPE reciclado. Carga dinámica: 1000 kg. Carga estática: 2500 kg. Racking con tubo: 1000 kg.'),
+    _p(codigo:'P11R', name:'Paleta Racking 3 Corredores 120×110×15 cm', category:'Paleta Racking', catalogId:'pallets', tab:'industrial',
+       color:'Negro', largo:120, ancho:110, alto:15, peso:16.1, packQty:1, palletQty:1,
+       description:'Paleta racking de tres corredores 120×110×15 cm. Material 100% HDPE reciclado. Carga dinámica: 1000 kg. Carga estática: 2500 kg.'),
+    _p(codigo:'P11RP', name:'Paleta Racking 3 Corredores 120×110×15 cm (con tubo)', category:'Paleta Racking', catalogId:'pallets', tab:'industrial',
+       color:'Negro', largo:120, ancho:110, alto:15, peso:22.5, packQty:1, palletQty:1,
+       description:'Paleta racking de tres corredores 120×110×15 cm con tubo. Mayor capacidad en racking. Carga dinámica: 1000 kg. Carga estática: 2500 kg. Racking con tubo: 1000 kg.'),
+    // ── Paleta Carga Pesada ──────────────────────────────────────
+    _p(codigo:'P44ES1', name:'Paleta Carga Pesada S/I 48×40 pulgadas', category:'Paleta Carga Pesada', catalogId:'pallets', tab:'industrial',
+       color:'Negro', largo:122, ancho:102, alto:17, peso:23.5, packQty:1, palletQty:1,
+       description:'Paleta heavy duty de cara sencilla 48×40 pulgadas (≈122×102 cm). Material 100% HDPE reciclado. Carga dinámica: 1200 kg. Carga estática: 4500 kg. Racking: 850 kg.'),
+    _p(codigo:'P44REF', name:'Paleta Carga Pesada Reversible 48×40 pulgadas', category:'Paleta Carga Pesada', catalogId:'pallets', tab:'industrial',
+       color:'Negro', largo:122, ancho:102, alto:17, peso:27, packQty:1, palletQty:1,
+       description:'Paleta heavy duty reversible 48×40 pulgadas (≈122×102 cm). Usable por ambas caras. Material 100% HDPE reciclado. Carga dinámica: 1200 kg. Carga estática: 4500 kg. Racking: 1200 kg.'),
   ];
 }
