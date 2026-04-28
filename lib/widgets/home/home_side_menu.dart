@@ -22,14 +22,18 @@ const Set<String> kSideMenuItemsRequiringAccount = {
 
 // ─── Colores y etiquetas por rol ──────────────────────────────────────────────
 const _kRoleLabels = {
-  'cliente': 'Cliente',
-  'vendedor': 'Vendedor',
-  'admin': 'Administrador',
+  'cliente_minorista':   'Cliente Minorista',
+  'cliente_distribuidor': 'Cliente Distribuidor',
+  'cliente':             'Cliente',       // retrocompat
+  'vendedor':            'Vendedor',
+  'admin':               'Administrador',
 };
 const _kRoleColors = {
-  'cliente': Color(0xFF1565C0),
-  'vendedor': Color(0xFFE65100),
-  'admin': Color(0xFFC62828),
+  'cliente_minorista':   Color(0xFF1565C0),
+  'cliente_distribuidor': Color(0xFF00838F),
+  'cliente':             Color(0xFF1565C0), // retrocompat
+  'vendedor':            Color(0xFFE65100),
+  'admin':               Color(0xFFC62828),
 };
 
 class HomeSideMenu extends StatefulWidget {

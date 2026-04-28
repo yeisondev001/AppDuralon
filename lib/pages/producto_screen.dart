@@ -100,6 +100,7 @@ class _ProductoScreenState extends State<ProductoScreen> {
   bool get _isVendedor =>
       widget.userRole == 'vendedor' || widget.userRole == 'admin';
 
+
   // ── Lista de colores que muestra el selector ──────────────────
   /// Si hay variantes activas usa sus colores únicos;
   /// si no, usa [Product.parsedColors].

@@ -277,14 +277,18 @@ class _AvatarHeader extends StatelessWidget {
 
     final initials = _initials(name, email);
     const roleLabels = {
-      'cliente': 'Cliente',
-      'vendedor': 'Vendedor',
-      'admin': 'Administrador',
+      'cliente_minorista':   'Cliente Minorista',
+      'cliente_distribuidor': 'Cliente Distribuidor',
+      'cliente':             'Cliente',
+      'vendedor':            'Vendedor',
+      'admin':               'Administrador',
     };
     const roleColors = {
-      'cliente': Color(0xFF1565C0),
-      'vendedor': Color(0xFFE65100),
-      'admin': Color(0xFFC62828),
+      'cliente_minorista':   Color(0xFF1565C0),
+      'cliente_distribuidor': Color(0xFF00838F),
+      'cliente':             Color(0xFF1565C0),
+      'vendedor':            Color(0xFFE65100),
+      'admin':               Color(0xFFC62828),
     };
     final roleLabel = roleLabels[role] ?? role ?? '';
     final roleColor = roleColors[role] ?? const Color(0xFF546E7A);
@@ -539,14 +543,18 @@ class _RoleBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const labels = {
-      'cliente': 'Cliente',
-      'vendedor': 'Vendedor',
-      'admin': 'Administrador',
+      'cliente_minorista':   'Cliente Minorista',
+      'cliente_distribuidor': 'Cliente Distribuidor',
+      'cliente':             'Cliente',
+      'vendedor':            'Vendedor',
+      'admin':               'Administrador',
     };
     const colors = {
-      'cliente': Color(0xFF1565C0),
-      'vendedor': Color(0xFFE65100),
-      'admin': Color(0xFFC62828),
+      'cliente_minorista':   Color(0xFF1565C0),
+      'cliente_distribuidor': Color(0xFF00838F),
+      'cliente':             Color(0xFF1565C0),
+      'vendedor':            Color(0xFFE65100),
+      'admin':               Color(0xFFC62828),
     };
     final label = labels[role] ?? role;
     final color = colors[role] ?? const Color(0xFF546E7A);
