@@ -11,9 +11,13 @@ class Product {
     required this.price,
     required this.imageAsset,
     this.description,
+    this.color,
+    this.ean,
     this.listPrice,
-    this.minOrderQty = 30,
+    this.minOrderQty = 1,
     this.stepQty = 1,
+    this.palletQty,
+    this.dimensions = const {},
     this.catalogId,
     this.tab,
     this.imageUrl,
@@ -29,21 +33,33 @@ class Product {
   /// Subtipo visible (ej: "Envases"). Coincide con el subtype del catálogo.
   final String category;
 
-  /// Precio base para compatibilidad. Usa [variants] para precios detallados.
+  /// Precio base. Usa [variants] para precios diferenciados por rol.
   final double price;
 
   final String imageAsset;
 
   final String? description;
 
+  /// Color(es) del producto. Puede ser "Blanco/Crema/Azul" o "Surtido" o "Varios".
+  final String? color;
+
+  /// Código de barras EAN del producto base.
+  final String? ean;
+
   /// Precio anterior (tachado). Nulo = no mostrar.
   final double? listPrice;
 
-  /// Cantidad mínima de compra (en unidades o cajas según el rol).
+  /// Cantidad mínima de compra (unidades/cajas).
   final int minOrderQty;
 
   /// Salto/múltiplo de compra.
   final int stepQty;
+
+  /// Cajas por pallet.
+  final int? palletQty;
+
+  /// Dimensiones físicas en cm. Claves posibles: 'largo', 'ancho', 'alto', 'peso'.
+  final Map<String, double> dimensions;
 
   /// ID de la categoría en `catalog_categories` (ej: "cocina").
   final String? catalogId;
@@ -54,10 +70,10 @@ class Product {
   /// URL de imagen principal en Firebase Storage.
   final String? imageUrl;
 
-  /// Lista de URLs de imágenes adicionales.
+  /// URLs de imágenes adicionales.
   final List<String> imageUrls;
 
-  /// Variantes del producto (color + tamaño + SKU + EAN + precios).
+  /// Variantes (color + tamaño + código + EAN + precios por rol).
   final List<ProductVariant> variants;
 
   /// false = oculto en tienda sin borrar el documento.
@@ -73,15 +89,40 @@ class Product {
   List<ProductVariant> get activeVariants =>
       variants.where((v) => v.isActive).toList();
 
+  /// Devuelve la lista de colores individuales a partir del campo [color].
+  /// "Blanco/Crema/Azul" → ['Blanco','Crema','Azul']
+  /// "Surtido" / "Varios" → lista vacía (indica surtido, sin selección posible)
+  List<String> get parsedColors {
+    if (color == null || color!.isEmpty) return const [];
+    final c = color!.trim();
+    if (c.toLowerCase() == 'varios' || c.toLowerCase() == 'surtido') {
+      return const [];
+    }
+    return c.split('/').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+  }
+
+  /// true si el color es surtido o varios (no se puede elegir individualmente).
+  bool get isSurtido {
+    final c = color?.trim().toLowerCase() ?? '';
+    return c == 'surtido' || c == 'varios';
+  }
+
+  double? get largo => dimensions['largo'];
+  double? get ancho => dimensions['ancho'];
+  double? get alto  => dimensions['alto'];
+  double? get peso  => dimensions['peso'];
+
   // ── Serialización ─────────────────────────────────────────────
   factory Product.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final d = doc.data() ?? const {};
-    final rawPrice   = d['price'];
-    final rawList    = d['listPrice'];
-    final rawMin     = d['minOrderQty'];
-    final rawStep    = d['stepQty'];
-    final rawUrls    = d['imageUrls'] as List<dynamic>? ?? [];
-    final rawVariants = d['variants'] as List<dynamic>? ?? [];
+    final rawPrice    = d['price'];
+    final rawList     = d['listPrice'];
+    final rawMin      = d['minOrderQty'];
+    final rawStep     = d['stepQty'];
+    final rawPallet   = d['palletQty'];
+    final rawUrls     = d['imageUrls'] as List<dynamic>? ?? [];
+    final rawVariants = d['variants']  as List<dynamic>? ?? [];
+    final rawDims     = d['dimensions'] as Map<String, dynamic>? ?? {};
 
     return Product(
       id: doc.id,
@@ -91,19 +132,23 @@ class Product {
       category: (d['category'] as String?)?.trim().isNotEmpty == true
           ? d['category'] as String
           : 'General',
-      price: rawPrice is num ? rawPrice.toDouble() : 0,
+      price:       rawPrice is num ? rawPrice.toDouble() : 0,
       imageAsset: (d['imageAsset'] as String?)?.trim().isNotEmpty == true
           ? d['imageAsset'] as String
           : 'assets/images/duralon_logo.png',
-      description:  d['description'] as String?,
-      listPrice:    rawList is num ? rawList.toDouble() : null,
-      minOrderQty:  rawMin is int ? rawMin : (rawMin is num ? rawMin.toInt() : 30),
-      stepQty:      rawStep is int ? rawStep : (rawStep is num ? rawStep.toInt() : 1),
-      catalogId:    d['catalogId'] as String?,
-      tab:          d['tab'] as String?,
-      imageUrl:     d['imageUrl'] as String?,
-      imageUrls:    rawUrls.map((e) => e.toString()).toList(),
-      variants:     rawVariants
+      description: d['description'] as String?,
+      color:       d['color'] as String?,
+      ean:         d['ean']   as String?,
+      listPrice:   rawList is num ? rawList.toDouble() : null,
+      minOrderQty: rawMin is int ? rawMin : (rawMin is num ? rawMin.toInt() : 1),
+      stepQty:     rawStep is int ? rawStep : (rawStep is num ? rawStep.toInt() : 1),
+      palletQty:   rawPallet is int ? rawPallet : (rawPallet is num ? rawPallet.toInt() : null),
+      dimensions:  rawDims.map((k, v) => MapEntry(k, (v as num).toDouble())),
+      catalogId:   d['catalogId'] as String?,
+      tab:         d['tab']      as String?,
+      imageUrl:    d['imageUrl'] as String?,
+      imageUrls:   rawUrls.map((e) => e.toString()).toList(),
+      variants:    rawVariants
           .map((e) => ProductVariant.fromMap(e as Map<String, dynamic>))
           .toList(),
       isActive: d['isActive'] as bool? ?? true,
@@ -115,10 +160,14 @@ class Product {
       'name':       name,
       'category':   category,
       'price':      price,
-      if (description != null)  'description': description,
-      if (listPrice   != null)  'listPrice':   listPrice,
+      if (description != null) 'description': description,
+      if (color != null)       'color':       color,
+      if (ean   != null)       'ean':         ean,
+      if (listPrice != null)   'listPrice':   listPrice,
       'minOrderQty': minOrderQty,
       'stepQty':     stepQty,
+      if (palletQty != null)       'palletQty':  palletQty,
+      if (dimensions.isNotEmpty)   'dimensions': dimensions,
       'imageAsset':  imageAsset,
       if (imageUrl != null)        'imageUrl':  imageUrl,
       if (imageUrls.isNotEmpty)    'imageUrls': imageUrls,
@@ -137,9 +186,13 @@ class Product {
     double? price,
     String? imageAsset,
     String? description,
+    String? color,
+    String? ean,
     double? listPrice,
     int? minOrderQty,
     int? stepQty,
+    int? palletQty,
+    Map<String, double>? dimensions,
     String? catalogId,
     String? tab,
     String? imageUrl,
@@ -154,9 +207,13 @@ class Product {
       price:       price       ?? this.price,
       imageAsset:  imageAsset  ?? this.imageAsset,
       description: description ?? this.description,
+      color:       color       ?? this.color,
+      ean:         ean         ?? this.ean,
       listPrice:   listPrice   ?? this.listPrice,
       minOrderQty: minOrderQty ?? this.minOrderQty,
       stepQty:     stepQty     ?? this.stepQty,
+      palletQty:   palletQty   ?? this.palletQty,
+      dimensions:  dimensions  ?? this.dimensions,
       catalogId:   catalogId   ?? this.catalogId,
       tab:         tab         ?? this.tab,
       imageUrl:    imageUrl    ?? this.imageUrl,

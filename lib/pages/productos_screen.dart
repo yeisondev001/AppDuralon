@@ -13,11 +13,13 @@ class ProductosScreen extends StatefulWidget {
     required this.sectionTitle,
     required this.products,
     this.isGuestMode = true,
+    this.userRole,
   });
 
   final String sectionTitle;
   final List<Product> products;
   final bool isGuestMode;
+  final String? userRole;
 
   @override
   State<ProductosScreen> createState() => _ProductosScreenState();
@@ -175,6 +177,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                           ProductoScreen(
                                             product: product,
                                             isGuestMode: widget.isGuestMode,
+                                            userRole: widget.userRole,
                                           ),
                                         ),
                                       );

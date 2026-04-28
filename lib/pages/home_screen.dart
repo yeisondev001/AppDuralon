@@ -49,6 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedStoreTab = 0;
   bool _canManageWholesaleRules = false;
   bool _isAdmin = false;
+  String? _userRole;
 
   // ── Datos de Firebase ────────────────────────────────────────────────────────
   List<Product> _products = const [];
@@ -89,6 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final role = doc.data()?['role'] as String?;
       if (!mounted) return;
       setState(() {
+        _userRole = role;
         _canManageWholesaleRules = role == 'admin' || role == 'vendedor';
         _isAdmin = role == 'admin';
       });
@@ -212,6 +214,7 @@ class _HomeScreenState extends State<HomeScreen> {
           sectionTitle: section,
           products: _productsForSection(section),
           isGuestMode: widget.isGuestMode,
+          userRole: _userRole,
         ),
       ),
     );
@@ -236,6 +239,7 @@ class _HomeScreenState extends State<HomeScreen> {
           sectionTitle: section.title,
           products: _productsForCatalog(cat),
           isGuestMode: widget.isGuestMode,
+          userRole: _userRole,
         ),
       ),
     );
@@ -245,7 +249,11 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.push<void>(
       context,
       slideRightRoute<void>(
-        ProductoScreen(product: product, isGuestMode: widget.isGuestMode),
+        ProductoScreen(
+          product: product,
+          isGuestMode: widget.isGuestMode,
+          userRole: _userRole,
+        ),
       ),
     );
   }
