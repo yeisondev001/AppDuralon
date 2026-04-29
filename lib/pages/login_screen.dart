@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:app_duralon/pages/google_onboarding/onboarding_flow.dart';
 import 'package:app_duralon/pages/home_screen.dart';
 import 'package:app_duralon/services/auth_service.dart';
 import 'package:app_duralon/styles/app_style.dart';
@@ -38,18 +39,25 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final userCredential = await _authService.signInWithGoogle();
       setState(() => _mensajeErrorLogin = null);
+      final user = userCredential.user;
+      if (!mounted) return;
+      if (user == null) {
+        throw FirebaseAuthException(
+          code: 'google-user-null',
+          message: 'No se pudo obtener el usuario autenticado.',
+        );
+      }
+      final needsOnboarding = await _authService.needsGoogleOnboarding(user);
       if (!mounted) return;
       Navigator.pushAndRemoveUntil<void>(
         context,
-        slideRightRoute<void>(const HomeScreen(isGuestMode: false)),
+        slideRightRoute<void>(
+          needsOnboarding
+              ? const OnboardingFlow()
+              : const HomeScreen(isGuestMode: false),
+        ),
         (route) => false,
       );
-
-      if (userCredential.user != null) {
-        _authService.ensureGoogleUserProfile(userCredential.user!).catchError(
-          (Object e) => debugPrint('[AuthService] ensureGoogleUserProfile error: $e'),
-        );
-      }
     } on FirebaseAuthException catch (e) {
       final msg = e.code == 'google-sign-in-no-id-token'
           ? 'Configuración incompleta. Contacta al soporte.'
@@ -59,12 +67,12 @@ class _LoginScreenState extends State<LoginScreen> {
       final raw = e.toString();
       final msg = raw.contains('ApiException: 10')
           ? 'Google Sign-In no está autorizado en este dispositivo. '
-              'El administrador debe registrar la huella SHA-1 en Firebase Console.'
+                'El administrador debe registrar la huella SHA-1 en Firebase Console.'
           : raw.contains('ApiException: 16')
-              ? 'Google Play Services no está disponible en este dispositivo.'
-              : raw.contains('sign_in_canceled') || raw.contains('canceled')
-                  ? null
-                  : 'No se pudo iniciar con Google. Intenta de nuevo.';
+          ? 'Google Play Services no está disponible en este dispositivo.'
+          : raw.contains('sign_in_canceled') || raw.contains('canceled')
+          ? null
+          : 'No se pudo iniciar con Google. Intenta de nuevo.';
       if (msg != null) {
         setState(() => _mensajeErrorLogin = msg);
       }
@@ -91,9 +99,12 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (userCredential.user != null) {
-        _authService.ensureGoogleUserProfile(userCredential.user!).catchError(
-          (Object e) => debugPrint('[AuthService] ensureGoogleUserProfile error: $e'),
-        );
+        _authService
+            .ensureGoogleUserProfile(userCredential.user!)
+            .catchError(
+              (Object e) =>
+                  debugPrint('[AuthService] ensureGoogleUserProfile error: $e'),
+            );
       }
     } on FirebaseAuthException catch (e) {
       setState(() {
@@ -145,7 +156,9 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 Expanded(
                   child: ListView(
-                    padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: horizontalPadding,
+                    ),
                     keyboardDismissBehavior:
                         ScrollViewKeyboardDismissBehavior.onDrag,
                     physics: const ClampingScrollPhysics(),
@@ -203,7 +216,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             color: _errorBg,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: AppColors.primaryRed.withValues(alpha: 0.28),
+                              color: AppColors.primaryRed.withValues(
+                                alpha: 0.28,
+                              ),
                             ),
                           ),
                           child: Row(
@@ -211,7 +226,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             children: [
                               Icon(
                                 Icons.error_outline_rounded,
-                                color: AppColors.primaryRed.withValues(alpha: 0.85),
+                                color: AppColors.primaryRed.withValues(
+                                  alpha: 0.85,
+                                ),
                                 size: 22,
                               ),
                               const SizedBox(width: 10),

@@ -3,19 +3,20 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-
 class DuplicateRncException implements Exception {}
 
 class InvalidRncException implements Exception {}
+
 class DuplicateIdentificationException implements Exception {}
+
 class InvalidIdentificationException implements Exception {}
 
+class InvalidTaxpayerTypeException implements Exception {}
+
 class AuthService {
-  AuthService({
-    FirebaseAuth? firebaseAuth,
-    FirebaseFirestore? firestore,
-  })  : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
-        _firestore = firestore ?? FirebaseFirestore.instance;
+  AuthService({FirebaseAuth? firebaseAuth, FirebaseFirestore? firestore})
+    : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
+      _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseAuth _firebaseAuth;
   final FirebaseFirestore _firestore;
@@ -44,8 +45,8 @@ class AuthService {
 
     // ── MÓVIL (Android / iOS) ─────────────────────────────────────────────
     // google_sign_in 7.x: authenticate() muestra el selector de cuenta.
-    final GoogleSignInAccount googleUser =
-        await GoogleSignIn.instance.authenticate();
+    final GoogleSignInAccount googleUser = await GoogleSignIn.instance
+        .authenticate();
 
     // idToken: identifica al usuario → necesario para Firebase Auth.
     // authentication es síncrono en 7.x (no requiere await).
@@ -54,7 +55,8 @@ class AuthService {
     if (idToken == null) {
       throw FirebaseAuthException(
         code: 'google-sign-in-no-id-token',
-        message: 'Google Sign-In no devolvió un idToken. '
+        message:
+            'Google Sign-In no devolvió un idToken. '
             'Verifica que el serverClientId esté configurado en main.dart '
             'con el "Web client ID" de tu proyecto Firebase.',
       );
@@ -132,6 +134,121 @@ class AuthService {
     await batch.commit();
   }
 
+  Future<bool> needsGoogleOnboarding(User user) async {
+    await ensureGoogleUserProfile(user);
+    final customerDoc = await _firestore
+        .collection('customers')
+        .doc(user.uid)
+        .get();
+    final data = customerDoc.data();
+    if (data == null) return true;
+
+    final taxpayerType = (data['taxpayerType'] as String?)?.trim() ?? '';
+    final fullName = (data['fullName'] as String?)?.trim() ?? '';
+    final identification =
+        (data['identificationNormalized'] as String?)?.trim() ?? '';
+    final city = (data['city'] as String?)?.trim() ?? '';
+    final country = (data['country'] as String?)?.trim() ?? '';
+    final phone = (data['phone'] as String?)?.trim() ?? '';
+    final fiscalAddress = (data['fiscalAddress'] as String?)?.trim() ?? '';
+
+    if (taxpayerType.isEmpty ||
+        fullName.isEmpty ||
+        identification.isEmpty ||
+        city.isEmpty ||
+        country.isEmpty ||
+        phone.isEmpty ||
+        fiscalAddress.isEmpty) {
+      return true;
+    }
+
+    final requiresRnc = _taxpayerTypeRequiresRnc(taxpayerType);
+    if (requiresRnc == null) return true;
+    if (requiresRnc) {
+      return identification.length != 9 || !isValidDominicanRnc(identification);
+    }
+    return identification.length != 11 ||
+        !_isValidDominicanCedula(identification);
+  }
+
+  Future<void> completeGoogleCustomerOnboarding({
+    required User user,
+    required String taxpayerType,
+    required String fullName,
+    required String identification,
+    required String city,
+    required String country,
+    required String phone,
+    required String fiscalAddress,
+  }) async {
+    final normalizedType = taxpayerType.trim();
+    final requiresRnc = _taxpayerTypeRequiresRnc(normalizedType);
+    if (requiresRnc == null) throw InvalidTaxpayerTypeException();
+
+    final normalizedIdentification = _normalizeDigits(identification);
+    final isValidIdentification = requiresRnc
+        ? normalizedIdentification.length == 9 &&
+              isValidDominicanRnc(normalizedIdentification)
+        : normalizedIdentification.length == 11 &&
+              _isValidDominicanCedula(normalizedIdentification);
+    if (!isValidIdentification) {
+      throw InvalidIdentificationException();
+    }
+
+    final idUsedByOtherUser = await _isIdentificationUsedByOtherUser(
+      normalizedIdentification: normalizedIdentification,
+      uid: user.uid,
+    );
+    if (idUsedByOtherUser) {
+      throw DuplicateIdentificationException();
+    }
+
+    final customerRef = _firestore.collection('customers').doc(user.uid);
+    final userRef = _firestore.collection('users').doc(user.uid);
+    final now = FieldValue.serverTimestamp();
+    final batch = _firestore.batch();
+
+    batch.set(customerRef, {
+      'customerId': user.uid,
+      'identification': identification.trim(),
+      'identificationNormalized': normalizedIdentification,
+      'identificationType': requiresRnc ? 'rnc' : 'cedula',
+      if (requiresRnc) 'rnc': identification.trim(),
+      if (requiresRnc) 'rncNormalized': normalizedIdentification,
+      if (!requiresRnc) 'cedula': identification.trim(),
+      if (!requiresRnc) 'cedulaNormalized': normalizedIdentification,
+      'taxpayerType': normalizedType,
+      'fullName': fullName.trim(),
+      'legalName': fullName.trim(),
+      'contactName': fullName.trim(),
+      'phone': phone.trim(),
+      'billingEmail': (user.email ?? '').trim(),
+      'fiscalAddress': fiscalAddress.trim(),
+      'city': city.trim(),
+      'country': country.trim(),
+      'status': 'pendiente_validacion',
+      'creditEnabled': false,
+      'loginProvider': 'google',
+      'updatedAt': now,
+      'createdAt': now,
+    }, SetOptions(merge: true));
+
+    batch.set(userRef, {
+      'uid': user.uid,
+      'customerId': user.uid,
+      'email': (user.email ?? '').trim(),
+      'displayName': fullName.trim(),
+      'photoURL': user.photoURL ?? '',
+      'role': 'cliente_minorista',
+      'status': 'activo',
+      'loginProvider': 'google',
+      'updatedAt': now,
+      'createdAt': now,
+    }, SetOptions(merge: true));
+
+    await batch.commit();
+  }
+
   Future<void> registerWholesaleCustomer({
     required String email,
     required String password,
@@ -148,8 +265,9 @@ class AuthService {
     if (idType == null) {
       throw InvalidIdentificationException();
     }
-    final idAlreadyInUse =
-        await _isIdentificationAlreadyRegistered(normalizedIdentification);
+    final idAlreadyInUse = await _isIdentificationAlreadyRegistered(
+      normalizedIdentification,
+    );
     if (idAlreadyInUse) {
       throw DuplicateIdentificationException();
     }
@@ -225,13 +343,35 @@ class AuthService {
   ) async {
     final snapshot = await _firestore
         .collection('customers')
-        .where(
-          'identificationNormalized',
-          isEqualTo: normalizedIdentification,
-        )
+        .where('identificationNormalized', isEqualTo: normalizedIdentification)
         .limit(1)
         .get();
     return snapshot.docs.isNotEmpty;
+  }
+
+  Future<bool> _isIdentificationUsedByOtherUser({
+    required String normalizedIdentification,
+    required String uid,
+  }) async {
+    final snapshot = await _firestore
+        .collection('customers')
+        .where('identificationNormalized', isEqualTo: normalizedIdentification)
+        .limit(5)
+        .get();
+    return snapshot.docs.any((doc) => doc.id != uid);
+  }
+
+  bool? _taxpayerTypeRequiresRnc(String taxpayerType) {
+    switch (taxpayerType) {
+      case 'empresa':
+      case 'zona_franca':
+      case 'gubernamental':
+        return true;
+      case 'persona_fisica':
+        return false;
+      default:
+        return null;
+    }
   }
 
   bool _isValidDominicanCedula(String normalizedCedula) {

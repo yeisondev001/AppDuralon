@@ -76,8 +76,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Color(0xFF1A2230)),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF1A2230),
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -100,68 +102,70 @@ class _PerfilScreenState extends State<PerfilScreen> {
               color: AppColors.primaryBlue,
               onRefresh: _loadFirestoreData,
               child: ListView(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 20),
-                    children: [
-                      _AvatarHeader(user: user, userData: _userData),
-                      const SizedBox(height: 20),
-                      if (_firestoreError != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.warning_amber_rounded,
-                                  color: Color(0xFFE65100), size: 18),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  _firestoreError!,
-                                  style: const TextStyle(
-                                    color: Color(0xFFE65100),
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ),
-                              TextButton(
-                                onPressed: _loadFirestoreData,
-                                child: const Text('Reintentar'),
-                              ),
-                            ],
-                          ),
-                        ),
-                      _InfoCard(
-                        title: 'Información de cuenta',
-                        icon: Icons.manage_accounts_outlined,
-                        trailing: _firestoreLoading
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppColors.primaryBlue,
-                                ),
-                              )
-                            : null,
-                        children:
-                            _buildCuentaRows(user, _userData),
-                      ),
-                      const SizedBox(height: 14),
-                      if (!_firestoreLoading && _customerData != null)
-                        _InfoCard(
-                          title: 'Información de cliente',
-                          icon: Icons.storefront_outlined,
-                          children:
-                              _buildClienteRows(_userData, _customerData!),
-                        ),
-                    ],
-                  ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 20,
                 ),
+                children: [
+                  _AvatarHeader(user: user, userData: _userData),
+                  const SizedBox(height: 20),
+                  if (_firestoreError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.warning_amber_rounded,
+                            color: Color(0xFFE65100),
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _firestoreError!,
+                              style: const TextStyle(
+                                color: Color(0xFFE65100),
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: _loadFirestoreData,
+                            child: const Text('Reintentar'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  _InfoCard(
+                    title: 'Información de cuenta',
+                    icon: Icons.manage_accounts_outlined,
+                    trailing: _firestoreLoading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.primaryBlue,
+                            ),
+                          )
+                        : null,
+                    children: _buildCuentaRows(user, _userData),
+                  ),
+                  const SizedBox(height: 14),
+                  if (!_firestoreLoading && _customerData != null)
+                    _InfoCard(
+                      title: 'Información de cliente',
+                      icon: Icons.storefront_outlined,
+                      children: _buildClienteRows(_userData, _customerData!),
+                    ),
+                ],
+              ),
+            ),
     );
   }
 
   /// Campos de la tarjeta "Información de cuenta" según el rol.
-  List<Widget> _buildCuentaRows(
-      User user, Map<String, dynamic>? data) {
+  List<Widget> _buildCuentaRows(User user, Map<String, dynamic>? data) {
     final role = data?['role'] as String?;
     final esInterno = role == 'admin' || role == 'vendedor';
 
@@ -181,11 +185,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
       ),
       // Solo admin y vendedor ven los campos técnicos.
       if (esInterno) ...[
-        _InfoRow(
-          label: 'Rol',
-          value: role ?? '—',
-          isRole: true,
-        ),
+        _InfoRow(label: 'Rol', value: role ?? '—', isRole: true),
         _InfoRow(
           label: 'Estado',
           value: data?['status'] as String? ?? '—',
@@ -207,9 +207,15 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
   /// Campos de la tarjeta "Información de cliente" según el rol.
   List<Widget> _buildClienteRows(
-      Map<String, dynamic>? userData, Map<String, dynamic> customer) {
+    Map<String, dynamic>? userData,
+    Map<String, dynamic> customer,
+  ) {
     final role = userData?['role'] as String?;
     final esInterno = role == 'admin' || role == 'vendedor';
+    final taxpayerType = customer['taxpayerType'] as String?;
+    final identification = customer['identification'] as String?;
+    final identificationType = customer['identificationType'] as String?;
+    final fiscalAddress = customer['fiscalAddress'] as String?;
 
     return [
       _InfoRow(
@@ -219,6 +225,25 @@ class _PerfilScreenState extends State<PerfilScreen> {
       _InfoRow(
         label: 'Email',
         value: customer['billingEmail'] as String? ?? '—',
+      ),
+      _InfoRow(
+        label: 'Tipo de cliente',
+        value: _taxpayerTypeLabel(taxpayerType),
+      ),
+      _InfoRow(
+        label: _identificationLabel(
+          type: identificationType,
+          taxpayerType: taxpayerType,
+        ),
+        value: (identification != null && identification.trim().isNotEmpty)
+            ? identification
+            : '—',
+      ),
+      _InfoRow(
+        label: 'Dirección fiscal',
+        value: (fiscalAddress != null && fiscalAddress.trim().isNotEmpty)
+            ? fiscalAddress
+            : '—',
       ),
       // Solo admin y vendedor ven estado, crédito e ID técnico.
       if (esInterno) ...[
@@ -250,12 +275,52 @@ class _PerfilScreenState extends State<PerfilScreen> {
     }
   }
 
+  String _taxpayerTypeLabel(String? type) {
+    switch (type) {
+      case 'empresa':
+        return 'Empresa';
+      case 'zona_franca':
+        return 'Zona Franca';
+      case 'gubernamental':
+        return 'Gubernamental';
+      case 'persona_fisica':
+        return 'Persona Física';
+      default:
+        return '—';
+    }
+  }
+
+  String _identificationLabel({
+    required String? type,
+    required String? taxpayerType,
+  }) {
+    if (type == 'rnc') return 'RNC';
+    if (type == 'cedula') return 'Cédula';
+    if (taxpayerType == 'empresa' ||
+        taxpayerType == 'zona_franca' ||
+        taxpayerType == 'gubernamental') {
+      return 'RNC';
+    }
+    if (taxpayerType == 'persona_fisica') return 'Cédula';
+    return 'Identificación';
+  }
+
   String _formatTimestamp(Timestamp? ts) {
     if (ts == null) return '—';
     final dt = ts.toDate().toLocal();
     final months = [
-      'ene', 'feb', 'mar', 'abr', 'may', 'jun',
-      'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
+      'ene',
+      'feb',
+      'mar',
+      'abr',
+      'may',
+      'jun',
+      'jul',
+      'ago',
+      'sep',
+      'oct',
+      'nov',
+      'dic',
     ];
     return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
   }
@@ -277,18 +342,18 @@ class _AvatarHeader extends StatelessWidget {
 
     final initials = _initials(name, email);
     const roleLabels = {
-      'cliente_minorista':   'Cliente Minorista',
+      'cliente_minorista': 'Cliente Minorista',
       'cliente_distribuidor': 'Cliente Distribuidor',
-      'cliente':             'Cliente',
-      'vendedor':            'Vendedor',
-      'admin':               'Administrador',
+      'cliente': 'Cliente',
+      'vendedor': 'Vendedor',
+      'admin': 'Administrador',
     };
     const roleColors = {
-      'cliente_minorista':   Color(0xFF1565C0),
+      'cliente_minorista': Color(0xFF1565C0),
       'cliente_distribuidor': Color(0xFF00838F),
-      'cliente':             Color(0xFF1565C0),
-      'vendedor':            Color(0xFFE65100),
-      'admin':               Color(0xFFC62828),
+      'cliente': Color(0xFF1565C0),
+      'vendedor': Color(0xFFE65100),
+      'admin': Color(0xFFC62828),
     };
     final roleLabel = roleLabels[role] ?? role ?? '';
     final roleColor = roleColors[role] ?? const Color(0xFF546E7A);
@@ -325,7 +390,7 @@ class _AvatarHeader extends StatelessWidget {
                   ? Image.network(
                       photoUrl,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
+                      errorBuilder: (context, error, stackTrace) =>
                           _InitialsWidget(initials: initials),
                     )
                   : _InitialsWidget(initials: initials),
@@ -345,23 +410,17 @@ class _AvatarHeader extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             email,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Color(0xFF6B7685),
-            ),
+            style: const TextStyle(fontSize: 14, color: Color(0xFF6B7685)),
             textAlign: TextAlign.center,
           ),
           if (roleLabel.isNotEmpty) ...[
             const SizedBox(height: 12),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
               decoration: BoxDecoration(
                 color: roleColor.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(30),
-                border: Border.all(
-                  color: roleColor.withValues(alpha: 0.35),
-                ),
+                border: Border.all(color: roleColor.withValues(alpha: 0.35)),
               ),
               child: Text(
                 roleLabel,
@@ -445,8 +504,7 @@ class _InfoCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             child: Row(
               children: [
                 Icon(icon, color: AppColors.primaryBlue, size: 20),
@@ -459,10 +517,7 @@ class _InfoCard extends StatelessWidget {
                     color: Color(0xFF1A2230),
                   ),
                 ),
-                if (trailing != null) ...[
-                  const Spacer(),
-                  trailing!,
-                ],
+                if (trailing != null) ...[const Spacer(), trailing!],
               ],
             ),
           ),
@@ -543,18 +598,18 @@ class _RoleBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const labels = {
-      'cliente_minorista':   'Cliente Minorista',
+      'cliente_minorista': 'Cliente Minorista',
       'cliente_distribuidor': 'Cliente Distribuidor',
-      'cliente':             'Cliente',
-      'vendedor':            'Vendedor',
-      'admin':               'Administrador',
+      'cliente': 'Cliente',
+      'vendedor': 'Vendedor',
+      'admin': 'Administrador',
     };
     const colors = {
-      'cliente_minorista':   Color(0xFF1565C0),
+      'cliente_minorista': Color(0xFF1565C0),
       'cliente_distribuidor': Color(0xFF00838F),
-      'cliente':             Color(0xFF1565C0),
-      'vendedor':            Color(0xFFE65100),
-      'admin':               Color(0xFFC62828),
+      'cliente': Color(0xFF1565C0),
+      'vendedor': Color(0xFFE65100),
+      'admin': Color(0xFFC62828),
     };
     final label = labels[role] ?? role;
     final color = colors[role] ?? const Color(0xFF546E7A);
