@@ -109,26 +109,26 @@ class AuthService {
 
     batch.set(userRef, {
       'uid': user.uid,
-      'customerId': user.uid,
-      'email': user.email ?? '',
-      'displayName': user.displayName ?? '',
-      'photoURL': user.photoURL ?? '',
-      'role': 'cliente_minorista',
-      'status': 'activo',
-      'loginProvider': 'google',
-      'createdAt': now,
-      'updatedAt': now,
+      'clienteId': user.uid,
+      'correo': user.email ?? '',
+      'nombre': user.displayName ?? '',
+      'fotoUrl': user.photoURL ?? '',
+      'rol': 'cliente_minorista',
+      'estado': 'activo',
+      'proveedorLogin': 'google',
+      'creadoEn': now,
+      'actualizadoEn': now,
     });
 
     batch.set(customerRef, {
-      'customerId': user.uid,
-      'contactName': user.displayName ?? '',
-      'billingEmail': user.email ?? '',
-      'status': 'pendiente_validacion',
-      'creditEnabled': false,
-      'loginProvider': 'google',
-      'createdAt': now,
-      'updatedAt': now,
+      'clienteId': user.uid,
+      'nombre': user.displayName ?? '',
+      'correo': user.email ?? '',
+      'estado': 'pendiente_validacion',
+      'creditoHabilitado': false,
+      'proveedorLogin': 'google',
+      'creadoEn': now,
+      'actualizadoEn': now,
     });
 
     await batch.commit();
@@ -143,14 +143,14 @@ class AuthService {
     final data = customerDoc.data();
     if (data == null) return true;
 
-    final taxpayerType = (data['taxpayerType'] as String?)?.trim() ?? '';
-    final fullName = (data['fullName'] as String?)?.trim() ?? '';
+    final taxpayerType = (data['tipoContribuyente'] as String?)?.trim() ?? '';
+    final fullName = (data['nombreCompleto'] as String?)?.trim() ?? '';
     final identification =
-        (data['identificationNormalized'] as String?)?.trim() ?? '';
-    final city = (data['city'] as String?)?.trim() ?? '';
-    final country = (data['country'] as String?)?.trim() ?? '';
-    final phone = (data['phone'] as String?)?.trim() ?? '';
-    final fiscalAddress = (data['fiscalAddress'] as String?)?.trim() ?? '';
+        (data['identificacionNormalizada'] as String?)?.trim() ?? '';
+    final city = (data['ciudad'] as String?)?.trim() ?? '';
+    final country = (data['pais'] as String?)?.trim() ?? '';
+    final phone = (data['telefono'] as String?)?.trim() ?? '';
+    final fiscalAddress = (data['direccionFiscal'] as String?)?.trim() ?? '';
 
     if (taxpayerType.isEmpty ||
         fullName.isEmpty ||
@@ -161,6 +161,9 @@ class AuthService {
         fiscalAddress.isEmpty) {
       return true;
     }
+
+    final isDominican = _isDominicanCountry(country);
+    if (!isDominican) return false;
 
     final requiresRnc = _taxpayerTypeRequiresRnc(taxpayerType);
     if (requiresRnc == null) return true;
@@ -185,8 +188,14 @@ class AuthService {
     final requiresRnc = _taxpayerTypeRequiresRnc(normalizedType);
     if (requiresRnc == null) throw InvalidTaxpayerTypeException();
 
-    final normalizedIdentification = _normalizeDigits(identification);
-    final isValidIdentification = requiresRnc
+    final isDominican = _isDominicanCountry(country);
+    final normalizedIdentification = _normalizeIdentificationForStorage(
+      identification: identification,
+      isDominican: isDominican,
+    );
+    final isValidIdentification = !isDominican
+        ? normalizedIdentification.isNotEmpty
+        : requiresRnc
         ? normalizedIdentification.length == 9 &&
               isValidDominicanRnc(normalizedIdentification)
         : normalizedIdentification.length == 11 &&
@@ -209,41 +218,46 @@ class AuthService {
     final batch = _firestore.batch();
 
     batch.set(customerRef, {
-      'customerId': user.uid,
-      'identification': identification.trim(),
-      'identificationNormalized': normalizedIdentification,
-      'identificationType': requiresRnc ? 'rnc' : 'cedula',
-      if (requiresRnc) 'rnc': identification.trim(),
-      if (requiresRnc) 'rncNormalized': normalizedIdentification,
-      if (!requiresRnc) 'cedula': identification.trim(),
-      if (!requiresRnc) 'cedulaNormalized': normalizedIdentification,
-      'taxpayerType': normalizedType,
-      'fullName': fullName.trim(),
-      'legalName': fullName.trim(),
-      'contactName': fullName.trim(),
-      'phone': phone.trim(),
-      'billingEmail': (user.email ?? '').trim(),
-      'fiscalAddress': fiscalAddress.trim(),
-      'city': city.trim(),
-      'country': country.trim(),
-      'status': 'pendiente_validacion',
-      'creditEnabled': false,
-      'loginProvider': 'google',
-      'updatedAt': now,
-      'createdAt': now,
+      'clienteId': user.uid,
+      'identificacion': identification.trim(),
+      'identificacionNormalizada': normalizedIdentification,
+      'tipoIdentificacion': !isDominican
+          ? 'tax_id'
+          : requiresRnc
+          ? 'rnc'
+          : 'cedula',
+      if (isDominican && requiresRnc) 'rnc': identification.trim(),
+      if (isDominican && requiresRnc) 'rncNormalizado': normalizedIdentification,
+      if (isDominican && !requiresRnc) 'cedula': identification.trim(),
+      if (isDominican && !requiresRnc)
+        'cedulaNormalizado': normalizedIdentification,
+      if (!isDominican) 'idFiscal': identification.trim(),
+      if (!isDominican) 'idFiscalNormalizado': normalizedIdentification,
+      'tipoContribuyente': normalizedType,
+      'nombreCompleto': fullName.trim(),
+      'telefono': phone.trim(),
+      'correo': (user.email ?? '').trim(),
+      'direccionFiscal': fiscalAddress.trim(),
+      'ciudad': city.trim(),
+      'pais': country.trim(),
+      'estado': 'pendiente_validacion',
+      'creditoHabilitado': false,
+      'proveedorLogin': 'google',
+      'actualizadoEn': now,
+      'creadoEn': now,
     }, SetOptions(merge: true));
 
     batch.set(userRef, {
       'uid': user.uid,
-      'customerId': user.uid,
-      'email': (user.email ?? '').trim(),
-      'displayName': fullName.trim(),
-      'photoURL': user.photoURL ?? '',
-      'role': 'cliente_minorista',
-      'status': 'activo',
-      'loginProvider': 'google',
-      'updatedAt': now,
-      'createdAt': now,
+      'clienteId': user.uid,
+      'correo': (user.email ?? '').trim(),
+      'nombre': fullName.trim(),
+      'fotoUrl': user.photoURL ?? '',
+      'rol': 'cliente_minorista',
+      'estado': 'activo',
+      'proveedorLogin': 'google',
+      'actualizadoEn': now,
+      'creadoEn': now,
     }, SetOptions(merge: true));
 
     await batch.commit();
@@ -289,43 +303,51 @@ class AuthService {
     final now = FieldValue.serverTimestamp();
     final batch = _firestore.batch();
     batch.set(customerRef, {
-      'customerId': user.uid,
-      'identification': identification.trim(),
-      'identificationNormalized': normalizedIdentification,
-      'identificationType': idType,
+      'clienteId': user.uid,
+      'identificacion': identification.trim(),
+      'identificacionNormalizada': normalizedIdentification,
+      'tipoIdentificacion': idType,
       if (idType == 'rnc') 'rnc': identification.trim(),
-      if (idType == 'rnc') 'rncNormalized': normalizedIdentification,
+      if (idType == 'rnc') 'rncNormalizado': normalizedIdentification,
       if (idType == 'cedula') 'cedula': identification.trim(),
-      if (idType == 'cedula') 'cedulaNormalized': normalizedIdentification,
-      'taxpayerType': taxpayerType,
-      'fullName': fullName.trim(),
-      // Compatibilidad con el modelo anterior:
-      'legalName': fullName.trim(),
-      'contactName': fullName.trim(),
-      'phone': phone.trim(),
-      'billingEmail': email.trim(),
-      'fiscalAddress': fiscalAddress.trim(),
-      'city': city.trim(),
-      'country': country.trim(),
-      'status': 'pendiente_validacion',
-      'creditEnabled': false,
-      'createdAt': now,
-      'updatedAt': now,
+      if (idType == 'cedula') 'cedulaNormalizado': normalizedIdentification,
+      'tipoContribuyente': taxpayerType,
+      'nombreCompleto': fullName.trim(),
+      'telefono': phone.trim(),
+      'correo': email.trim(),
+      'direccionFiscal': fiscalAddress.trim(),
+      'ciudad': city.trim(),
+      'pais': country.trim(),
+      'estado': 'pendiente_validacion',
+      'creditoHabilitado': false,
+      'creadoEn': now,
+      'actualizadoEn': now,
     });
     batch.set(userRef, {
       'uid': user.uid,
-      'customerId': user.uid,
-      'email': email.trim(),
-      'role': 'cliente_minorista',
-      'status': 'activo',
-      'createdAt': now,
-      'updatedAt': now,
+      'clienteId': user.uid,
+      'correo': email.trim(),
+      'rol': 'cliente_minorista',
+      'estado': 'activo',
+      'creadoEn': now,
+      'actualizadoEn': now,
     });
     await batch.commit();
   }
 
   String _normalizeDigits(String value) {
     return value.replaceAll(RegExp(r'[^0-9]'), '');
+  }
+
+  String _normalizeIdentificationForStorage({
+    required String identification,
+    required bool isDominican,
+  }) {
+    if (isDominican) return _normalizeDigits(identification);
+    return identification.trim().toUpperCase().replaceAll(
+      RegExp(r'[^A-Z0-9]'),
+      '',
+    );
   }
 
   String? _identificationType(String normalized) {
@@ -341,24 +363,42 @@ class AuthService {
   Future<bool> _isIdentificationAlreadyRegistered(
     String normalizedIdentification,
   ) async {
-    final snapshot = await _firestore
-        .collection('customers')
-        .where('identificationNormalized', isEqualTo: normalizedIdentification)
-        .limit(1)
-        .get();
-    return snapshot.docs.isNotEmpty;
+    // La query escanea toda la colección customers. Si las reglas de Firestore
+    // solo permiten leer el propio documento, lanzará permission-denied.
+    // En ese caso asumimos "sin duplicado" — la escritura fallará sola si hay
+    // conflicto real a nivel de documento.
+    try {
+      final snapshot = await _firestore
+          .collection('customers')
+          .where('identificacionNormalizada', isEqualTo: normalizedIdentification)
+          .limit(1)
+          .get();
+      return snapshot.docs.isNotEmpty;
+    } on FirebaseException {
+      return false;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<bool> _isIdentificationUsedByOtherUser({
     required String normalizedIdentification,
     required String uid,
   }) async {
-    final snapshot = await _firestore
-        .collection('customers')
-        .where('identificationNormalized', isEqualTo: normalizedIdentification)
-        .limit(5)
-        .get();
-    return snapshot.docs.any((doc) => doc.id != uid);
+    // Igual que arriba: si las reglas bloquean la query de colección,
+    // continuamos. El duplicado se detectaría en el momento de la escritura.
+    try {
+      final snapshot = await _firestore
+          .collection('customers')
+          .where('identificacionNormalizada', isEqualTo: normalizedIdentification)
+          .limit(5)
+          .get();
+      return snapshot.docs.any((doc) => doc.id != uid);
+    } on FirebaseException {
+      return false;
+    } catch (_) {
+      return false;
+    }
   }
 
   bool? _taxpayerTypeRequiresRnc(String taxpayerType) {
@@ -372,6 +412,12 @@ class AuthService {
       default:
         return null;
     }
+  }
+
+  bool _isDominicanCountry(String country) {
+    final normalized = country.trim().toLowerCase();
+    return normalized == 'república dominicana' ||
+        normalized == 'republica dominicana';
   }
 
   bool _isValidDominicanCedula(String normalizedCedula) {

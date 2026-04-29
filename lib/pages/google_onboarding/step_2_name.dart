@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:app_duralon/pages/google_onboarding/onboarding_data.dart';
 import 'package:app_duralon/pages/google_onboarding/onboarding_scaffold.dart';
 import 'package:app_duralon/pages/google_onboarding/shared_inputs.dart';
-import 'package:app_duralon/pages/google_onboarding/step_3_tax_id.dart';
+import 'package:app_duralon/pages/google_onboarding/step_3_country.dart';
 
 class Step2NameScreen extends StatefulWidget {
   const Step2NameScreen({super.key, required this.data});
@@ -36,7 +36,7 @@ class _Step2NameScreenState extends State<Step2NameScreen> {
     widget.data.name = _ctrl.text.trim();
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => Step3TaxIdScreen(data: widget.data)),
+      MaterialPageRoute(builder: (_) => Step3CountryScreen(data: widget.data)),
     );
   }
 
@@ -50,7 +50,7 @@ class _Step2NameScreenState extends State<Step2NameScreen> {
       totalSteps: 7,
       title: isCompany ? 'Nombre de la empresa' : '¿Cuál es tu nombre?',
       subtitle: isCompany
-          ? 'La razón social como aparece\nen tu RNC.'
+          ? 'Escribe el nombre legal o comercial\nde tu empresa.'
           : 'Así aparecerás en facturas y\ncomprobantes fiscales.',
       canContinue: isValid,
       onContinue: _next,
@@ -59,6 +59,9 @@ class _Step2NameScreenState extends State<Step2NameScreen> {
         focusNode: _focus,
         hint: isCompany ? 'Razón social' : 'Nombre y apellido',
         icon: isCompany ? Icons.apartment : Icons.person_outline,
+        iconColor: isCompany
+            ? const Color(0xFFE53935)
+            : const Color(0xFF43A047),
         textCapitalization: TextCapitalization.words,
         onSubmitted: (_) {
           if (isValid) _next();

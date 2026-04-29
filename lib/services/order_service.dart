@@ -12,9 +12,12 @@ class OrderService {
   static Stream<List<Order>> streamByCustomer(String customerId) {
     return _col
         .where('customerId', isEqualTo: customerId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((s) => s.docs.map(Order.fromFirestore).toList());
+        .map((s) {
+          final list = s.docs.map(Order.fromFirestore).toList();
+          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return list;
+        });
   }
 
   static Stream<List<Order>> streamAll() {

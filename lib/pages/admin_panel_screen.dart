@@ -153,8 +153,8 @@ class _UserCard extends StatelessWidget {
   Future<void> _changeRole(BuildContext context, String newRole) async {
     try {
       await FirebaseFirestore.instance.collection('users').doc(uid).update({
-        'role': newRole,
-        'updatedAt': FieldValue.serverTimestamp(),
+        'rol': newRole,
+        'actualizadoEn': FieldValue.serverTimestamp(),
       });
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -183,7 +183,7 @@ class _UserCard extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         title: const Text('Eliminar usuario'),
         content: Text(
-          '¿Seguro que deseas eliminar a "${data['displayName'] ?? data['email'] ?? uid}"?\n\n'
+          '¿Seguro que deseas eliminar a "${data['nombre'] ?? data['correo'] ?? uid}"?\n\n'
           'Solo se eliminará el documento de Firestore. Para eliminar la cuenta de autenticación hazlo desde Firebase Console.',
         ),
         actions: [
@@ -203,10 +203,8 @@ class _UserCard extends StatelessWidget {
     if (confirmed != true) return;
     try {
       final batch = FirebaseFirestore.instance.batch();
-      batch.delete(
-          FirebaseFirestore.instance.collection('users').doc(uid));
-      batch.delete(
-          FirebaseFirestore.instance.collection('customers').doc(uid));
+      batch.delete(FirebaseFirestore.instance.collection('users').doc(uid));
+      batch.delete(FirebaseFirestore.instance.collection('customers').doc(uid));
       await batch.commit();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -229,7 +227,7 @@ class _UserCard extends StatelessWidget {
   }
 
   void _showRoleDialog(BuildContext context) {
-    final currentRole = data['role'] as String? ?? 'cliente';
+    final currentRole = data['rol'] as String? ?? 'cliente';
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -274,11 +272,11 @@ class _UserCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = data['displayName'] as String? ?? '';
-    final email = data['email'] as String? ?? '';
-    final role = data['role'] as String? ?? 'cliente';
-    final status = data['status'] as String? ?? '';
-    final photoUrl = data['photoURL'] as String?;
+    final name = data['nombre'] as String? ?? '';
+    final email = data['correo'] as String? ?? '';
+    final role = data['rol'] as String? ?? 'cliente';
+    final status = data['estado'] as String? ?? '';
+    final photoUrl = data['fotoUrl'] as String?;
     final roleColor = _roleColors[role] ?? Colors.grey;
     final roleLabel = _roleLabels[role] ?? role;
 
@@ -1385,7 +1383,9 @@ class _ProductDialogState extends State<_ProductDialog> {
     _name = TextEditingController(text: p?.name ?? '');
     _description = TextEditingController(text: p?.description ?? '');
     _price = TextEditingController(
-        text: p != null ? p.price.toStringAsFixed(2) : '');
+        text: p != null
+            ? p.price.toStringAsFixed(2)
+            : ProductSeeder.nuevoProductoPrecioAleatorio().toStringAsFixed(2));
     _listPrice = TextEditingController(
         text: p?.listPrice != null ? p!.listPrice!.toStringAsFixed(2) : '');
     _minQty  = TextEditingController(text: (p?.minOrderQty ?? 1).toString());
@@ -1436,7 +1436,7 @@ class _ProductDialogState extends State<_ProductDialog> {
     final payload = <String, dynamic>{
       'name': _name.text.trim(),
       'category': _selectedSubtype ?? '',
-      'price': double.tryParse(_price.text.trim()) ?? 0,
+      'precio': double.tryParse(_price.text.trim()) ?? 0,
       'minOrderQty': int.tryParse(_minQty.text.trim()) ?? 1,
       'stepQty': int.tryParse(_stepQty.text.trim()) ?? 1,
       if (_description.text.trim().isNotEmpty)
@@ -1453,7 +1453,10 @@ class _ProductDialogState extends State<_ProductDialog> {
 
     try {
       if (_isEditing) {
-        await ProductService.update(widget.product!.id, payload);
+        await ProductService.update(widget.product!.id, {
+          ...payload,
+          'price': FieldValue.delete(),
+        });
       } else {
         await ProductService.add(payload);
       }
@@ -2014,11 +2017,9 @@ class _PruebasTab extends StatefulWidget {
 
 class _PruebasTabState extends State<_PruebasTab> {
   bool _crashlyticsSending = false;
+  bool _migrandoPrecios = false;
   String? _resultado;
 
-  bool _randomizingPrices = false;
-  String? _randomPricesProgress;
-  String? _randomPricesResult;
 
   Future<void> _enviarErrorPrueba() async {
     setState(() {
@@ -2046,65 +2047,6 @@ class _PruebasTabState extends State<_PruebasTab> {
     }
   }
 
-  Future<void> _generarPreciosAleatorios() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Generar precios aleatorios'),
-        content: const Text(
-          'Se sobrescribirán los precios de TODOS los productos y sus '
-          'variantes con valores aleatorios entre RD\$ 50 y RD\$ 2,500.\n\n'
-          'Útil mientras no haya lista de precios real. ¿Continuar?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(
-                foregroundColor: AppColors.primaryBlue),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Generar'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-
-    setState(() {
-      _randomizingPrices = true;
-      _randomPricesProgress = 'Cargando productos…';
-      _randomPricesResult = null;
-    });
-    try {
-      final updated = await ProductService.randomizeAllPrices(
-        onProgress: (done, total) {
-          if (mounted) {
-            setState(() => _randomPricesProgress =
-                'Actualizando $done de $total…');
-          }
-        },
-      );
-      if (mounted) {
-        setState(() {
-          _randomPricesResult = updated == 0
-              ? '✓ No había productos para actualizar.'
-              : '✓ $updated productos actualizados con precios aleatorios.';
-          _randomPricesProgress = null;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _randomPricesResult = '✗ Error: $e';
-          _randomPricesProgress = null;
-        });
-      }
-    } finally {
-      if (mounted) setState(() => _randomizingPrices = false);
-    }
-  }
 
   void _forzarCrashFatal() {
     showDialog<bool>(
@@ -2137,133 +2079,58 @@ class _PruebasTabState extends State<_PruebasTab> {
     );
   }
 
+  Future<void> _migrarPriceAPrecioAleatorio() async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Migrar colección products'),
+        content: const Text(
+          'Esto actualizará todos los productos en Firebase:\n\n'
+          '- Elimina el campo "price"\n'
+          '- Escribe un nuevo campo "precio" con valor aleatorio\n\n'
+          'Esta acción es para pruebas. ¿Continuar?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Sí, migrar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true) return;
+
+    setState(() {
+      _migrandoPrecios = true;
+      _resultado = null;
+    });
+
+    try {
+      final total = await ProductService.migratePriceToPrecioWithRandomValues();
+      if (!mounted) return;
+      setState(() {
+        _resultado = '✓ Migración completada. Productos actualizados: $total';
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _resultado = '✗ Error en migración de precios: $e';
+      });
+    } finally {
+      if (mounted) setState(() => _migrandoPrecios = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        // ── Card: Generar precios aleatorios ──────────────────────
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.lightBlue,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.attach_money_rounded,
-                          color: AppColors.primaryBlue),
-                    ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Precios aleatorios',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF1A2230),
-                            ),
-                          ),
-                          Text(
-                            'Asigna precios de prueba a productos y variantes',
-                            style: TextStyle(
-                                fontSize: 12, color: Color(0xFF8A94A6)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Sobrescribe `price`, `listPrice` y los precios retail/'
-                  'distribuidor de cada variante con valores aleatorios entre '
-                  'RD\$ 50 y RD\$ 2,500 (múltiplos de 5). El distribuidor '
-                  'queda ~25 % por debajo del retail.',
-                  style:
-                      TextStyle(fontSize: 12, color: Color(0xFF8A94A6)),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryBlue,
-                      foregroundColor: Colors.white,
-                      padding:
-                          const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    onPressed: _randomizingPrices
-                        ? null
-                        : _generarPreciosAleatorios,
-                    icon: _randomizingPrices
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Icon(Icons.shuffle_rounded),
-                    label: const Text(
-                      'Generar precios aleatorios',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ),
-                if (_randomPricesProgress != null) ...[
-                  const SizedBox(height: 10),
-                  Text(
-                    _randomPricesProgress!,
-                    style: const TextStyle(
-                        fontSize: 12, color: Color(0xFF8A94A6)),
-                  ),
-                ],
-                if (_randomPricesResult != null) ...[
-                  const SizedBox(height: 10),
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: _randomPricesResult!.startsWith('✓')
-                          ? const Color(0xFFE8F5E9)
-                          : const Color(0xFFFFEBEE),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      _randomPricesResult!,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: _randomPricesResult!.startsWith('✓')
-                            ? const Color(0xFF2E7D32)
-                            : const Color(0xFFC62828),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
         // ── Card: Crashlytics ─────────────────────────────────────
         Container(
           decoration: BoxDecoration(
@@ -2419,6 +2286,56 @@ class _PruebasTabState extends State<_PruebasTab> {
                           'Forzar crash fatal',
                           style:
                               TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, indent: 18, endIndent: 18),
+              Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Firestore products (migración de prueba)',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A2230)),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Renombra campo price a precio y asigna precios aleatorios '
+                      'en todos los documentos de products.',
+                      style: TextStyle(
+                          fontSize: 12, color: Color(0xFF8A94A6)),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryBlue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: _migrandoPrecios
+                            ? null
+                            : _migrarPriceAPrecioAleatorio,
+                        icon: _migrandoPrecios
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.swap_horiz_rounded),
+                        label: Text(
+                          _migrandoPrecios
+                              ? 'Migrando precios...'
+                              : 'Migrar price -> precio + aleatorio',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
                       ),
                     ),

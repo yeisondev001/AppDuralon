@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -7,6 +9,9 @@ import 'package:app_duralon/utils/slide_right_route.dart';
 import 'package:app_duralon/utils/show_quienes_somos_bottom_sheet.dart';
 import 'package:app_duralon/utils/show_terminos_bottom_sheet.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+
+/// Ancho del panel lateral; [HomeScreen] usa el mismo valor para el [AnimatedSlide].
+const double kSideMenuDrawerWidth = 280;
 
 /// Titulos de items del menu que requieren cuenta; en modo invitado se muestra el
 /// dialogo para acceder a Duralon (mismo que carrito de invitado).
@@ -22,18 +27,18 @@ const Set<String> kSideMenuItemsRequiringAccount = {
 
 // ─── Colores y etiquetas por rol ──────────────────────────────────────────────
 const _kRoleLabels = {
-  'cliente_minorista':   'Cliente Minorista',
+  'cliente_minorista': 'Cliente Minorista',
   'cliente_distribuidor': 'Cliente Distribuidor',
-  'cliente':             'Cliente',       // retrocompat
-  'vendedor':            'Vendedor',
-  'admin':               'Administrador',
+  'cliente': 'Cliente', // retrocompat
+  'vendedor': 'Vendedor',
+  'admin': 'Administrador',
 };
 const _kRoleColors = {
-  'cliente_minorista':   Color(0xFF1565C0),
+  'cliente_minorista': Color(0xFF1565C0),
   'cliente_distribuidor': Color(0xFF00838F),
-  'cliente':             Color(0xFF1565C0), // retrocompat
-  'vendedor':            Color(0xFFE65100),
-  'admin':               Color(0xFFC62828),
+  'cliente': Color(0xFF1565C0), // retrocompat
+  'vendedor': Color(0xFFE65100),
+  'admin': Color(0xFFC62828),
 };
 
 class HomeSideMenu extends StatefulWidget {
@@ -101,10 +106,14 @@ class _HomeSideMenuState extends State<HomeSideMenu> {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     final isLoggedIn = user != null;
+    final drawerW = math.min(
+      kSideMenuDrawerWidth,
+      MediaQuery.sizeOf(context).width,
+    );
 
     return SafeArea(
       child: Container(
-        width: 280,
+        width: drawerW,
         color: const Color(0xFFF5F5F5),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -127,145 +136,163 @@ class _HomeSideMenuState extends State<HomeSideMenu> {
             const Divider(height: 1, indent: 16, endIndent: 16),
             const SizedBox(height: 6),
 
-            // ── Ítems de navegación ───────────────────────────────────────────
-            _MenuItem(
-              icon: Icons.home_outlined,
-              title: 'Inicio',
-              selected: widget.selectedItem == 'Inicio',
-              onTap: () => widget.onItemTap('Inicio'),
-            ),
-            _MenuItem(
-              icon: Icons.grid_view_rounded,
-              title: 'Catalogo',
-              selected: widget.selectedItem == 'Catalogo',
-              onTap: () => widget.onItemTap('Catalogo'),
-            ),
-            _MenuItem(
-              icon: Icons.person_outline_rounded,
-              title: 'Mi perfil',
-              selected: widget.selectedItem == 'Mi perfil',
-              onTap: () => widget.onItemTap('Mi perfil'),
-            ),
-            _MenuItem(
-              icon: Icons.local_offer_outlined,
-              title: 'Ofertas',
-              selected: widget.selectedItem == 'Ofertas',
-              onTap: () => widget.onItemTap('Ofertas'),
-            ),
-            _MenuItem(
-              icon: Icons.receipt_long_outlined,
-              title: 'Mis pedidos',
-              selected: widget.selectedItem == 'Mis pedidos',
-              onTap: () => widget.onItemTap('Mis pedidos'),
-            ),
-            _MenuItem(
-              icon: Icons.list_alt_rounded,
-              title: 'Mis listas',
-              selected: widget.selectedItem == 'Mis listas',
-              onTap: () => widget.onItemTap('Mis listas'),
-            ),
-            _MenuItem(
-              icon: Icons.location_on_outlined,
-              title: 'Mis direcciones',
-              selected: widget.selectedItem == 'Mis direcciones',
-              onTap: () => widget.onItemTap('Mis direcciones'),
-            ),
-            _MenuItem(
-              icon: Icons.credit_card_outlined,
-              title: 'Metodos de pago',
-              selected: widget.selectedItem == 'Metodos de pago',
-              onTap: () => widget.onItemTap('Metodos de pago'),
-            ),
-            _MenuItem(
-              icon: Icons.support_agent_rounded,
-              title: 'Soporte',
-              selected: widget.selectedItem == 'Soporte',
-              onTap: () => widget.onItemTap('Soporte'),
-            ),
-            if (widget.showWholesaleRules)
-              _MenuItem(
-                icon: Icons.tune_rounded,
-                title: 'Reglas mayoristas',
-                selected: widget.selectedItem == 'Reglas mayoristas',
-                onTap: () => widget.onItemTap('Reglas mayoristas'),
-              ),
-            if (widget.showAdminPanel) ...[
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: Divider(height: 1, color: Color(0xFFE0E0E0)),
-              ),
-              _MenuItem(
-                icon: Icons.admin_panel_settings_rounded,
-                title: 'Panel de administración',
-                selected: widget.selectedItem == 'Panel de administración',
-                onTap: () => widget.onItemTap('Panel de administración'),
-                textColor: const Color(0xFFC62828),
-              ),
-            ],
+            Expanded(
+              child: ListView(
+                physics: const ClampingScrollPhysics(),
+                padding: EdgeInsets.zero,
+                children: [
+                  // ── Ítems de navegación ───────────────────────────────────────────
+                  _MenuItem(
+                    icon: Icons.home_outlined,
+                    title: 'Inicio',
+                    selected: widget.selectedItem == 'Inicio',
+                    onTap: () => widget.onItemTap('Inicio'),
+                  ),
+                  _MenuItem(
+                    icon: Icons.grid_view_rounded,
+                    title: 'Catalogo',
+                    selected: widget.selectedItem == 'Catalogo',
+                    onTap: () => widget.onItemTap('Catalogo'),
+                  ),
+                  _MenuItem(
+                    icon: Icons.person_outline_rounded,
+                    title: 'Mi perfil',
+                    selected: widget.selectedItem == 'Mi perfil',
+                    onTap: () => widget.onItemTap('Mi perfil'),
+                  ),
+                  _MenuItem(
+                    icon: Icons.local_offer_outlined,
+                    title: 'Ofertas',
+                    selected: widget.selectedItem == 'Ofertas',
+                    onTap: () => widget.onItemTap('Ofertas'),
+                  ),
+                  _MenuItem(
+                    icon: Icons.receipt_long_outlined,
+                    title: 'Mis pedidos',
+                    selected: widget.selectedItem == 'Mis pedidos',
+                    onTap: () => widget.onItemTap('Mis pedidos'),
+                  ),
+                  _MenuItem(
+                    icon: Icons.list_alt_rounded,
+                    title: 'Mis listas',
+                    selected: widget.selectedItem == 'Mis listas',
+                    onTap: () => widget.onItemTap('Mis listas'),
+                  ),
+                  _MenuItem(
+                    icon: Icons.location_on_outlined,
+                    title: 'Mis direcciones',
+                    selected: widget.selectedItem == 'Mis direcciones',
+                    onTap: () => widget.onItemTap('Mis direcciones'),
+                  ),
+                  _MenuItem(
+                    icon: Icons.credit_card_outlined,
+                    title: 'Metodos de pago',
+                    selected: widget.selectedItem == 'Metodos de pago',
+                    onTap: () => widget.onItemTap('Metodos de pago'),
+                  ),
+                  _MenuItem(
+                    icon: Icons.support_agent_rounded,
+                    title: 'Soporte',
+                    selected: widget.selectedItem == 'Soporte',
+                    onTap: () => widget.onItemTap('Soporte'),
+                  ),
+                  if (widget.showWholesaleRules)
+                    _MenuItem(
+                      icon: Icons.tune_rounded,
+                      title: 'Reglas mayoristas',
+                      selected: widget.selectedItem == 'Reglas mayoristas',
+                      onTap: () => widget.onItemTap('Reglas mayoristas'),
+                    ),
+                  if (widget.showAdminPanel) ...[
+                    const Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      child: Divider(height: 1, color: Color(0xFFE0E0E0)),
+                    ),
+                    _MenuItem(
+                      icon: Icons.admin_panel_settings_rounded,
+                      title: 'Panel de administración',
+                      selected:
+                          widget.selectedItem == 'Panel de administración',
+                      onTap: () => widget.onItemTap('Panel de administración'),
+                      textColor: const Color(0xFFC62828),
+                    ),
+                  ],
 
-            const Spacer(),
+                  // ── Botón inferior: cerrar/iniciar sesión ─────────────────────────
+                  if (isLoggedIn)
+                    _MenuItem(
+                      icon: Icons.logout_rounded,
+                      title: 'Cerrar sesión',
+                      onTap: () => _signOut(context),
+                      textColor: const Color(0xFFC62828),
+                    )
+                  else
+                    _MenuItem(
+                      icon: Icons.login_rounded,
+                      title: 'Iniciar sesion',
+                      onTap:
+                          widget.onLoginTap ??
+                          () {
+                            Navigator.push<void>(
+                              context,
+                              slideRightRoute<void>(const LoginScreen()),
+                            );
+                          },
+                    ),
 
-            // ── Botón inferior: cerrar/iniciar sesión ─────────────────────────
-            if (isLoggedIn)
-              _MenuItem(
-                icon: Icons.logout_rounded,
-                title: 'Cerrar sesión',
-                onTap: () => _signOut(context),
-                textColor: const Color(0xFFC62828),
-              )
-            else
-              _MenuItem(
-                icon: Icons.login_rounded,
-                title: 'Iniciar sesion',
-                onTap: widget.onLoginTap ??
-                    () {
-                      Navigator.push<void>(
-                        context,
-                        slideRightRoute<void>(const LoginScreen()),
-                      );
-                    },
-              ),
-
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(8),
-                  onTap: () => showTerminosYCondicionesBottomSheet(context),
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    child: Text(
-                      'Términos y condiciones',
-                      style: TextStyle(
-                        color: Color(0xFF7D8798),
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () =>
+                            showTerminosYCondicionesBottomSheet(context),
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          child: Text(
+                            'Términos y condiciones',
+                            style: TextStyle(
+                              color: Color(0xFF7D8798),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(8),
-                  onTap: () => showQuienesSomosBottomSheet(context),
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    child: Text(
-                      'Quiénes somos',
-                      style: TextStyle(
-                        color: Color(0xFF7D8798),
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () => showQuienesSomosBottomSheet(context),
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          child: Text(
+                            'Quiénes somos',
+                            style: TextStyle(
+                              color: Color(0xFF7D8798),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ),
             ),
           ],
@@ -353,23 +380,33 @@ class _UserHeader extends StatelessWidget {
                 ),
                 if (roleLabel.isNotEmpty) ...[
                   const SizedBox(height: 4),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: roleColor.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: roleColor.withValues(alpha: 0.4),
-                      ),
-                    ),
-                    child: Text(
-                      roleLabel,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: roleColor,
-                        letterSpacing: 0.3,
+                  SizedBox(
+                    width: double.infinity,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: roleColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: roleColor.withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: Text(
+                          roleLabel,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: roleColor,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -412,7 +449,8 @@ class _MenuItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = textColor ??
+    final color =
+        textColor ??
         (selected ? const Color(0xFF0059B7) : const Color(0xFF5F6B7A));
     return Material(
       color: selected ? const Color(0xFFDDEEF9) : Colors.transparent,
@@ -424,12 +462,16 @@ class _MenuItem extends StatelessWidget {
             children: [
               Icon(icon, color: color),
               const SizedBox(width: 14),
-              Text(
-                title,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 18,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 18,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
                 ),
               ),
             ],

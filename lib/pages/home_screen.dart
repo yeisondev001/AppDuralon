@@ -6,6 +6,7 @@
 // autenticado). Los archivos mock se conservan solo para pruebas locales.
 // =============================================================================
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:app_duralon/models/catalog_category.dart';
 import 'package:app_duralon/models/home_product_section.dart';
@@ -24,21 +25,18 @@ import 'package:app_duralon/utils/slide_right_route.dart';
 import 'package:app_duralon/models/cart_item.dart';
 import 'package:app_duralon/pages/carrito_screen.dart';
 import 'package:app_duralon/pages/mis_pedidos_screen.dart';
+import 'package:app_duralon/pages/mis_direcciones_screen.dart';
 import 'package:app_duralon/services/cart_service.dart';
 import 'package:app_duralon/widgets/duralon_guest_cart_dialog.dart';
 import 'package:app_duralon/widgets/home/home_side_menu.dart'
-    show HomeSideMenu, kSideMenuItemsRequiringAccount;
+    show HomeSideMenu, kSideMenuDrawerWidth, kSideMenuItemsRequiringAccount;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 /// Raiz de la app: [isGuestMode] indica invitado (sin login).
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({
-    super.key,
-    required this.isGuestMode,
-    this.userName,
-  });
+  const HomeScreen({super.key, required this.isGuestMode, this.userName});
 
   final bool isGuestMode;
   final String? userName;
@@ -91,7 +89,7 @@ class _HomeScreenState extends State<HomeScreen> {
           .collection('users')
           .doc(uid)
           .get();
-      final role = doc.data()?['role'] as String?;
+      final role = doc.data()?['rol'] as String?;
       if (!mounted) return;
       setState(() {
         _userRole = role;
@@ -146,22 +144,27 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Construye las secciones del home a partir de los catálogos y productos de Firebase.
   List<HomeProductSection> get _homeProductSections {
     final q = _searchQuery.trim().toLowerCase();
-    return _activeCatalogs.map((cat) {
-      var list = _productsForCatalog(cat);
-      if (q.isNotEmpty) {
-        list = list
-            .where((p) =>
-                p.name.toLowerCase().contains(q) ||
-                p.category.toLowerCase().contains(q))
-            .toList();
-      }
-      return HomeProductSection(
-        categoryId: cat.id,
-        title: cat.title,
-        subtypes: cat.subtypes,
-        previewProducts: list,
-      );
-    }).where((s) => s.previewProducts.isNotEmpty).toList();
+    return _activeCatalogs
+        .map((cat) {
+          var list = _productsForCatalog(cat);
+          if (q.isNotEmpty) {
+            list = list
+                .where(
+                  (p) =>
+                      p.name.toLowerCase().contains(q) ||
+                      p.category.toLowerCase().contains(q),
+                )
+                .toList();
+          }
+          return HomeProductSection(
+            categoryId: cat.id,
+            title: cat.title,
+            subtypes: cat.subtypes,
+            previewProducts: list,
+          );
+        })
+        .where((s) => s.previewProducts.isNotEmpty)
+        .toList();
   }
 
   /// Productos que pertenecen a una categoría del catálogo.
@@ -245,7 +248,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openProductosScreenForCategory(
-      BuildContext context, HomeProductSection section) {
+    BuildContext context,
+    HomeProductSection section,
+  ) {
     final cat = _catalogs.firstWhere(
       (c) => c.id == section.categoryId,
       orElse: () => CatalogCategory(
@@ -302,124 +307,166 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF3F5F8),
       body: SafeArea(
-        child: Stack(
-          children: [
-            HomeSideMenu(
-              selectedItem: 'Inicio',
-              showWholesaleRules: _canManageWholesaleRules,
-              showAdminPanel: _isAdmin,
-              onItemTap: (item) {
-                if (item == 'Inicio') { _closeMenu(); return; }
-                if (item == 'Mi perfil') {
-                  _closeMenu();
-                  if (widget.isGuestMode) {
-                    showDuralonGuestCartDialog(context);
-                    return;
-                  }
-                  Navigator.push<void>(context,
-                      slideRightRoute<void>(const PerfilScreen()));
-                  return;
-                }
-                if (item == 'Catalogo') {
-                  _closeMenu();
-                  _openCatalogScreen(context);
-                  return;
-                }
-                if (item == 'Panel de administración') {
-                  _closeMenu();
-                  Navigator.push<void>(context,
-                      slideRightRoute<void>(const AdminPanelScreen()));
-                  return;
-                }
-                if (item == 'Mis pedidos') {
-                  _closeMenu();
-                  Navigator.push<void>(context,
-                      slideRightRoute<void>(const MisPedidosScreen()));
-                  return;
-                }
-                if (item == 'Reglas mayoristas') {
-                  _closeMenu();
-                  if (!_canManageWholesaleRules) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('No tienes permisos para reglas mayoristas.'),
-                    ));
-                    return;
-                  }
-                  Navigator.push<void>(context,
-                      slideRightRoute<void>(const AdminWholesaleRulesScreen()));
-                  return;
-                }
-                if (widget.isGuestMode &&
-                    kSideMenuItemsRequiringAccount.contains(item)) {
-                  _closeMenu();
-                  showDuralonGuestCartDialog(context);
-                  return;
-                }
-                _closeMenu();
-                _showComingSoon(context, item);
-              },
-              onLoginTap: () {
-                _closeMenu();
-                Navigator.push<void>(
-                    context, slideRightRoute<void>(const LoginScreen()));
-              },
-            ),
-            AnimatedSlide(
-              duration: const Duration(milliseconds: 340),
-              curve: Curves.easeOutCubic,
-              offset: _isMenuOpen ? const Offset(0.72, 0) : Offset.zero,
-              child: GestureDetector(
-                onTap: _closeMenu,
-                child: AnimatedContainer(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final maxW = constraints.maxWidth;
+            final drawerW = math.min(kSideMenuDrawerWidth, maxW);
+            final slideX = maxW > 0 ? (drawerW / maxW).clamp(0.0, 1.0) : 0.0;
+
+            return Stack(
+              children: [
+                HomeSideMenu(
+                  selectedItem: 'Inicio',
+                  showWholesaleRules: _canManageWholesaleRules,
+                  showAdminPanel: _isAdmin,
+                  onItemTap: (item) {
+                    if (item == 'Inicio') {
+                      _closeMenu();
+                      return;
+                    }
+                    if (item == 'Mi perfil') {
+                      _closeMenu();
+                      if (widget.isGuestMode) {
+                        showDuralonGuestCartDialog(context);
+                        return;
+                      }
+                      Navigator.push<void>(
+                        context,
+                        slideRightRoute<void>(const PerfilScreen()),
+                      );
+                      return;
+                    }
+                    if (item == 'Catalogo') {
+                      _closeMenu();
+                      _openCatalogScreen(context);
+                      return;
+                    }
+                    if (item == 'Panel de administración') {
+                      _closeMenu();
+                      Navigator.push<void>(
+                        context,
+                        slideRightRoute<void>(const AdminPanelScreen()),
+                      );
+                      return;
+                    }
+                    if (item == 'Mis pedidos') {
+                      _closeMenu();
+                      Navigator.push<void>(
+                        context,
+                        slideRightRoute<void>(const MisPedidosScreen()),
+                      );
+                      return;
+                    }
+                    if (item == 'Mis direcciones') {
+                      _closeMenu();
+                      if (widget.isGuestMode) {
+                        showDuralonGuestCartDialog(context);
+                        return;
+                      }
+                      Navigator.push<void>(
+                        context,
+                        slideRightRoute<void>(const MisDireccionesScreen()),
+                      );
+                      return;
+                    }
+                    if (item == 'Reglas mayoristas') {
+                      _closeMenu();
+                      if (!_canManageWholesaleRules) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'No tienes permisos para reglas mayoristas.',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+                      Navigator.push<void>(
+                        context,
+                        slideRightRoute<void>(
+                          const AdminWholesaleRulesScreen(),
+                        ),
+                      );
+                      return;
+                    }
+                    if (widget.isGuestMode &&
+                        kSideMenuItemsRequiringAccount.contains(item)) {
+                      _closeMenu();
+                      showDuralonGuestCartDialog(context);
+                      return;
+                    }
+                    _closeMenu();
+                    _showComingSoon(context, item);
+                  },
+                  onLoginTap: () {
+                    _closeMenu();
+                    Navigator.push<void>(
+                      context,
+                      slideRightRoute<void>(const LoginScreen()),
+                    );
+                  },
+                ),
+                AnimatedSlide(
                   duration: const Duration(milliseconds: 340),
                   curve: Curves.easeOutCubic,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF6F8FC),
-                    borderRadius:
-                        BorderRadius.circular(_isMenuOpen ? 26 : 0),
-                    boxShadow: _isMenuOpen
-                        ? [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.15),
-                              blurRadius: 26,
-                              offset: const Offset(-2, 8),
-                            ),
-                          ]
-                        : null,
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: IgnorePointer(
-                    ignoring: _isMenuOpen,
-                    child: _isLoading
-                        ? const Center(
-                            child: CircularProgressIndicator(
-                                color: AppColors.primaryBlue),
-                          )
-                        : CatalogoScreen(
-                            selectedStoreTab: _selectedStoreTab,
-                            searchQuery: _searchQuery,
-                            productSections: _homeProductSections,
-                            onMenuTap: _toggleMenu,
-                            onCartTap: () => _handleCartTap(context, null),
-                            onSearchChanged: (v) =>
-                                setState(() => _searchQuery = v),
-                            onStoreTabChanged: (i) =>
-                                setState(() => _selectedStoreTab = i),
-                            onMainCategoriesTap: () =>
-                                _openCatalogScreen(context),
-                            onCategoryVerTodos: (section) =>
-                                _openProductosScreenForCategory(
-                                    context, section),
-                            onProductTap: (p) =>
-                                _openProductoScreen(context, p),
-                            onAddToCart: (p) =>
-                                _handleCartTap(context, p),
-                          ),
+                  offset: _isMenuOpen ? Offset(slideX, 0) : Offset.zero,
+                  child: GestureDetector(
+                    onTap: _closeMenu,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 340),
+                      curve: Curves.easeOutCubic,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF6F8FC),
+                        borderRadius: BorderRadius.circular(
+                          _isMenuOpen ? 26 : 0,
+                        ),
+                        boxShadow: _isMenuOpen
+                            ? [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.15),
+                                  blurRadius: 26,
+                                  offset: const Offset(-2, 8),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: IgnorePointer(
+                        ignoring: _isMenuOpen,
+                        child: _isLoading
+                            ? const Center(
+                                child: CircularProgressIndicator(
+                                  color: AppColors.primaryBlue,
+                                ),
+                              )
+                            : CatalogoScreen(
+                                selectedStoreTab: _selectedStoreTab,
+                                searchQuery: _searchQuery,
+                                productSections: _homeProductSections,
+                                onMenuTap: _toggleMenu,
+                                onCartTap: () => _handleCartTap(context, null),
+                                onSearchChanged: (v) =>
+                                    setState(() => _searchQuery = v),
+                                onStoreTabChanged: (i) =>
+                                    setState(() => _selectedStoreTab = i),
+                                onMainCategoriesTap: () =>
+                                    _openCatalogScreen(context),
+                                onCategoryVerTodos: (section) =>
+                                    _openProductosScreenForCategory(
+                                      context,
+                                      section,
+                                    ),
+                                onProductTap: (p) =>
+                                    _openProductoScreen(context, p),
+                                onAddToCart: (p) => _handleCartTap(context, p),
+                              ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-          ],
+              ],
+            );
+          },
         ),
       ),
     );

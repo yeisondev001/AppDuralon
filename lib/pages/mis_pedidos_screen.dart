@@ -35,6 +35,18 @@ class MisPedidosScreen extends StatelessWidget {
           if (snap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
+          if (snap.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'Error al cargar pedidos:\n${snap.error}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                ),
+              ),
+            );
+          }
           final orders = snap.data ?? [];
           if (orders.isEmpty) {
             return Center(

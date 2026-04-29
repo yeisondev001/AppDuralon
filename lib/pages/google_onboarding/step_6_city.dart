@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:app_duralon/pages/google_onboarding/onboarding_data.dart';
 import 'package:app_duralon/pages/google_onboarding/onboarding_scaffold.dart';
 import 'package:app_duralon/pages/google_onboarding/shared_inputs.dart';
-import 'package:app_duralon/pages/google_onboarding/step_7_country.dart';
+import 'package:app_duralon/pages/google_onboarding/step_7_address.dart';
 
 class Step6CityScreen extends StatefulWidget {
   const Step6CityScreen({super.key, required this.data});
@@ -36,7 +36,7 @@ class _Step6CityScreenState extends State<Step6CityScreen> {
     widget.data.city = _ctrl.text.trim();
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => Step7CountryScreen(data: widget.data)),
+      MaterialPageRoute(builder: (_) => Step7AddressScreen(data: widget.data)),
     );
   }
 
@@ -55,6 +55,7 @@ class _Step6CityScreenState extends State<Step6CityScreen> {
         focusNode: _focus,
         hint: 'Ej: Santo Domingo',
         icon: Icons.location_city_outlined,
+        iconColor: const Color(0xFF8E24AA),
         textCapitalization: TextCapitalization.words,
         onSubmitted: (_) {
           if (isValid) _next();

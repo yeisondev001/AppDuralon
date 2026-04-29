@@ -118,8 +118,8 @@ class OnboardingScaffold extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: canContinue ? onContinue : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    disabledBackgroundColor: AppColors.primary.withValues(
+                    backgroundColor: AppColors.accentRed,
+                    disabledBackgroundColor: AppColors.accentRed.withValues(
                       alpha: 0.45,
                     ),
                     foregroundColor: Colors.white,

@@ -15,6 +15,8 @@ class RoundedTextField extends StatelessWidget {
     this.inputFormatters,
     this.letterSpacing,
     this.fontWeight = FontWeight.w500,
+    this.iconColor = AppColors.accentBlue,
+    this.iconBackgroundColor,
   });
 
   final TextEditingController controller;
@@ -28,6 +30,8 @@ class RoundedTextField extends StatelessWidget {
   final List<dynamic>? inputFormatters;
   final double? letterSpacing;
   final FontWeight fontWeight;
+  final Color iconColor;
+  final Color? iconBackgroundColor;
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +56,18 @@ class RoundedTextField extends StatelessWidget {
           color: AppColors.textMuted,
           letterSpacing: letterSpacing,
         ),
-        prefixIcon: Icon(icon, color: AppColors.accentBlue, size: 22),
+        prefixIcon: Padding(
+          padding: const EdgeInsets.only(left: 8, right: 8),
+          child: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: iconBackgroundColor ?? iconColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: iconColor, size: 20),
+          ),
+        ),
         filled: true,
         fillColor: AppColors.surface,
         contentPadding: const EdgeInsets.symmetric(

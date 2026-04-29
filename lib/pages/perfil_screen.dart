@@ -166,34 +166,34 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
   /// Campos de la tarjeta "Información de cuenta" según el rol.
   List<Widget> _buildCuentaRows(User user, Map<String, dynamic>? data) {
-    final role = data?['role'] as String?;
+    final role = data?['rol'] as String?;
     final esInterno = role == 'admin' || role == 'vendedor';
 
     return [
       // Todos ven su nombre y correo.
       _InfoRow(
         label: 'Nombre',
-        value: data?['displayName'] as String? ?? user.displayName ?? '—',
+        value: data?['nombre'] as String? ?? user.displayName ?? '—',
       ),
       _InfoRow(
         label: 'Correo',
-        value: data?['email'] as String? ?? user.email ?? '—',
+        value: data?['correo'] as String? ?? user.email ?? '—',
       ),
       _InfoRow(
         label: 'Miembro desde',
-        value: _formatTimestamp(data?['createdAt'] as Timestamp?),
+        value: _formatTimestamp(data?['creadoEn'] as Timestamp?),
       ),
       // Solo admin y vendedor ven los campos técnicos.
       if (esInterno) ...[
         _InfoRow(label: 'Rol', value: role ?? '—', isRole: true),
         _InfoRow(
           label: 'Estado',
-          value: data?['status'] as String? ?? '—',
+          value: data?['estado'] as String? ?? '—',
           isStatus: true,
         ),
         _InfoRow(
           label: 'Proveedor',
-          value: _providerLabel(data?['loginProvider'] as String?),
+          value: _providerLabel(data?['proveedorLogin'] as String?),
         ),
         _InfoRow(
           label: 'ID de usuario',
@@ -210,21 +210,21 @@ class _PerfilScreenState extends State<PerfilScreen> {
     Map<String, dynamic>? userData,
     Map<String, dynamic> customer,
   ) {
-    final role = userData?['role'] as String?;
+    final role = userData?['rol'] as String?;
     final esInterno = role == 'admin' || role == 'vendedor';
-    final taxpayerType = customer['taxpayerType'] as String?;
-    final identification = customer['identification'] as String?;
-    final identificationType = customer['identificationType'] as String?;
-    final fiscalAddress = customer['fiscalAddress'] as String?;
+    final taxpayerType = customer['tipoContribuyente'] as String?;
+    final identification = customer['identificacion'] as String?;
+    final identificationType = customer['tipoIdentificacion'] as String?;
+    final fiscalAddress = customer['direccionFiscal'] as String?;
 
     return [
       _InfoRow(
         label: 'Nombre',
-        value: customer['contactName'] as String? ?? '—',
+        value: customer['nombreCompleto'] as String? ?? '—',
       ),
       _InfoRow(
-        label: 'Email',
-        value: customer['billingEmail'] as String? ?? '—',
+        label: 'Correo',
+        value: customer['correo'] as String? ?? '—',
       ),
       _InfoRow(
         label: 'Tipo de cliente',
@@ -249,16 +249,16 @@ class _PerfilScreenState extends State<PerfilScreen> {
       if (esInterno) ...[
         _InfoRow(
           label: 'Estado',
-          value: customer['status'] as String? ?? '—',
+          value: customer['estado'] as String? ?? '—',
           isCustomerStatus: true,
         ),
         _InfoRow(
           label: 'Crédito habilitado',
-          value: (customer['creditEnabled'] == true) ? 'Sí' : 'No',
+          value: (customer['creditoHabilitado'] == true) ? 'Sí' : 'No',
         ),
         _InfoRow(
           label: 'Registrado',
-          value: _formatTimestamp(customer['createdAt'] as Timestamp?),
+          value: _formatTimestamp(customer['creadoEn'] as Timestamp?),
         ),
       ],
     ];
@@ -335,10 +335,10 @@ class _AvatarHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = userData?['displayName'] as String? ?? user.displayName ?? '';
-    final email = userData?['email'] as String? ?? user.email ?? '';
-    final photoUrl = userData?['photoURL'] as String? ?? user.photoURL;
-    final role = userData?['role'] as String?;
+    final name = userData?['nombre'] as String? ?? user.displayName ?? '';
+    final email = userData?['correo'] as String? ?? user.email ?? '';
+    final photoUrl = userData?['fotoUrl'] as String? ?? user.photoURL;
+    final role = userData?['rol'] as String?;
 
     final initials = _initials(name, email);
     const roleLabels = {

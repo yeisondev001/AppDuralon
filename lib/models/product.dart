@@ -33,7 +33,7 @@ class Product {
   /// Subtipo visible (ej: "Envases"). Coincide con el subtype del catálogo.
   final String category;
 
-  /// Precio base. Usa [variants] para precios diferenciados por rol.
+  /// Precio base (**Firestore:** campo `precio`; el nombre en inglés `price` está obsoleto).
   final double price;
 
   final String imageAsset;
@@ -115,7 +115,7 @@ class Product {
   // ── Serialización ─────────────────────────────────────────────
   factory Product.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final d = doc.data() ?? const {};
-    final rawPrice    = d['price'];
+    final rawPrecio = d['precio'] ?? d['price']; // compat: docs antiguos con `price`
     final rawList     = d['listPrice'];
     final rawMin      = d['minOrderQty'];
     final rawStep     = d['stepQty'];
@@ -132,7 +132,8 @@ class Product {
       category: (d['category'] as String?)?.trim().isNotEmpty == true
           ? d['category'] as String
           : 'General',
-      price:       rawPrice is num ? rawPrice.toDouble() : 0,
+      price:
+          rawPrecio is num ? rawPrecio.toDouble() : 0,
       imageAsset: (d['imageAsset'] as String?)?.trim().isNotEmpty == true
           ? d['imageAsset'] as String
           : 'assets/images/duralon_logo.png',
@@ -159,7 +160,7 @@ class Product {
     return <String, dynamic>{
       'name':       name,
       'category':   category,
-      'price':      price,
+      'precio':     price,
       if (description != null) 'description': description,
       if (color != null)       'color':       color,
       if (ean   != null)       'ean':         ean,

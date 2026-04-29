@@ -50,6 +50,14 @@ service cloud.firestore {
       allow create: if isSelf(customerId);
       allow update: if isSelf(customerId) || isInterno();
       allow delete: if isAdmin();
+
+      // Direcciones de entrega del cliente
+      match /addresses/{addressId} {
+        allow read:   if isSelf(customerId) || isInterno();
+        allow create: if isSelf(customerId);
+        allow update: if isSelf(customerId);
+        allow delete: if isSelf(customerId);
+      }
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -81,13 +89,13 @@ service cloud.firestore {
     // ═══════════════════════════════════════════════════════════
     match /orders/{orderId} {
       allow read: if isAuth() && (
-        resource.data.userId == uid() || isInterno()
+        resource.data.customerId == uid() || isInterno()
       );
       allow create: if isAuth() &&
-        request.resource.data.userId == uid();
+        request.resource.data.customerId == uid();
       allow update: if isInterno() || (
         isCliente() &&
-        resource.data.userId == uid() &&
+        resource.data.customerId == uid() &&
         resource.data.status == 'pendiente'
       );
       allow delete: if false;

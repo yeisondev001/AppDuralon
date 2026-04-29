@@ -1,12 +1,22 @@
 // Cargador de datos del Catálogo Duralon 2026.
 // Se invoca desde el Admin Panel → pestaña Catálogos → "Cargar Catálogo 2026".
 // Usa merge:true para no sobreescribir precios si el documento ya existe.
+import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ProductSeeder {
   ProductSeeder._();
 
   static final _db = FirebaseFirestore.instance;
+  static final _rnd = Random();
+
+  /// Precio base de listado (RD$), aleatorio por producto al sembrar.
+  static double _precioAleatorio() =>
+      double.parse((_rnd.nextDouble() * 450 + 50).toStringAsFixed(2));
+
+  /// Valor inicial en formularios (misma regla que el seed — Firestore: `precio`).
+  static double nuevoProductoPrecioAleatorio() => _precioAleatorio();
 
   static int get hogarProductsCount =>
       _productsCocina.length +
@@ -207,7 +217,7 @@ class ProductSeeder {
         'tab': tab,
         'ean': ean,
         'color': color,
-        'price': 0.0,
+        'precio': _precioAleatorio(),
         'isActive': true,
         'imageAsset': 'assets/images/duralon_logo.png',
         'minOrderQty': minOrderQty > 0 ? minOrderQty : packQty,

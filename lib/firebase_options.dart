@@ -21,10 +21,7 @@ class DefaultFirebaseOptions {
           'you can reconfigure this by running the FlutterFire CLI again.',
         );
       case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -56,6 +53,16 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyDjN9UUKo503SwrXkVVRgrGy4UwtTOlbhk',
+    appId: '1:383683295145:web:03b54cdc944c598bb536b8',
+    messagingSenderId: '383683295145',
+    projectId: 'appduralon',
+    authDomain: 'appduralon.firebaseapp.com',
+    storageBucket: 'appduralon.firebasestorage.app',
+    measurementId: 'G-XHBHHJ4RR9',
+  );
+
+  static const FirebaseOptions windows = FirebaseOptions(
     apiKey: 'AIzaSyDjN9UUKo503SwrXkVVRgrGy4UwtTOlbhk',
     appId: '1:383683295145:web:03b54cdc944c598bb536b8',
     messagingSenderId: '383683295145',

@@ -1,5 +1,7 @@
 // Servicio centralizado para la colección `products` en Firestore.
 // Reemplaza el acceso directo disperso en pantallas; usar en HomeScreen y admin.
+import 'dart:math';
+
 import 'package:app_duralon/models/product.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -8,6 +10,7 @@ class ProductService {
 
   static final CollectionReference<Map<String, dynamic>> _col =
       FirebaseFirestore.instance.collection('products');
+  static final Random _rnd = Random();
 
   // ── Streams ───────────────────────────────────────────────────────────────────
 
@@ -81,6 +84,37 @@ class ProductService {
       'isActive': active,
       'updatedAt': FieldValue.serverTimestamp(),
     });
+  }
+
+  /// Migra `price` -> `precio` y sobrescribe `precio` con valores aleatorios.
+  ///
+  /// Retorna la cantidad de documentos actualizados.
+  static Future<int> migratePriceToPrecioWithRandomValues() async {
+    final snap = await _col.get();
+    if (snap.docs.isEmpty) return 0;
+
+    const batchSize = 400;
+    int updated = 0;
+
+    for (int i = 0; i < snap.docs.length; i += batchSize) {
+      final end = min(i + batchSize, snap.docs.length);
+      final batch = FirebaseFirestore.instance.batch();
+
+      for (int j = i; j < end; j++) {
+        final doc = snap.docs[j];
+        final precioAleatorio =
+            double.parse((_rnd.nextDouble() * 450 + 50).toStringAsFixed(2));
+        batch.update(doc.reference, {
+          'precio': precioAleatorio,
+          'price': FieldValue.delete(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        updated++;
+      }
+      await batch.commit();
+    }
+
+    return updated;
   }
 
   // ── Helpers privados ──────────────────────────────────────────────────────────

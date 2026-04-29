@@ -39,30 +39,34 @@ class _HomeHeaderState extends State<HomeHeader> {
   @override
   Widget build(BuildContext context) {
     final cartCount = _cart.totalPiezas;
+    final padH = MediaQuery.sizeOf(context).width < 360 ? 10.0 : 16.0;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: EdgeInsets.fromLTRB(padH, 16, padH, 8),
       child: Row(
         children: [
           IconButton(
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
             onPressed: widget.onMenuTap,
             icon: const Icon(Icons.menu_rounded),
             tooltip: 'Menu',
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 2),
           Image.asset(
             'assets/images/duralon_logo.png',
-            width: 34,
-            height: 34,
+            width: 32,
+            height: 32,
             fit: BoxFit.contain,
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Expanded(
             child: SearchBar(
               hintText: 'Buscar productos',
               onChanged: widget.onSearchChanged,
               leading: const Icon(Icons.search_rounded),
+              constraints: const BoxConstraints(minWidth: 0, minHeight: 48),
               padding: const WidgetStatePropertyAll<EdgeInsets>(
-                EdgeInsets.symmetric(horizontal: 12),
+                EdgeInsets.symmetric(horizontal: 10),
               ),
             ),
           ),
@@ -71,6 +75,8 @@ class _HomeHeaderState extends State<HomeHeader> {
             clipBehavior: Clip.none,
             children: [
               IconButton.filledTonal(
+                visualDensity: VisualDensity.compact,
+                constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
                 onPressed: () => Navigator.of(context).push<void>(
                   MaterialPageRoute<void>(builder: (_) => const CarritoScreen()),
                 ),
@@ -78,7 +84,7 @@ class _HomeHeaderState extends State<HomeHeader> {
                   backgroundColor: AppColors.primaryBlue.withValues(alpha: 0.12),
                   foregroundColor: AppColors.primaryBlue,
                 ),
-                icon: const Icon(Icons.shopping_cart_rounded, size: 24),
+                icon: const Icon(Icons.shopping_cart_rounded, size: 22),
                 tooltip: 'Carrito',
               ),
               if (cartCount > 0)

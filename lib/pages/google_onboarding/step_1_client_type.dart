@@ -93,6 +93,19 @@ class ClientTypeCard extends StatelessWidget {
     }
   }
 
+  Color get _typeColor {
+    switch (type) {
+      case ClientType.empresa:
+        return const Color(0xFFE53935);
+      case ClientType.zonaFranca:
+        return const Color(0xFF1E88E5);
+      case ClientType.gubernamental:
+        return const Color(0xFF6D4C41);
+      case ClientType.personaFisica:
+        return const Color(0xFF43A047);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
@@ -104,7 +117,7 @@ class ClientTypeCard extends StatelessWidget {
             : AppColors.surface,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: selected ? AppColors.accentBlue : AppColors.border,
+          color: selected ? _typeColor : AppColors.border,
           width: selected ? 2 : 1,
         ),
       ),
@@ -121,7 +134,9 @@ class ClientTypeCard extends StatelessWidget {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: selected ? AppColors.accentBlue : Colors.white,
+                    color: selected
+                        ? _typeColor
+                        : _typeColor.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(12),
                     border: selected
                         ? null
@@ -129,7 +144,7 @@ class ClientTypeCard extends StatelessWidget {
                   ),
                   child: Icon(
                     _icon,
-                    color: selected ? Colors.white : AppColors.accentBlue,
+                    color: selected ? Colors.white : _typeColor,
                     size: 24,
                   ),
                 ),
@@ -164,10 +179,10 @@ class ClientTypeCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: selected ? AppColors.accentBlue : AppColors.border,
+                      color: selected ? _typeColor : AppColors.border,
                       width: 2,
                     ),
-                    color: selected ? AppColors.accentBlue : Colors.white,
+                    color: selected ? _typeColor : Colors.white,
                   ),
                   child: selected
                       ? const Icon(Icons.check, color: Colors.white, size: 14)
