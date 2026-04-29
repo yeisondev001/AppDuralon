@@ -19,7 +19,7 @@ const Set<String> kSideMenuItemsRequiringAccount = {
   'Mi perfil',
   'Ofertas',
   'Mis pedidos',
-  'Mis listas',
+
   'Mis direcciones',
   'Metodos de pago',
   'Soporte',
@@ -131,7 +131,7 @@ class _HomeSideMenuState extends State<HomeSideMenu> {
             const SizedBox(height: 10),
 
             // ── Encabezado de usuario ──────────────────────────────────────────
-            _UserHeader(user: user, role: _role),
+            _UserHeader(user: user, role: _role, showRole: _role == 'admin'),
             const SizedBox(height: 8),
             const Divider(height: 1, indent: 16, endIndent: 16),
             const SizedBox(height: 6),
@@ -172,12 +172,7 @@ class _HomeSideMenuState extends State<HomeSideMenu> {
                     selected: widget.selectedItem == 'Mis pedidos',
                     onTap: () => widget.onItemTap('Mis pedidos'),
                   ),
-                  _MenuItem(
-                    icon: Icons.list_alt_rounded,
-                    title: 'Mis listas',
-                    selected: widget.selectedItem == 'Mis listas',
-                    onTap: () => widget.onItemTap('Mis listas'),
-                  ),
+
                   _MenuItem(
                     icon: Icons.location_on_outlined,
                     title: 'Mis direcciones',
@@ -304,10 +299,11 @@ class _HomeSideMenuState extends State<HomeSideMenu> {
 
 // ─── Encabezado con avatar, nombre, correo y badge de rol ─────────────────────
 class _UserHeader extends StatelessWidget {
-  const _UserHeader({required this.user, required this.role});
+  const _UserHeader({required this.user, required this.role, this.showRole = false});
 
   final User? user;
   final String? role;
+  final bool showRole;
 
   @override
   Widget build(BuildContext context) {
@@ -378,7 +374,7 @@ class _UserHeader extends StatelessWidget {
                     color: Color(0xFF6B7685),
                   ),
                 ),
-                if (roleLabel.isNotEmpty) ...[
+                if (showRole && roleLabel.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   SizedBox(
                     width: double.infinity,

@@ -26,6 +26,7 @@ import 'package:app_duralon/models/cart_item.dart';
 import 'package:app_duralon/pages/carrito_screen.dart';
 import 'package:app_duralon/pages/mis_pedidos_screen.dart';
 import 'package:app_duralon/pages/mis_direcciones_screen.dart';
+import 'package:app_duralon/pages/ofertas_screen.dart';
 import 'package:app_duralon/services/cart_service.dart';
 import 'package:app_duralon/widgets/duralon_guest_cart_dialog.dart';
 import 'package:app_duralon/widgets/home/home_side_menu.dart'
@@ -346,6 +347,21 @@ class _HomeScreenState extends State<HomeScreen> {
                       Navigator.push<void>(
                         context,
                         slideRightRoute<void>(const AdminPanelScreen()),
+                      );
+                      return;
+                    }
+                    if (item == 'Ofertas') {
+                      _closeMenu();
+                      if (widget.isGuestMode) {
+                        showDuralonGuestCartDialog(context);
+                        return;
+                      }
+                      Navigator.push<void>(
+                        context,
+                        slideRightRoute<void>(OfertasScreen(
+                          isGuestMode: widget.isGuestMode,
+                          userRole: _userRole,
+                        )),
                       );
                       return;
                     }
