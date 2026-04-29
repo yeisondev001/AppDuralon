@@ -4,8 +4,11 @@
 // =============================================================================
 import 'dart:ui' show ImageFilter;
 
+import 'package:app_duralon/models/cart_item.dart';
 import 'package:app_duralon/models/product.dart';
 import 'package:app_duralon/models/product_variant.dart';
+import 'package:app_duralon/pages/carrito_screen.dart';
+import 'package:app_duralon/services/cart_service.dart';
 import 'package:app_duralon/services/product_rules_service.dart';
 import 'package:app_duralon/styles/app_style.dart';
 import 'package:app_duralon/widgets/duralon_guest_cart_dialog.dart';
@@ -171,8 +174,23 @@ class _ProductoScreenState extends State<ProductoScreen> {
       );
       return;
     }
+    final item = CartItem.fromProduct(
+      _p,
+      _selectedVariant,
+      _unidades,
+      _isDistribuidor,
+    );
+    CartService.instance.addItem(item);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${_p.name} (×$_unidades) añadido al carrito.')),
+      SnackBar(
+        content: Text('${_p.name} (×$_unidades) añadido al carrito.'),
+        action: SnackBarAction(
+          label: 'Ver carrito',
+          onPressed: () => Navigator.of(context).push<void>(
+            MaterialPageRoute<void>(builder: (_) => const CarritoScreen()),
+          ),
+        ),
+      ),
     );
   }
 
@@ -228,7 +246,15 @@ class _ProductoScreenState extends State<ProductoScreen> {
                   ),
                   IconButton(
                     onPressed: () {
-                      if (widget.isGuestMode) showDuralonGuestCartDialog(context);
+                      if (widget.isGuestMode) {
+                        showDuralonGuestCartDialog(context);
+                      } else {
+                        Navigator.of(context).push<void>(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const CarritoScreen(),
+                          ),
+                        );
+                      }
                     },
                     icon: const Icon(Icons.shopping_cart_outlined, color: Colors.black),
                     tooltip: 'Carrito',

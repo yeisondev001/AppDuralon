@@ -1,11 +1,14 @@
 import 'package:app_duralon/models/catalog_category.dart';
+import 'package:app_duralon/models/order.dart';
 import 'package:app_duralon/models/product.dart';
 import 'package:app_duralon/models/product_variant.dart';
+import 'package:app_duralon/pages/mis_pedidos_screen.dart';
 import 'package:app_duralon/services/catalog_service.dart';
+import 'package:app_duralon/services/order_service.dart';
 import 'package:app_duralon/services/product_seeder.dart';
 import 'package:app_duralon/services/product_service.dart';
 import 'package:app_duralon/styles/app_style.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' hide Order;
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 
@@ -23,7 +26,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 4, vsync: this);
+    _tabs = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -62,6 +65,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
             Tab(icon: Icon(Icons.people_outline_rounded), text: 'Usuarios'),
             Tab(icon: Icon(Icons.category_outlined), text: 'Catálogos'),
             Tab(icon: Icon(Icons.inventory_2_outlined), text: 'Productos'),
+            Tab(icon: Icon(Icons.receipt_long_outlined), text: 'Órdenes'),
             Tab(icon: Icon(Icons.bug_report_outlined), text: 'Pruebas'),
           ],
         ),
@@ -72,6 +76,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
           _UsuariosTab(),
           _CatalogosTab(),
           _ProductosTab(),
+          _OrdenesTab(),
           _PruebasTab(),
         ],
       ),
@@ -2011,6 +2016,10 @@ class _PruebasTabState extends State<_PruebasTab> {
   bool _crashlyticsSending = false;
   String? _resultado;
 
+  bool _randomizingPrices = false;
+  String? _randomPricesProgress;
+  String? _randomPricesResult;
+
   Future<void> _enviarErrorPrueba() async {
     setState(() {
       _crashlyticsSending = true;
@@ -2034,6 +2043,66 @@ class _PruebasTabState extends State<_PruebasTab> {
       }
     } finally {
       if (mounted) setState(() => _crashlyticsSending = false);
+    }
+  }
+
+  Future<void> _generarPreciosAleatorios() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Generar precios aleatorios'),
+        content: const Text(
+          'Se sobrescribirán los precios de TODOS los productos y sus '
+          'variantes con valores aleatorios entre RD\$ 50 y RD\$ 2,500.\n\n'
+          'Útil mientras no haya lista de precios real. ¿Continuar?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+                foregroundColor: AppColors.primaryBlue),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Generar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    setState(() {
+      _randomizingPrices = true;
+      _randomPricesProgress = 'Cargando productos…';
+      _randomPricesResult = null;
+    });
+    try {
+      final updated = await ProductService.randomizeAllPrices(
+        onProgress: (done, total) {
+          if (mounted) {
+            setState(() => _randomPricesProgress =
+                'Actualizando $done de $total…');
+          }
+        },
+      );
+      if (mounted) {
+        setState(() {
+          _randomPricesResult = updated == 0
+              ? '✓ No había productos para actualizar.'
+              : '✓ $updated productos actualizados con precios aleatorios.';
+          _randomPricesProgress = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _randomPricesResult = '✗ Error: $e';
+          _randomPricesProgress = null;
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _randomizingPrices = false);
     }
   }
 
@@ -2073,6 +2142,129 @@ class _PruebasTabState extends State<_PruebasTab> {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
+        // ── Card: Generar precios aleatorios ──────────────────────
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.lightBlue,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.attach_money_rounded,
+                          color: AppColors.primaryBlue),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Precios aleatorios',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1A2230),
+                            ),
+                          ),
+                          Text(
+                            'Asigna precios de prueba a productos y variantes',
+                            style: TextStyle(
+                                fontSize: 12, color: Color(0xFF8A94A6)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Sobrescribe `price`, `listPrice` y los precios retail/'
+                  'distribuidor de cada variante con valores aleatorios entre '
+                  'RD\$ 50 y RD\$ 2,500 (múltiplos de 5). El distribuidor '
+                  'queda ~25 % por debajo del retail.',
+                  style:
+                      TextStyle(fontSize: 12, color: Color(0xFF8A94A6)),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryBlue,
+                      foregroundColor: Colors.white,
+                      padding:
+                          const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onPressed: _randomizingPrices
+                        ? null
+                        : _generarPreciosAleatorios,
+                    icon: _randomizingPrices
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.shuffle_rounded),
+                    label: const Text(
+                      'Generar precios aleatorios',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+                if (_randomPricesProgress != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    _randomPricesProgress!,
+                    style: const TextStyle(
+                        fontSize: 12, color: Color(0xFF8A94A6)),
+                  ),
+                ],
+                if (_randomPricesResult != null) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: _randomPricesResult!.startsWith('✓')
+                          ? const Color(0xFFE8F5E9)
+                          : const Color(0xFFFFEBEE),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _randomPricesResult!,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: _randomPricesResult!.startsWith('✓')
+                            ? const Color(0xFF2E7D32)
+                            : const Color(0xFFC62828),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        // ── Card: Crashlytics ─────────────────────────────────────
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -2289,3 +2481,171 @@ class _SmallBadge extends StatelessWidget {
     );
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Tab Órdenes (admin)
+// ═══════════════════════════════════════════════════════════════════════════════
+class _OrdenesTab extends StatelessWidget {
+  const _OrdenesTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<Order>>(
+      stream: OrderService.streamAll(),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final orders = snap.data ?? [];
+        if (orders.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.receipt_long_outlined, size: 56, color: Color(0xFFCBD5E1)),
+                SizedBox(height: 12),
+                Text('Sin órdenes aún', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 16)),
+              ],
+            ),
+          );
+        }
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: orders.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 10),
+          itemBuilder: (context, i) => _AdminOrderCard(order: orders[i]),
+        );
+      },
+    );
+  }
+}
+
+class _AdminOrderCard extends StatelessWidget {
+  const _AdminOrderCard({required this.order});
+  final Order order;
+
+  static const _statusOptions = [
+    OrderStatus.pendiente,
+    OrderStatus.confirmado,
+    OrderStatus.enProceso,
+    OrderStatus.enviado,
+    OrderStatus.entregado,
+    OrderStatus.cancelado,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 4, offset: Offset(0, 2))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '#${order.id.substring(0, 8).toUpperCase()}',
+                      style: const TextStyle(fontFamily: 'monospace', fontSize: 13, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      order.customerName.isNotEmpty ? order.customerName : order.customerEmail,
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              _StatusChipAdmin(status: order.status),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${order.totalUnidades} uds · ${_fmtDate(order.createdAt)}',
+                style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+              ),
+              Text(
+                'RD\$${_fmtNum(order.total)}',
+                style: TextStyle(fontFamily: 'monospace', fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primaryBlue),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<OrderStatus>(
+                  value: order.status,
+                  decoration: InputDecoration(
+                    labelText: 'Estado',
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    isDense: true,
+                  ),
+                  items: _statusOptions.map((s) => DropdownMenuItem(
+                    value: s,
+                    child: Text(s.label, style: const TextStyle(fontSize: 13)),
+                  )).toList(),
+                  onChanged: (s) {
+                    if (s != null) OrderService.updateStatus(order.id, s);
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(Icons.open_in_new_rounded, size: 20),
+                color: AppColors.primaryBlue,
+                tooltip: 'Ver detalle',
+                onPressed: () => Navigator.push<void>(
+                  context,
+                  MaterialPageRoute<void>(builder: (_) => OrdenDetalleScreen(order: order)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusChipAdmin extends StatelessWidget {
+  const _StatusChipAdmin({required this.status});
+  final OrderStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final (color, bg) = _colors(status);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
+      child: Text(status.label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+    );
+  }
+
+  (Color, Color) _colors(OrderStatus s) {
+    switch (s) {
+      case OrderStatus.pendiente:  return (const Color(0xFFB45309), const Color(0xFFFEF3C7));
+      case OrderStatus.confirmado: return (const Color(0xFF1D4ED8), const Color(0xFFDBEAFE));
+      case OrderStatus.enProceso:  return (const Color(0xFF7C3AED), const Color(0xFFEDE9FE));
+      case OrderStatus.enviado:    return (const Color(0xFF0F766E), const Color(0xFFCCFBF1));
+      case OrderStatus.entregado:  return (const Color(0xFF15803D), const Color(0xFFDCFCE7));
+      case OrderStatus.cancelado:  return (const Color(0xFFB91C1C), const Color(0xFFFFE5E8));
+    }
+  }
+}
+
+String _fmtNum(double n) => n.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},');
+String _fmtDate(DateTime d) => '${d.day}/${d.month}/${d.year}';

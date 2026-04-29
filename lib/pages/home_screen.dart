@@ -21,6 +21,10 @@ import 'package:app_duralon/services/catalog_service.dart';
 import 'package:app_duralon/services/product_service.dart';
 import 'package:app_duralon/styles/app_style.dart';
 import 'package:app_duralon/utils/slide_right_route.dart';
+import 'package:app_duralon/models/cart_item.dart';
+import 'package:app_duralon/pages/carrito_screen.dart';
+import 'package:app_duralon/pages/mis_pedidos_screen.dart';
+import 'package:app_duralon/services/cart_service.dart';
 import 'package:app_duralon/widgets/duralon_guest_cart_dialog.dart';
 import 'package:app_duralon/widgets/home/home_side_menu.dart'
     show HomeSideMenu, kSideMenuItemsRequiringAccount;
@@ -193,10 +197,30 @@ class _HomeScreenState extends State<HomeScreen> {
       showDuralonGuestCartDialog(context);
       return;
     }
-    final name = product == null ? '' : ' (${product.name})';
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text('Agregado al carrito$name')));
+    if (product != null) {
+      final item = CartItem.fromProduct(
+        product,
+        product.activeVariants.isNotEmpty
+            ? product.activeVariants.first
+            : null,
+        product.minOrderQty > 0 ? product.minOrderQty : 1,
+        _isDistribuidor,
+      );
+      CartService.instance.addItem(item);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${product.name} agregado al carrito')),
+      );
+    } else {
+      Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(builder: (_) => const CarritoScreen()),
+      );
+    }
   }
+
+  bool get _isDistribuidor =>
+      _userRole == 'cliente_distribuidor' ||
+      _userRole == 'vendedor' ||
+      _userRole == 'admin';
 
   void _showComingSoon(BuildContext context, String feature) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -305,6 +329,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   _closeMenu();
                   Navigator.push<void>(context,
                       slideRightRoute<void>(const AdminPanelScreen()));
+                  return;
+                }
+                if (item == 'Mis pedidos') {
+                  _closeMenu();
+                  Navigator.push<void>(context,
+                      slideRightRoute<void>(const MisPedidosScreen()));
                   return;
                 }
                 if (item == 'Reglas mayoristas') {

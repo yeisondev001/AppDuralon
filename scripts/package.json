@@ -1,0 +1,10 @@
+{
+  "name": "duralon-firestore-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Scripts one-shot para Firestore de AppDuralon",
+  "dependencies": {
+    "firebase-admin": "^12.0.0",
+    "xlsx": "^0.18.5"
+  }
+}
