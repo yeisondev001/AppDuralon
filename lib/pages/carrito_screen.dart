@@ -4,7 +4,6 @@ import 'package:app_duralon/services/cart_service.dart';
 import 'package:app_duralon/services/order_service.dart';
 import 'package:app_duralon/styles/app_style.dart';
 import 'package:app_duralon/widgets/cart/cart_item_card.dart';
-import 'package:app_duralon/widgets/cart/coupon_field.dart';
 import 'package:app_duralon/widgets/cart/totals_card.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -19,11 +18,6 @@ class CarritoScreen extends StatefulWidget {
 class _CarritoScreenState extends State<CarritoScreen> {
   final _cart = CartService.instance;
 
-  String? _cuponCodigo;
-  double _cuponDescuento = 0;
-  String? _cuponEtiqueta;
-  bool _cuponInvalido = false;
-
   @override
   void initState() {
     super.initState();
@@ -37,37 +31,6 @@ class _CarritoScreenState extends State<CarritoScreen> {
   }
 
   void _onCartChanged() => setState(() {});
-
-  void _aplicarCupon(String code) {
-    final c = code.trim().toUpperCase();
-    setState(() {
-      if (c == 'DURALON10') {
-        _cuponCodigo = c;
-        _cuponDescuento = 0.10;
-        _cuponEtiqueta = '10% descuento';
-        _cuponInvalido = false;
-      } else if (c == 'DIST5') {
-        _cuponCodigo = c;
-        _cuponDescuento = 0.05;
-        _cuponEtiqueta = '5% distribuidor';
-        _cuponInvalido = false;
-      } else if (c.isNotEmpty) {
-        _cuponCodigo = c;
-        _cuponDescuento = 0;
-        _cuponEtiqueta = 'Cupón inválido';
-        _cuponInvalido = true;
-      }
-    });
-  }
-
-  void _quitarCupon() {
-    setState(() {
-      _cuponCodigo = null;
-      _cuponDescuento = 0;
-      _cuponEtiqueta = null;
-      _cuponInvalido = false;
-    });
-  }
 
   bool _enviando = false;
 
@@ -162,17 +125,15 @@ class _CarritoScreenState extends State<CarritoScreen> {
           imageUrl:  i.imageUrl,
         )).toList(),
         subtotal:  _subtotal,
-        descuento: _descuento,
+        descuento: 0,
         itbis:     _itbis,
         total:     _total,
-        cupon:     _cuponCodigo,
         notas:     notasController.text.trim(),
         createdAt: DateTime.now(),
       );
 
       await OrderService.createOrder(order);
       _cart.clear();
-      _quitarCupon();
 
       if (!context.mounted) return;
       await Navigator.pushReplacement<void, void>(
@@ -193,10 +154,8 @@ class _CarritoScreenState extends State<CarritoScreen> {
 
   double get _subtotal =>
       _cart.items.fold(0, (s, it) => s + it.total);
-  double get _descuento =>
-      _cuponInvalido ? 0 : _subtotal * _cuponDescuento;
-  double get _itbis => (_subtotal - _descuento) * 0.18;
-  double get _total => _subtotal - _descuento + _itbis;
+  double get _itbis => _subtotal * 0.18;
+  double get _total => _subtotal + _itbis;
 
   @override
   Widget build(BuildContext context) {
@@ -236,18 +195,10 @@ class _CarritoScreenState extends State<CarritoScreen> {
                                 onRemove: () => _cart.removeItem(it.id),
                               ),
                             )),
-                        const SizedBox(height: 6),
-                        CouponField(
-                          onApply: _aplicarCupon,
-                          onClear: _quitarCupon,
-                          codigo: _cuponCodigo,
-                          etiqueta: _cuponEtiqueta,
-                          invalido: _cuponInvalido,
-                        ),
                         const SizedBox(height: 14),
                         TotalsCard(
                           subtotal: _subtotal,
-                          descuento: _descuento,
+                          descuento: 0,
                           itbis: _itbis,
                           total: _total,
                         ),
