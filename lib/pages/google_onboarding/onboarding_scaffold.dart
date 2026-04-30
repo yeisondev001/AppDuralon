@@ -12,6 +12,7 @@ class OnboardingScaffold extends StatelessWidget {
     required this.onContinue,
     this.continueLabel = 'Continuar',
     this.canContinue = true,
+    this.onBack,
   });
 
   final int step;
@@ -22,6 +23,7 @@ class OnboardingScaffold extends StatelessWidget {
   final VoidCallback? onContinue;
   final String continueLabel;
   final bool canContinue;
+  final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +42,7 @@ class OnboardingScaffold extends StatelessWidget {
                       color: AppColors.accentBlue,
                       size: 26,
                     ),
-                    onPressed: () => Navigator.maybePop(context),
+                    onPressed: onBack ?? () => Navigator.maybePop(context),
                   ),
                   const Spacer(),
                   Text(

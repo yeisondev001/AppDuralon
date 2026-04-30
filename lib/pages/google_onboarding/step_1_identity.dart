@@ -2,6 +2,7 @@
 // Pantalla 1 de 2 — Identidad fiscal
 // Agrupa: Tipo de cliente · Nombre · RNC / Cédula
 // =============================================================================
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:app_duralon/pages/google_onboarding/app_colors.dart';
@@ -9,6 +10,7 @@ import 'package:app_duralon/pages/google_onboarding/onboarding_data.dart';
 import 'package:app_duralon/pages/google_onboarding/onboarding_scaffold.dart';
 import 'package:app_duralon/pages/google_onboarding/shared_inputs.dart';
 import 'package:app_duralon/pages/google_onboarding/step_2_location.dart';
+import 'package:app_duralon/pages/login_screen.dart';
 
 class Step1IdentityScreen extends StatefulWidget {
   const Step1IdentityScreen({super.key, required this.data});
@@ -106,6 +108,14 @@ class _Step1IdentityScreenState extends State<Step1IdentityScreen> {
       subtitle: 'Selecciona tu tipo de cliente, tu nombre\ny tu número de identificación.',
       canContinue: _canContinue,
       onContinue: _next,
+      onBack: () async {
+        await FirebaseAuth.instance.signOut();
+        if (!context.mounted) return;
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+          (_) => false,
+        );
+      },
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
