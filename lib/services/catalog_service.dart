@@ -147,6 +147,39 @@ class CatalogService {
     await batch.commit();
   }
 
+  /// Migra la estructura legacy: si existe el documento 'industrial' (inglés)
+  /// y no existe 'crates', escribe los nuevos documentos industriales correctos
+  /// y borra el viejo. Seguro llamarlo en cada inicio — no hace nada si ya migró.
+  static Future<void> migrateIndustrialIfNeeded() async {
+    try {
+      final oldDoc = await _col.doc('industrial').get();
+      if (!oldDoc.exists) return;
+
+      final cratesDoc = await _col.doc('crates').get();
+      final batch = FirebaseFirestore.instance.batch();
+
+      if (!cratesDoc.exists) {
+        var order = 0;
+        _industrial.forEach((title, subtypes) {
+          final id = _groupIds[title] ?? _slugify(title);
+          batch.set(_col.doc(id), {
+            'title': title,
+            'tab': 'industrial',
+            'order': order++,
+            'subtypes': subtypes,
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        });
+      }
+
+      batch.delete(_col.doc('industrial'));
+      await batch.commit();
+    } catch (_) {
+      // Silencioso — si falla por permisos no bloquea la app
+    }
+  }
+
   static String _slugify(String s) =>
       s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
 }

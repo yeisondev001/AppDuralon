@@ -71,6 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadRolePermissions();
     _startProductsStream();
     _startCatalogsStream();
+    CatalogService.migrateIndustrialIfNeeded();
   }
 
   @override
@@ -180,8 +181,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Productos de un subtipo específico (para el acordeón del catálogo).
-  /// Filtra primero por [catalogId] + coincidencia exacta de categoría; si no
-  /// hay resultados usa solo [catalogId]; si tampoco hay, cae en búsqueda texto.
+  /// Prioridad: catalogId+categoría exacta → solo catalogId → slug del nombre
+  /// como catalogId (compatibilidad con categoría legacy 'industrial' en inglés)
+  /// → búsqueda por texto.
   List<Product> _productsForSection(String catalogId, String subtype) {
     final exact = _products
         .where((p) =>
@@ -192,6 +194,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final byCatalog = _products.where((p) => p.catalogId == catalogId).toList();
     if (byCatalog.isNotEmpty) return byCatalog;
+
+    // Compatibilidad con el documento legacy 'industrial' que tenía subtypes en
+    // inglés ('Crates', 'Pallets'). El slug del nombre coincide con los catalogIds
+    // reales de los productos ('crates', 'pallets').
+    final slugId = subtype.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '');
+    if (slugId.isNotEmpty) {
+      final bySlug = _products.where((p) => p.catalogId == slugId).toList();
+      if (bySlug.isNotEmpty) return bySlug;
+    }
 
     final key = subtype.trim().toLowerCase();
     return _products
