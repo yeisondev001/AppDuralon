@@ -258,20 +258,55 @@ class _ProductoScreenState extends State<ProductoScreen> {
                       ),
                     ),
                   ),
-                  IconButton(
-                    onPressed: () {
-                      if (widget.isGuestMode) {
-                        showDuralonGuestCartDialog(context);
-                      } else {
-                        Navigator.of(context).push<void>(
-                          MaterialPageRoute<void>(
-                            builder: (_) => const CarritoScreen(),
+                  ListenableBuilder(
+                    listenable: CartService.instance,
+                    builder: (context, _) {
+                      final count = CartService.instance.totalPiezas;
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          IconButton(
+                            onPressed: () {
+                              if (widget.isGuestMode) {
+                                showDuralonGuestCartDialog(context);
+                              } else {
+                                Navigator.of(context).push<void>(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => const CarritoScreen(),
+                                  ),
+                                );
+                              }
+                            },
+                            icon: const Icon(Icons.shopping_cart_outlined, color: Colors.black),
+                            tooltip: 'Carrito',
                           ),
-                        );
-                      }
+                          if (count > 0)
+                            Positioned(
+                              right: 4,
+                              top: 4,
+                              child: IgnorePointer(
+                                child: Container(
+                                  padding: const EdgeInsets.all(3),
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.primaryRed,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                                  child: Text(
+                                    '$count',
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
                     },
-                    icon: const Icon(Icons.shopping_cart_outlined, color: Colors.black),
-                    tooltip: 'Carrito',
                   ),
                 ],
               ),
