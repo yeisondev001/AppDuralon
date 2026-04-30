@@ -204,7 +204,9 @@ class _QtyGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final empaques = stepQty > 1 ? (qty / stepQty).round() : null;
+    final byBox = stepQty > 1;
+    // Número que se muestra en el contador: cajas si hay stepQty, unidades si no
+    final displayCount = byBox ? (qty / stepQty).round() : qty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -223,7 +225,7 @@ class _QtyGroup extends StatelessWidget {
               SizedBox(
                 width: 42,
                 child: Text(
-                  '$qty',
+                  '$displayCount',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontFamily: 'monospace',
@@ -236,16 +238,17 @@ class _QtyGroup extends StatelessWidget {
             ],
           ),
         ),
-        if (empaques != null) ...[
-          const SizedBox(height: 4),
+        const SizedBox(height: 4),
+        if (byBox)
           Text(
-            '$empaques ${empaques == 1 ? 'empaque' : 'empaques'} × $stepQty u',
-            style: const TextStyle(
-              fontSize: 10,
-              color: Color(0xFF94A3B8),
-            ),
+            '${displayCount == 1 ? 'caja' : 'cajas'} · $qty unidades',
+            style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
+          )
+        else
+          Text(
+            '${qty == 1 ? 'unidad' : 'unidades'}',
+            style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
           ),
-        ],
       ],
     );
   }
