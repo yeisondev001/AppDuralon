@@ -411,7 +411,7 @@ class _AvatarHeader extends StatelessWidget {
             style: const TextStyle(fontSize: 14, color: Color(0xFF6B7685)),
             textAlign: TextAlign.center,
           ),
-          if (roleLabel.isNotEmpty) ...[
+          if (role == 'admin' && roleLabel.isNotEmpty) ...[
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
