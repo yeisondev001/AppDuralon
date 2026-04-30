@@ -168,11 +168,11 @@ class AuthService {
 
     final requiresRnc = _taxpayerTypeRequiresRnc(taxpayerType);
     if (requiresRnc == null) return true;
-    if (requiresRnc) {
-      return identification.length != 9 || !isValidDominicanRnc(identification);
-    }
-    return identification.length != 11 ||
-        !_isValidDominicanCedula(identification);
+    // Solo valida longitud — el checksum es orientativo, no determina si el
+    // onboarding está completo o no.
+    return requiresRnc
+        ? identification.length != 9
+        : identification.length != 11;
   }
 
   Future<void> completeGoogleCustomerOnboarding({
