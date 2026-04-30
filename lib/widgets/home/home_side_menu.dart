@@ -30,14 +30,12 @@ const _kRoleLabels = {
   'cliente_minorista': 'Cliente Minorista',
   'cliente_distribuidor': 'Cliente Distribuidor',
   'cliente': 'Cliente', // retrocompat
-  'vendedor': 'Vendedor',
   'admin': 'Administrador',
 };
 const _kRoleColors = {
   'cliente_minorista': Color(0xFF1565C0),
   'cliente_distribuidor': Color(0xFF00838F),
   'cliente': Color(0xFF1565C0), // retrocompat
-  'vendedor': Color(0xFFE65100),
   'admin': Color(0xFFC62828),
 };
 

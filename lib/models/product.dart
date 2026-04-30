@@ -9,7 +9,6 @@ class Product {
     required this.name,
     required this.category,
     required this.price,
-    required this.imageAsset,
     this.description,
     this.color,
     this.ean,
@@ -35,8 +34,6 @@ class Product {
 
   /// Precio base (**Firestore:** campo `precio`; el nombre en inglés `price` está obsoleto).
   final double price;
-
-  final String imageAsset;
 
   final String? description;
 
@@ -80,9 +77,11 @@ class Product {
   final bool isActive;
 
   // ── Helpers ──────────────────────────────────────────────────
-  String get displayImage => (imageUrl != null && imageUrl!.isNotEmpty)
-      ? imageUrl!
-      : imageAsset;
+  /// Devuelve [imageUrl] si está disponible, o el logo local como fallback.
+  String get displayImage =>
+      (imageUrl != null && imageUrl!.isNotEmpty)
+          ? imageUrl!
+          : 'assets/images/duralon_logo.png';
 
   bool get hasVariants => variants.isNotEmpty;
 
@@ -132,11 +131,7 @@ class Product {
       category: (d['category'] as String?)?.trim().isNotEmpty == true
           ? d['category'] as String
           : 'General',
-      price:
-          rawPrecio is num ? rawPrecio.toDouble() : 0,
-      imageAsset: (d['imageAsset'] as String?)?.trim().isNotEmpty == true
-          ? d['imageAsset'] as String
-          : 'assets/images/duralon_logo.png',
+      price:       rawPrecio is num ? rawPrecio.toDouble() : 0,
       description: d['description'] as String?,
       color:       d['color'] as String?,
       ean:         d['ean']   as String?,
@@ -169,11 +164,10 @@ class Product {
       'stepQty':     stepQty,
       if (palletQty != null)       'palletQty':  palletQty,
       if (dimensions.isNotEmpty)   'dimensions': dimensions,
-      'imageAsset':  imageAsset,
-      if (imageUrl != null)        'imageUrl':  imageUrl,
-      if (imageUrls.isNotEmpty)    'imageUrls': imageUrls,
-      if (catalogId != null)       'catalogId': catalogId,
-      if (tab != null)             'tab':       tab,
+      if (imageUrl != null)        'imageUrl':   imageUrl,
+      if (imageUrls.isNotEmpty)    'imageUrls':  imageUrls,
+      if (catalogId != null)       'catalogId':  catalogId,
+      if (tab != null)             'tab':        tab,
       if (variants.isNotEmpty)
         'variants': variants.map((v) => v.toMap()).toList(),
       'isActive': isActive,
@@ -185,7 +179,6 @@ class Product {
     String? name,
     String? category,
     double? price,
-    String? imageAsset,
     String? description,
     String? color,
     String? ean,
@@ -206,7 +199,6 @@ class Product {
       name:        name        ?? this.name,
       category:    category    ?? this.category,
       price:       price       ?? this.price,
-      imageAsset:  imageAsset  ?? this.imageAsset,
       description: description ?? this.description,
       color:       color       ?? this.color,
       ean:         ean         ?? this.ean,

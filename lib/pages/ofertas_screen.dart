@@ -20,7 +20,6 @@ class OfertasScreen extends StatelessWidget {
 
   bool get _isDistribuidor =>
       userRole == 'cliente_distribuidor' ||
-      userRole == 'vendedor' ||
       userRole == 'admin';
 
   @override

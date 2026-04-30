@@ -167,7 +167,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
   /// Campos de la tarjeta "Información de cuenta" según el rol.
   List<Widget> _buildCuentaRows(User user, Map<String, dynamic>? data) {
     final role = data?['rol'] as String?;
-    final esInterno = role == 'admin' || role == 'vendedor';
+    final esInterno = role == 'admin';
 
     return [
       // Todos ven su nombre y correo.
@@ -211,7 +211,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
     Map<String, dynamic> customer,
   ) {
     final role = userData?['rol'] as String?;
-    final esInterno = role == 'admin' || role == 'vendedor';
+    final esInterno = role == 'admin';
     final taxpayerType = customer['tipoContribuyente'] as String?;
     final identification = customer['identificacion'] as String?;
     final identificationType = customer['tipoIdentificacion'] as String?;
@@ -345,14 +345,12 @@ class _AvatarHeader extends StatelessWidget {
       'cliente_minorista': 'Cliente Minorista',
       'cliente_distribuidor': 'Cliente Distribuidor',
       'cliente': 'Cliente',
-      'vendedor': 'Vendedor',
       'admin': 'Administrador',
     };
     const roleColors = {
       'cliente_minorista': Color(0xFF1565C0),
       'cliente_distribuidor': Color(0xFF00838F),
       'cliente': Color(0xFF1565C0),
-      'vendedor': Color(0xFFE65100),
       'admin': Color(0xFFC62828),
     };
     final roleLabel = roleLabels[role] ?? role ?? '';
@@ -601,14 +599,12 @@ class _RoleBadge extends StatelessWidget {
       'cliente_minorista': 'Cliente Minorista',
       'cliente_distribuidor': 'Cliente Distribuidor',
       'cliente': 'Cliente',
-      'vendedor': 'Vendedor',
       'admin': 'Administrador',
     };
     const colors = {
       'cliente_minorista': Color(0xFF1565C0),
       'cliente_distribuidor': Color(0xFF00838F),
       'cliente': Color(0xFF1565C0),
-      'vendedor': Color(0xFFE65100),
       'admin': Color(0xFFC62828),
     };
     final label = labels[role] ?? role;

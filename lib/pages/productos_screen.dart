@@ -5,6 +5,7 @@ import 'package:app_duralon/pages/producto_screen.dart';
 import 'package:app_duralon/styles/app_style.dart';
 import 'package:app_duralon/utils/slide_right_route.dart';
 import 'package:app_duralon/widgets/duralon_guest_cart_dialog.dart';
+import 'package:app_duralon/widgets/product_image.dart';
 import 'package:flutter/material.dart';
 
 class ProductosScreen extends StatefulWidget {
@@ -189,11 +190,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                         Expanded(
                                           child: ClipRRect(
                                             borderRadius: BorderRadius.circular(8),
-                                            child: SizedBox(
+                                            child: Container(
                                               width: double.infinity,
-                                              child: Image.asset(
-                                                product.imageAsset,
-                                                fit: BoxFit.cover,
+                                              color: Colors.white,
+                                              padding: const EdgeInsets.all(6),
+                                              child: ProductImage(
+                                                src: product.displayImage,
+                                                fit: BoxFit.contain,
                                               ),
                                             ),
                                           ),

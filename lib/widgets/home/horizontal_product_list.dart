@@ -2,6 +2,7 @@
 // [InkWell] del detalle para que siempre dispare [onAddToCart] (invitado → diálogo).
 import 'package:app_duralon/models/product.dart';
 import 'package:app_duralon/styles/app_style.dart';
+import 'package:app_duralon/widgets/product_image.dart';
 import 'package:flutter/material.dart';
 
 class HorizontalProductList extends StatelessWidget {
@@ -27,7 +28,7 @@ class HorizontalProductList extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
         itemCount: products.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        separatorBuilder: (_, i) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
           final product = products[index];
           return Material(
@@ -51,10 +52,11 @@ class HorizontalProductList extends StatelessWidget {
                             child: Container(
                               height: 112,
                               width: double.infinity,
-                              color: colors.surfaceContainerHigh,
-                              child: Image.asset(
-                                product.imageAsset,
-                                fit: BoxFit.cover,
+                              color: Colors.white,
+                              padding: const EdgeInsets.all(8),
+                              child: ProductImage(
+                                src: product.displayImage,
+                                fit: BoxFit.contain,
                               ),
                             ),
                           ),

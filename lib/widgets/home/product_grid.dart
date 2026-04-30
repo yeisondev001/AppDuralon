@@ -1,4 +1,5 @@
 import 'package:app_duralon/models/product.dart';
+import 'package:app_duralon/widgets/product_image.dart';
 import 'package:flutter/material.dart';
 
 class ProductGrid extends StatelessWidget {
@@ -67,8 +68,9 @@ class _ProductCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
                   width: double.infinity,
-                  color: colors.surfaceContainerHigh,
-                  child: Image.asset(product.imageAsset, fit: BoxFit.cover),
+                  color: Colors.white,
+                  padding: const EdgeInsets.all(8),
+                  child: ProductImage(src: product.displayImage, fit: BoxFit.contain),
                 ),
               ),
             ),

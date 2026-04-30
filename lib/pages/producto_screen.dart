@@ -12,6 +12,7 @@ import 'package:app_duralon/services/cart_service.dart';
 import 'package:app_duralon/services/product_rules_service.dart';
 import 'package:app_duralon/styles/app_style.dart';
 import 'package:app_duralon/widgets/duralon_guest_cart_dialog.dart';
+import 'package:app_duralon/widgets/product_image.dart';
 import 'package:flutter/material.dart';
 
 // Mapa de nombre de color (español) → Color de Flutter para los chips.
@@ -56,7 +57,7 @@ class ProductoScreen extends StatefulWidget {
   final bool isGuestMode;
 
   /// Rol del usuario: 'cliente_minorista', 'cliente_distribuidor',
-  /// 'vendedor', 'admin'. Nulo = invitado.
+  /// 'admin'. Nulo = invitado.
   final String? userRole;
 
   @override
@@ -82,7 +83,13 @@ class _ProductoScreenState extends State<ProductoScreen> {
   int get _effectiveMinOrderQty =>
       _remoteMinOrderQty ?? (_p.minOrderQty > 0 ? _p.minOrderQty : 1);
 
-  int get _stepQty => _remoteStepQty ?? (_p.stepQty <= 0 ? 1 : _p.stepQty);
+  // Si stepQty no está definido, el paso = mínimo de paquete (no se puede
+  // pedir fracción de paquete: si el mínimo es 20, los saltos son 20, 40, 60…).
+  int get _stepQty {
+    if (_remoteStepQty != null) return _remoteStepQty!;
+    if (_p.stepQty > 0) return _p.stepQty;
+    return _effectiveMinOrderQty;
+  }
 
   double get _activePrice {
     if (_selectedVariant != null) {
@@ -97,12 +104,9 @@ class _ProductoScreenState extends State<ProductoScreen> {
 
   bool get _isDistribuidor =>
       widget.userRole == 'cliente_distribuidor' ||
-      widget.userRole == 'vendedor' ||
       widget.userRole == 'admin';
 
-  bool get _isVendedor =>
-      widget.userRole == 'vendedor' || widget.userRole == 'admin';
-
+  bool get _isAdmin => widget.userRole == 'admin';
 
   // ── Lista de colores que muestra el selector ──────────────────
   /// Si hay variantes activas usa sus colores únicos;
@@ -123,6 +127,16 @@ class _ProductoScreenState extends State<ProductoScreen> {
     super.initState();
     _unidades = _effectiveMinOrderQty;
     _loadWholesaleRules();
+    // Auto-seleccionar si solo hay un color disponible.
+    if (_displayColors.length == 1) {
+      _selectedColor = _displayColors.first;
+      if (_p.hasVariants && _p.activeVariants.isNotEmpty) {
+        _selectedVariant = _p.activeVariants.firstWhere(
+          (v) => v.color == _selectedColor,
+          orElse: () => _p.activeVariants.first,
+        );
+      }
+    }
   }
 
   Future<void> _loadWholesaleRules() async {
@@ -206,7 +220,7 @@ class _ProductoScreenState extends State<ProductoScreen> {
         opaque: false,
         barrierColor: Colors.transparent,
         pageBuilder: (ctx, a1, a2) =>
-            _FotoProductoPantallaCompleta(imageAsset: _p.imageAsset),
+            _FotoProductoPantallaCompleta(imageSrc: _p.displayImage),
         transitionsBuilder: (ctx, animation, a2, child) =>
             FadeTransition(opacity: animation, child: child),
         transitionDuration: const Duration(milliseconds: 220),
@@ -298,11 +312,14 @@ class _ProductoScreenState extends State<ProductoScreen> {
                                   child: PageView(
                                     controller: _imagePageController,
                                     children: [
-                                      Image.asset(
-                                        _p.imageAsset,
-                                        fit: BoxFit.contain,
-                                      ),
-                                    ],
+                                      _p.displayImage,
+                                      ..._p.imageUrls,
+                                    ]
+                                        .map((src) => ProductImage(
+                                              src: src,
+                                              fit: BoxFit.contain,
+                                            ))
+                                        .toList(),
                                   ),
                                 ),
                               ),
@@ -444,13 +461,13 @@ class _ProductoScreenState extends State<ProductoScreen> {
                             ),
                           ),
 
-                          // Código / EAN (para vendedores e internos)
-                          if (_isVendedor) ...[
+                          // Código / EAN (solo admin)
+                          if (_isAdmin) ...[
                             const SizedBox(height: 4),
                             Row(
                               children: [
                                 _BadgeInfo(label: 'Código', value: _p.id),
-                                if (_p.ean?.isNotEmpty == true) ...[
+                                if (_isAdmin && _p.ean?.isNotEmpty == true) ...[
                                   const SizedBox(width: 8),
                                   _BadgeInfo(label: 'EAN', value: _p.ean!),
                                 ],
@@ -486,7 +503,7 @@ class _ProductoScreenState extends State<ProductoScreen> {
                             product: _p,
                             selectedVariant: _selectedVariant,
                             isDistribuidor: _isDistribuidor,
-                            isVendedor: _isVendedor,
+                            isAdmin: _isAdmin,
                           ),
 
                           // Compra mínima
@@ -664,9 +681,10 @@ class _ColorSelector extends StatelessWidget {
               final isSelected = selectedColor == color;
               final chipColor = _kColorMap[color] ?? const Color(0xFFB0B8C4);
               final isLight = _isLightColor(chipColor);
+              final isSingle = displayColors.length == 1;
 
               return GestureDetector(
-                onTap: () => onColorSelected(color),
+                onTap: isSingle ? null : () => onColorSelected(color),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -740,13 +758,13 @@ class _CaracteristicasCard extends StatefulWidget {
     required this.product,
     this.selectedVariant,
     required this.isDistribuidor,
-    required this.isVendedor,
+    required this.isAdmin,
   });
 
   final Product product;
   final ProductVariant? selectedVariant;
   final bool isDistribuidor;
-  final bool isVendedor;
+  final bool isAdmin;
 
   @override
   State<_CaracteristicasCard> createState() => _CaracteristicasCardState();
@@ -842,14 +860,14 @@ class _CaracteristicasCardState extends State<_CaracteristicasCard> {
       rows.add(_CaractRow(label: 'Cajas/pallet', value: '$palletQty cajas'));
     }
 
-    // EAN de la variante (si está seleccionada) o del producto
+    // EAN de la variante (si está seleccionada) o del producto — solo admin
     final ean = _v?.ean.isNotEmpty == true ? _v!.ean : _p.ean;
-    if (ean != null && ean.isNotEmpty) {
+    if (ean != null && ean.isNotEmpty && widget.isAdmin) {
       rows.add(_CaractRow(label: 'EAN', value: ean));
     }
 
     // Precios diferenciados por rol (sólo si hay variante seleccionada)
-    if (widget.isVendedor && _v != null) {
+    if (widget.isAdmin && _v != null) {
       rows.add(_CaractRow(
         label: 'Precio minorista',
         value: 'RD\$ ${_v!.priceRetail.toStringAsFixed(0)}/caja',
@@ -875,7 +893,7 @@ class _CaracteristicasCardState extends State<_CaracteristicasCard> {
     }
 
     // Stock (sólo para ventas/admin)
-    if (widget.isVendedor && _v != null) {
+    if (widget.isAdmin && _v != null) {
       rows.add(_CaractRow(label: 'Stock', value: '${_v!.stock} cajas disponibles'));
     }
 
@@ -1009,8 +1027,8 @@ class _QtyCircleButton extends StatelessWidget {
 // Visor de foto en pantalla completa con efecto vidrio
 // =============================================================================
 class _FotoProductoPantallaCompleta extends StatelessWidget {
-  const _FotoProductoPantallaCompleta({required this.imageAsset});
-  final String imageAsset;
+  const _FotoProductoPantallaCompleta({required this.imageSrc});
+  final String imageSrc;
 
   @override
   Widget build(BuildContext context) {
@@ -1034,7 +1052,7 @@ class _FotoProductoPantallaCompleta extends StatelessWidget {
                 child: InteractiveViewer(
                   minScale: 0.4,
                   maxScale: 4.0,
-                  child: Image.asset(imageAsset, fit: BoxFit.contain),
+                  child: ProductImage(src: imageSrc, fit: BoxFit.contain),
                 ),
               ),
               Positioned(

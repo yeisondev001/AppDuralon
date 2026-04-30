@@ -94,7 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       setState(() {
         _userRole = role;
-        _canManageWholesaleRules = role == 'admin' || role == 'vendedor';
+        _canManageWholesaleRules = role == 'admin';
         _isAdmin = role == 'admin';
       });
     } catch (_) {}
@@ -180,12 +180,25 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Productos de un subtipo específico (para el acordeón del catálogo).
-  List<Product> _productsForSection(String section) {
-    final key = section.trim().toLowerCase();
-    return _products.where((p) {
-      return p.name.toLowerCase().contains(key) ||
-          p.category.toLowerCase().contains(key);
-    }).toList();
+  /// Filtra primero por [catalogId] + coincidencia exacta de categoría; si no
+  /// hay resultados usa solo [catalogId]; si tampoco hay, cae en búsqueda texto.
+  List<Product> _productsForSection(String catalogId, String subtype) {
+    final exact = _products
+        .where((p) =>
+            p.catalogId == catalogId &&
+            p.category.toLowerCase() == subtype.trim().toLowerCase())
+        .toList();
+    if (exact.isNotEmpty) return exact;
+
+    final byCatalog = _products.where((p) => p.catalogId == catalogId).toList();
+    if (byCatalog.isNotEmpty) return byCatalog;
+
+    final key = subtype.trim().toLowerCase();
+    return _products
+        .where((p) =>
+            p.name.toLowerCase().contains(key) ||
+            p.category.toLowerCase().contains(key))
+        .toList();
   }
 
   // ── UI helpers ────────────────────────────────────────────────────────────────
@@ -223,7 +236,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   bool get _isDistribuidor =>
       _userRole == 'cliente_distribuidor' ||
-      _userRole == 'vendedor' ||
       _userRole == 'admin';
 
   void _showComingSoon(BuildContext context, String feature) {
@@ -234,13 +246,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ── Navegación ────────────────────────────────────────────────────────────────
 
-  void _openProductsScreen(BuildContext context, String section) {
+  void _openProductsScreen(
+      BuildContext context, String catalogId, String subtype) {
     Navigator.push<void>(
       context,
       slideRightRoute<void>(
         ProductosScreen(
-          sectionTitle: section,
-          products: _productsForSection(section),
+          sectionTitle: subtype,
+          products: _productsForSection(catalogId, subtype),
           isGuestMode: widget.isGuestMode,
           userRole: _userRole,
         ),
@@ -295,7 +308,8 @@ class _HomeScreenState extends State<HomeScreen> {
         CatalogoStandaloneScreen(
           isGuestMode: widget.isGuestMode,
           onCartTap: () => _handleCartTap(context, null),
-          onSectionTap: (section) => _openProductsScreen(context, section),
+          onSectionTap: (catalogId, subtype) =>
+              _openProductsScreen(context, catalogId, subtype),
         ),
       ),
     );
@@ -367,6 +381,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     }
                     if (item == 'Mis pedidos') {
                       _closeMenu();
+                      if (widget.isGuestMode) {
+                        showDuralonGuestCartDialog(context);
+                        return;
+                      }
                       Navigator.push<void>(
                         context,
                         slideRightRoute<void>(const MisPedidosScreen()),

@@ -238,7 +238,7 @@ class CatalogoStandaloneScreen extends StatefulWidget {
 
   final bool isGuestMode;
   final VoidCallback onCartTap;
-  final ValueChanged<String> onSectionTap;
+  final void Function(String catalogId, String subtype) onSectionTap;
 
   @override
   State<CatalogoStandaloneScreen> createState() =>
@@ -542,7 +542,7 @@ class _CatalogoStandaloneScreenState
                                     ),
                                     title: Text(subtype),
                                     onTap: () =>
-                                        widget.onSectionTap(subtype),
+                                        widget.onSectionTap(cat.id, subtype),
                                   );
                                 }).toList(),
                               ),

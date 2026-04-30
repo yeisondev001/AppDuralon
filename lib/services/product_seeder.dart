@@ -219,7 +219,6 @@ class ProductSeeder {
         'color': color,
         'precio': _precioAleatorio(),
         'isActive': true,
-        'imageAsset': 'assets/images/duralon_logo.png',
         'minOrderQty': minOrderQty > 0 ? minOrderQty : packQty,
         'stepQty': 1,
         'packQty': packQty,

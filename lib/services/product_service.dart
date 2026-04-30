@@ -57,7 +57,6 @@ class ProductService {
     final payload = {
       ...data,
       'isActive': data['isActive'] ?? true,
-      'imageAsset': data['imageAsset'] ?? 'assets/images/duralon_logo.png',
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     };

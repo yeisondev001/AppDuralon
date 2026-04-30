@@ -36,11 +36,12 @@ class AuthService {
     // En web, GoogleSignIn.instance.supportsAuthenticate() es false.
     // Firebase maneja el popup completo internamente.
     if (kIsWeb) {
-      // prompt: 'select_account' fuerza el selector de cuentas de Google
-      // aunque el navegador ya tenga una sesión activa.
+      // signInWithRedirect evita los warnings de Cross-Origin-Opener-Policy
+      // que genera signInWithPopup en navegadores modernos.
       final provider = GoogleAuthProvider()
         ..setCustomParameters({'prompt': 'select_account'});
-      return _firebaseAuth.signInWithPopup(provider);
+      await _firebaseAuth.signInWithRedirect(provider);
+      return _firebaseAuth.getRedirectResult();
     }
 
     // ── MÓVIL (Android / iOS) ─────────────────────────────────────────────
@@ -193,13 +194,12 @@ class AuthService {
       identification: identification,
       isDominican: isDominican,
     );
+    // Valida solo longitud; el checksum es orientativo, no bloqueante.
     final isValidIdentification = !isDominican
         ? normalizedIdentification.isNotEmpty
         : requiresRnc
-        ? normalizedIdentification.length == 9 &&
-              isValidDominicanRnc(normalizedIdentification)
-        : normalizedIdentification.length == 11 &&
-              _isValidDominicanCedula(normalizedIdentification);
+        ? normalizedIdentification.length == 9
+        : normalizedIdentification.length == 11;
     if (!isValidIdentification) {
       throw InvalidIdentificationException();
     }
@@ -442,7 +442,7 @@ class AuthService {
       total += int.parse(rnc[i]) * weights[i];
     }
     final remainder = total % 11;
-    final verifier = remainder <= 1 ? 0 : 11 - remainder;
+    final verifier = remainder <= 1 ? 1 : 11 - remainder;
     return verifier == int.parse(rnc[8]);
   }
 }

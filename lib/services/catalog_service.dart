@@ -95,7 +95,9 @@ class CatalogService {
 
   /// Estructura base del catálogo Industrial: título → subtipos.
   static const _industrial = <String, List<String>>{
-    'Industrial': ['Crates', 'Otros', 'Pallets'],
+    'Cajones Industriales': ['Cajón Estándar', 'Cajón Reciclado', 'Cajón Grande', 'Caja Logística'],
+    'Otros': ['Conos', 'Accesorios Industriales'],
+    'Paletas': ['Paleta Exportación', 'Paleta Racking', 'Paleta Carga Pesada', 'Paleta Estándar'],
   };
 
   /// IDs estables en Firestore por título de grupo.
@@ -106,7 +108,9 @@ class CatalogService {
     'Jardinería': 'jardineria',
     'Muebles': 'muebles',
     'Infantil': 'infantil',
-    'Industrial': 'industrial',
+    'Cajones Industriales': 'crates',
+    'Otros': 'otros_ind',
+    'Paletas': 'pallets',
   };
 
   /// Escribe en Firestore la estructura base del catálogo usando `set` con merge.
