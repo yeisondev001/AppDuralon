@@ -51,6 +51,7 @@ class OrderItem {
     this.color,
     required this.precio,
     required this.cantidad,
+    this.imageUrl,
   });
 
   final String productId;
@@ -60,6 +61,7 @@ class OrderItem {
   final String? color;
   final double precio;
   final int cantidad;
+  final String? imageUrl;
 
   double get total => precio * cantidad;
 
@@ -68,9 +70,10 @@ class OrderItem {
     'codigo':    codigo,
     'nombre':    nombre,
     'categoria': categoria,
-    if (color != null) 'color': color,
+    if (color != null)    'color':    color,
     'precio':    precio,
     'cantidad':  cantidad,
+    if (imageUrl != null) 'imageUrl': imageUrl,
   };
 
   factory OrderItem.fromMap(Map<String, dynamic> m) => OrderItem(
@@ -81,6 +84,7 @@ class OrderItem {
     color:     m['color']     as String?,
     precio:    (m['precio']   as num?)?.toDouble() ?? 0,
     cantidad:  (m['cantidad'] as num?)?.toInt()    ?? 1,
+    imageUrl:  m['imageUrl']  as String?,
   );
 }
 

@@ -18,6 +18,7 @@ class CartItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final atMin = item.cantidad <= item.minOrderQty;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -33,7 +34,7 @@ class CartItemCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _Thumb(categoria: item.categoria, color: item.color),
+              _Thumb(imageUrl: item.imageUrl, categoria: item.categoria),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -81,6 +82,9 @@ class CartItemCard extends StatelessWidget {
             children: [
               _QtyGroup(
                 qty: item.cantidad,
+                stepQty: item.stepQty,
+                minQty: item.minOrderQty,
+                atMin: atMin,
                 onIncrement: onIncrement,
                 onDecrement: onDecrement,
               ),
@@ -138,16 +142,32 @@ String _fmt(double n) {
   );
 }
 
+// ── Miniatura ─────────────────────────────────────────────────────────────────
+
 class _Thumb extends StatelessWidget {
-  const _Thumb({required this.categoria, this.color});
+  const _Thumb({required this.categoria, this.imageUrl});
   final String categoria;
-  final String? color;
+  final String? imageUrl;
 
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
-      child: Container(
+      child: SizedBox(
+        width: 64,
+        height: 64,
+        child: imageUrl != null && imageUrl!.isNotEmpty
+            ? Image.network(
+                imageUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _placeholder(),
+              )
+            : _placeholder(),
+      ),
+    );
+  }
+
+  Widget _placeholder() => Container(
         width: 64,
         height: 64,
         color: AppColors.lightBlue,
@@ -160,47 +180,73 @@ class _Thumb extends StatelessWidget {
             color: AppColors.primaryBlue,
           ),
         ),
-      ),
-    );
-  }
+      );
 }
+
+// ── Contador por empaque ───────────────────────────────────────────────────────
 
 class _QtyGroup extends StatelessWidget {
   const _QtyGroup({
     required this.qty,
+    required this.stepQty,
+    required this.minQty,
+    required this.atMin,
     required this.onIncrement,
     required this.onDecrement,
   });
+
   final int qty;
+  final int stepQty;
+  final int minQty;
+  final bool atMin;
   final VoidCallback onIncrement;
   final VoidCallback onDecrement;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          _QtyButton(icon: Icons.remove, onTap: onDecrement),
-          SizedBox(
-            width: 36,
-            child: Text(
-              '$qty',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+    final empaques = stepQty > 1 ? (qty / stepQty).round() : null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            children: [
+              _QtyButton(
+                icon: Icons.remove,
+                onTap: atMin ? null : onDecrement,
               ),
+              SizedBox(
+                width: 42,
+                child: Text(
+                  '$qty',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              _QtyButton(icon: Icons.add, onTap: onIncrement),
+            ],
+          ),
+        ),
+        if (empaques != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            '$empaques ${empaques == 1 ? 'empaque' : 'empaques'} × $stepQty u',
+            style: const TextStyle(
+              fontSize: 10,
+              color: Color(0xFF94A3B8),
             ),
           ),
-          _QtyButton(icon: Icons.add, onTap: onIncrement),
         ],
-      ),
+      ],
     );
   }
 }
@@ -208,10 +254,11 @@ class _QtyGroup extends StatelessWidget {
 class _QtyButton extends StatelessWidget {
   const _QtyButton({required this.icon, required this.onTap});
   final IconData icon;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final disabled = onTap == null;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -226,7 +273,11 @@ class _QtyButton extends StatelessWidget {
           ],
         ),
         alignment: Alignment.center,
-        child: Icon(icon, size: 16, color: AppColors.primaryBlue),
+        child: Icon(
+          icon,
+          size: 16,
+          color: disabled ? const Color(0xFFCBD5E1) : AppColors.primaryBlue,
+        ),
       ),
     );
   }

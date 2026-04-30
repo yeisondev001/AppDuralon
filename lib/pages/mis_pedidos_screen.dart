@@ -214,16 +214,17 @@ class OrdenDetalleScreen extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Row(
                   children: [
-                    Container(
-                      width: 40, height: 40,
-                      decoration: BoxDecoration(
-                        color: AppColors.lightBlue,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        item.categoria.isNotEmpty ? item.categoria[0].toUpperCase() : 'D',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.primaryBlue),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: SizedBox(
+                        width: 44, height: 44,
+                        child: item.imageUrl != null && item.imageUrl!.isNotEmpty
+                            ? Image.network(
+                                item.imageUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => _itemPlaceholder(item),
+                              )
+                            : _itemPlaceholder(item),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -275,6 +276,16 @@ class OrdenDetalleScreen extends StatelessWidget {
       ),
     );
   }
+
+  Widget _itemPlaceholder(OrderItem item) => Container(
+    width: 44, height: 44,
+    color: AppColors.lightBlue,
+    alignment: Alignment.center,
+    child: Text(
+      item.categoria.isNotEmpty ? item.categoria[0].toUpperCase() : 'D',
+      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.primaryBlue),
+    ),
+  );
 
   Widget _infoRow(String label, String value) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 5),

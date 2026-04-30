@@ -12,6 +12,9 @@ class CartItem {
     required this.precio,
     required this.cantidad,
     required this.stock,
+    this.imageUrl,
+    this.stepQty = 1,
+    this.minOrderQty = 1,
   });
 
   final String id;
@@ -23,6 +26,13 @@ class CartItem {
   final double precio;
   int cantidad;
   final int stock;
+  final String? imageUrl;
+
+  /// Unidades por empaque (salto mínimo para +/−).
+  final int stepQty;
+
+  /// Cantidad mínima de compra; también el piso del botón "−".
+  final int minOrderQty;
 
   double get total => precio * cantidad;
 
@@ -36,6 +46,10 @@ class CartItem {
     final precio = variant != null
         ? (isDistribuidor ? variant.priceDistributor : variant.priceRetail)
         : p.price;
+    final step = variant != null && variant.packQty > 1
+        ? variant.packQty
+        : (p.stepQty > 1 ? p.stepQty : 1);
+    final minQty = p.minOrderQty > 0 ? p.minOrderQty : step;
     return CartItem(
       id: '${p.id}_$codigo',
       productId: p.id,
@@ -48,6 +62,9 @@ class CartItem {
       precio: precio,
       cantidad: qty,
       stock: variant?.stock ?? 9999,
+      imageUrl: p.imageUrl,
+      stepQty: step,
+      minOrderQty: minQty,
     );
   }
 }

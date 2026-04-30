@@ -14,9 +14,10 @@ class CartService extends ChangeNotifier {
   void addItem(CartItem item) {
     final idx = _items.indexWhere((i) => i.id == item.id);
     if (idx >= 0) {
-      final maxQty = _items[idx].stock > 0 ? _items[idx].stock : 99999;
-      _items[idx].cantidad =
-          (_items[idx].cantidad + item.cantidad).clamp(1, maxQty);
+      final it = _items[idx];
+      final maxQty = it.stock > 0 ? it.stock : 99999;
+      final minQty = it.minOrderQty > 0 ? it.minOrderQty : 1;
+      it.cantidad = (it.cantidad + item.cantidad).clamp(minQty, maxQty);
     } else {
       _items.add(item);
     }
@@ -28,7 +29,8 @@ class CartService extends ChangeNotifier {
     if (idx < 0) return;
     final it = _items[idx];
     final maxQty = it.stock > 0 ? it.stock : 99999;
-    it.cantidad = (it.cantidad + delta).clamp(1, maxQty);
+    final minQty = it.minOrderQty > 0 ? it.minOrderQty : 1;
+    it.cantidad = (it.cantidad + delta).clamp(minQty, maxQty);
     notifyListeners();
   }
 

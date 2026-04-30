@@ -159,6 +159,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
           color:     i.color,
           precio:    i.precio,
           cantidad:  i.cantidad,
+          imageUrl:  i.imageUrl,
         )).toList(),
         subtotal:  _subtotal,
         descuento: _descuento,
@@ -229,9 +230,9 @@ class _CarritoScreenState extends State<CarritoScreen> {
                               child: CartItemCard(
                                 item: it,
                                 onIncrement: () =>
-                                    _cart.updateQty(it.id, 1),
+                                    _cart.updateQty(it.id, it.stepQty),
                                 onDecrement: () =>
-                                    _cart.updateQty(it.id, -1),
+                                    _cart.updateQty(it.id, -it.stepQty),
                                 onRemove: () => _cart.removeItem(it.id),
                               ),
                             )),
