@@ -87,10 +87,9 @@ class CatalogService {
       'Canastas y Cestos', 'Hampers', 'Cubetas, Cubetas y Lebrillos',
       'Poncheras', 'Zafacones',
     ],
-    'Mascotas': ['Bacinillas'],
     'Jardinería': ['Tarros', 'Planters', 'Jardineras'],
     'Muebles': ['Mesas', 'Sillas', 'Muebles Rattan'],
-    'Infantil': ['Silla', 'Cubeta bañito', 'Banqueta'],
+    'Infantil': ['Silla', 'Cubeta bañito', 'Banqueta', 'Bacinillas'],
   };
 
   /// Estructura base del catálogo Industrial: título → subtipos.
@@ -104,7 +103,6 @@ class CatalogService {
   static const _groupIds = <String, String>{
     'Cocina': 'cocina',
     'Artículos del Hogar': 'articulos_hogar',
-    'Mascotas': 'mascotas',
     'Jardinería': 'jardineria',
     'Muebles': 'muebles',
     'Infantil': 'infantil',
@@ -147,34 +145,48 @@ class CatalogService {
     await batch.commit();
   }
 
-  /// Migra la estructura legacy: si existe el documento 'industrial' (inglés)
-  /// y no existe 'crates', escribe los nuevos documentos industriales correctos
-  /// y borra el viejo. Seguro llamarlo en cada inicio — no hace nada si ya migró.
+  /// Migra documentos legacy del catálogo. Seguro llamarlo en cada inicio.
   static Future<void> migrateIndustrialIfNeeded() async {
     try {
-      final oldDoc = await _col.doc('industrial').get();
-      if (!oldDoc.exists) return;
-
-      final cratesDoc = await _col.doc('crates').get();
       final batch = FirebaseFirestore.instance.batch();
+      var needsCommit = false;
 
-      if (!cratesDoc.exists) {
-        var order = 0;
-        _industrial.forEach((title, subtypes) {
-          final id = _groupIds[title] ?? _slugify(title);
-          batch.set(_col.doc(id), {
-            'title': title,
-            'tab': 'industrial',
-            'order': order++,
-            'subtypes': subtypes,
-            'createdAt': FieldValue.serverTimestamp(),
-            'updatedAt': FieldValue.serverTimestamp(),
+      // Migración industrial: doc 'industrial' (inglés) → crates/otros_ind/pallets
+      final oldIndustrial = await _col.doc('industrial').get();
+      if (oldIndustrial.exists) {
+        final cratesDoc = await _col.doc('crates').get();
+        if (!cratesDoc.exists) {
+          var order = 0;
+          _industrial.forEach((title, subtypes) {
+            final id = _groupIds[title] ?? _slugify(title);
+            batch.set(_col.doc(id), {
+              'title': title,
+              'tab': 'industrial',
+              'order': order++,
+              'subtypes': subtypes,
+              'createdAt': FieldValue.serverTimestamp(),
+              'updatedAt': FieldValue.serverTimestamp(),
+            });
           });
-        });
+        }
+        batch.delete(_col.doc('industrial'));
+        needsCommit = true;
       }
 
-      batch.delete(_col.doc('industrial'));
-      await batch.commit();
+      // Migración hogar: doc 'mascotas' con Bacinillas → pasa a Infantil
+      final mascotasDoc = await _col.doc('mascotas').get();
+      if (mascotasDoc.exists) {
+        // Actualiza Infantil para incluir Bacinillas
+        final infantilId = _groupIds['Infantil'] ?? _slugify('Infantil');
+        batch.update(_col.doc(infantilId), {
+          'subtypes': _hogar['Infantil'],
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        batch.delete(_col.doc('mascotas'));
+        needsCommit = true;
+      }
+
+      if (needsCommit) await batch.commit();
     } catch (_) {
       // Silencioso — si falla por permisos no bloquea la app
     }
