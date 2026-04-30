@@ -5,6 +5,7 @@ import 'package:app_duralon/services/cart_service.dart';
 import 'package:app_duralon/services/product_service.dart';
 import 'package:app_duralon/styles/app_style.dart';
 import 'package:app_duralon/utils/slide_right_route.dart';
+import 'package:app_duralon/widgets/cart_added_toast.dart';
 import 'package:app_duralon/widgets/duralon_guest_cart_dialog.dart';
 import 'package:flutter/material.dart';
 
@@ -132,9 +133,7 @@ class OfertasScreen extends StatelessWidget {
       _isDistribuidor,
     );
     CartService.instance.addItem(item);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${product.name} agregado al carrito')),
-    );
+    showCartAddedToast(context, product.name, product.minOrderQty > 0 ? product.minOrderQty : 1);
   }
 
   int _descuento(Product p) {

@@ -11,6 +11,7 @@ import 'package:app_duralon/pages/carrito_screen.dart';
 import 'package:app_duralon/services/cart_service.dart';
 import 'package:app_duralon/services/product_rules_service.dart';
 import 'package:app_duralon/styles/app_style.dart';
+import 'package:app_duralon/widgets/cart_added_toast.dart';
 import 'package:app_duralon/widgets/duralon_guest_cart_dialog.dart';
 import 'package:app_duralon/widgets/product_image.dart';
 import 'package:flutter/material.dart';
@@ -195,17 +196,7 @@ class _ProductoScreenState extends State<ProductoScreen> {
       _isDistribuidor,
     );
     CartService.instance.addItem(item);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${_p.name} (×$_unidades) añadido al carrito.'),
-        action: SnackBarAction(
-          label: 'Ver carrito',
-          onPressed: () => Navigator.of(context).push<void>(
-            MaterialPageRoute<void>(builder: (_) => const CarritoScreen()),
-          ),
-        ),
-      ),
-    );
+    showCartAddedToast(context, _p.name, _unidades);
   }
 
   @override

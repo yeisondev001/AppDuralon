@@ -4,7 +4,7 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:app_duralon/pages/login_screen.dart';
+import 'package:app_duralon/pages/auth_gate.dart';
 import 'firebase_options.dart';
 
 // Web client ID (serverClientId para Android, también usado en iOS).
@@ -75,7 +75,7 @@ class AppDuralon extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFF5F6FA),
         useMaterial3: true,
       ),
-      home: const LoginScreen(),
+      home: const AuthGate(),
     );
   }
 }

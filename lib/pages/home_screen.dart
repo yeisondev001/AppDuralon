@@ -28,6 +28,7 @@ import 'package:app_duralon/pages/mis_pedidos_screen.dart';
 import 'package:app_duralon/pages/mis_direcciones_screen.dart';
 import 'package:app_duralon/pages/ofertas_screen.dart';
 import 'package:app_duralon/services/cart_service.dart';
+import 'package:app_duralon/widgets/cart_added_toast.dart';
 import 'package:app_duralon/widgets/duralon_guest_cart_dialog.dart';
 import 'package:app_duralon/widgets/home/home_side_menu.dart'
     show HomeSideMenu, kSideMenuDrawerWidth, kSideMenuItemsRequiringAccount;
@@ -235,9 +236,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _isDistribuidor,
       );
       CartService.instance.addItem(item);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${product.name} agregado al carrito')),
-      );
+      showCartAddedToast(context, product.name, product.minOrderQty > 0 ? product.minOrderQty : 1);
     } else {
       Navigator.of(context).push<void>(
         MaterialPageRoute<void>(builder: (_) => const CarritoScreen()),
