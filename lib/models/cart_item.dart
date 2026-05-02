@@ -36,6 +36,7 @@ class CartItem {
 
   double get total => precio * cantidad;
 
+  /// [qty] es la cantidad en PAQUETES seleccionada en la pantalla de producto.
   static CartItem fromProduct(
     Product p,
     ProductVariant? variant,
@@ -46,10 +47,6 @@ class CartItem {
     final precio = variant != null
         ? (isDistribuidor ? variant.priceDistributor : variant.priceRetail)
         : p.price;
-    final step = variant != null && variant.packQty > 1
-        ? variant.packQty
-        : (p.stepQty > 1 ? p.stepQty : 1);
-    final minQty = p.minOrderQty > 0 ? p.minOrderQty : step;
     return CartItem(
       id: '${p.id}_$codigo',
       productId: p.id,
@@ -60,11 +57,11 @@ class CartItem {
           ? variant.color
           : null,
       precio: precio,
-      cantidad: qty,
+      cantidad: qty,       // paquetes
       stock: variant?.stock ?? 9999,
       imageUrl: p.imageUrl,
-      stepQty: step,
-      minOrderQty: minQty,
+      stepQty: 1,          // incremento: 1 paquete
+      minOrderQty: 1,      // mínimo en carrito: 1 paquete
     );
   }
 }

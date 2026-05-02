@@ -8,11 +8,13 @@ class ProductGrid extends StatelessWidget {
     required this.products,
     required this.onAddToCart,
     required this.onBuyNow,
+    this.isGuestMode = false,
   });
 
   final List<Product> products;
   final ValueChanged<Product> onAddToCart;
   final ValueChanged<Product> onBuyNow;
+  final bool isGuestMode;
 
   @override
   Widget build(BuildContext context) {
@@ -22,6 +24,7 @@ class ProductGrid extends StatelessWidget {
         delegate: SliverChildBuilderDelegate(
           (context, index) => _ProductCard(
             product: products[index],
+            isGuestMode: isGuestMode,
             onAddToCart: () => onAddToCart(products[index]),
             onBuyNow: () => onBuyNow(products[index]),
           ),
@@ -43,11 +46,13 @@ class _ProductCard extends StatelessWidget {
     required this.product,
     required this.onAddToCart,
     required this.onBuyNow,
+    this.isGuestMode = false,
   });
 
   final Product product;
   final VoidCallback onAddToCart;
   final VoidCallback onBuyNow;
+  final bool isGuestMode;
 
   @override
   Widget build(BuildContext context) {
@@ -92,31 +97,47 @@ class _ProductCard extends StatelessWidget {
                   ),
             ),
             const SizedBox(height: 6),
-            Text(
-              'RD\$ ${product.price.toStringAsFixed(2)}',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: colors.primary,
-                    fontWeight: FontWeight.w800,
+            if (isGuestMode)
+              Row(
+                children: [
+                  const Icon(Icons.lock_outline_rounded, size: 14, color: Color(0xFFB0B8C4)),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Inicia sesión',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: const Color(0xFFB0B8C4),
+                          fontWeight: FontWeight.w500,
+                        ),
                   ),
-            ),
+                ],
+              )
+            else
+              Text(
+                'RD\$ ${product.price.toStringAsFixed(2)}',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: colors.primary,
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
             const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: onAddToCart,
-                    child: const Text('Carrito'),
+            if (!isGuestMode)
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: onAddToCart,
+                      child: const Text('Carrito'),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: onBuyNow,
-                    child: const Text('Comprar'),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: onBuyNow,
+                      child: const Text('Comprar'),
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
           ],
         ),
       ),

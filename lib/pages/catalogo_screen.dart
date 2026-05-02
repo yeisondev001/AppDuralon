@@ -33,6 +33,9 @@ class CatalogoScreen extends StatelessWidget {
     required this.onCategoryVerTodos,
     required this.onProductTap,
     required this.onAddToCart,
+    this.streamError,
+    this.onRetry,
+    this.isGuestMode = false,
   });
 
   final int selectedStoreTab;
@@ -47,6 +50,9 @@ class CatalogoScreen extends StatelessWidget {
   final ValueChanged<HomeProductSection> onCategoryVerTodos;
   final ValueChanged<Product> onProductTap;
   final ValueChanged<Product> onAddToCart;
+  final String? streamError;
+  final VoidCallback? onRetry;
+  final bool isGuestMode;
 
   @override
   Widget build(BuildContext context) {
@@ -132,19 +138,59 @@ class CatalogoScreen extends StatelessWidget {
             ),
           ),
         if (productSections.isEmpty)
-          const SliverFillRemaining(
+          SliverFillRemaining(
             hasScrollBody: false,
             child: Center(
               child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text(
-                  'No se encontraron productos con esa busqueda.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Color(0xFF5C6B82),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      streamError != null
+                          ? Icons.cloud_off
+                          : (searchQuery.trim().isNotEmpty
+                              ? Icons.search_off
+                              : Icons.inventory_2_outlined),
+                      size: 56,
+                      color: const Color(0xFF9AA8BD),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      streamError != null
+                          ? 'No se pudieron cargar los productos.'
+                          : (searchQuery.trim().isNotEmpty
+                              ? 'No se encontraron productos con esa búsqueda.'
+                              : 'No hay productos disponibles en este tab.'),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Color(0xFF5C6B82),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (streamError != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        streamError!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Color(0xFF9AA8BD),
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      if (onRetry != null)
+                        FilledButton.icon(
+                          onPressed: onRetry,
+                          icon: const Icon(Icons.refresh, size: 18),
+                          label: const Text('Reintentar'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primaryBlue,
+                          ),
+                        ),
+                    ],
+                  ],
                 ),
               ),
             ),
@@ -217,6 +263,7 @@ class CatalogoScreen extends StatelessWidget {
                     products: section.previewProducts,
                     onAddToCart: onAddToCart,
                     onProductTap: onProductTap,
+                    isGuestMode: isGuestMode,
                   ),
                 ],
               ),

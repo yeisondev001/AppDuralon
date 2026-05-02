@@ -1,3 +1,4 @@
+import 'package:app_duralon/services/cart_service.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -54,6 +55,9 @@ Future<void> main() async {
       serverClientId: _kGoogleWebClientId,
     );
   }
+
+  // Cargar carrito guardado antes de pintar la app.
+  await CartService.instance.hydrate();
 
   runApp(const AppDuralon());
 }

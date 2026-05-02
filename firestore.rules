@@ -46,7 +46,9 @@ service cloud.firestore {
     // customers  (perfil extendido de cliente, mismo UID)
     // ═══════════════════════════════════════════════════════════
     match /customers/{customerId} {
-      allow read:   if isSelf(customerId) || isInterno();
+      // list sin auth permite el lookup por RNC en el login (antes de autenticar).
+      allow list:   if true;
+      allow get:    if isSelf(customerId) || isInterno();
       allow create: if isSelf(customerId);
       allow update: if isSelf(customerId) || isInterno();
       allow delete: if isAdmin();

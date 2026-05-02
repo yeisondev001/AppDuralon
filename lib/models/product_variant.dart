@@ -13,6 +13,8 @@ class ProductVariant {
     required this.priceDistributor,
     this.stock = 0,
     this.isActive = true,
+    this.imageUrl,
+    this.cbm,
   });
 
   /// Código interno del producto (ej: "E3600").
@@ -48,6 +50,12 @@ class ProductVariant {
 
   final bool isActive;
 
+  /// URL de imagen específica de esta variante (color). Nulo = usa la del producto.
+  final String? imageUrl;
+
+  /// Metros cúbicos por paquete específico de esta variante. Nulo = usa el del producto.
+  final double? cbm;
+
   // ── Helpers ──────────────────────────────────────────────────
   bool get isSurtido => color.toLowerCase() == 'surtido';
 
@@ -74,6 +82,8 @@ class ProductVariant {
       priceDistributor:  (m['priceDistributor'] as num?)?.toDouble() ?? 0,
       stock:             (m['stock']    as num?)?.toInt() ?? 0,
       isActive:          m['isActive'] as bool? ?? true,
+      imageUrl:          m['imageUrl']  as String?,
+      cbm:               (m['cbm']     as num?)?.toDouble(),
     );
   }
 
@@ -90,6 +100,8 @@ class ProductVariant {
       'priceDistributor':  priceDistributor,
       'stock':    stock,
       'isActive': isActive,
+      if (imageUrl != null) 'imageUrl': imageUrl,
+      if (cbm != null)      'cbm':      cbm,
     };
   }
 
@@ -105,6 +117,8 @@ class ProductVariant {
     double? priceDistributor,
     int? stock,
     bool? isActive,
+    String? imageUrl,
+    double? cbm,
   }) {
     return ProductVariant(
       codigo:           codigo           ?? this.codigo,
@@ -118,6 +132,8 @@ class ProductVariant {
       priceDistributor: priceDistributor ?? this.priceDistributor,
       stock:            stock            ?? this.stock,
       isActive:         isActive         ?? this.isActive,
+      imageUrl:         imageUrl         ?? this.imageUrl,
+      cbm:              cbm              ?? this.cbm,
     );
   }
 }

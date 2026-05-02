@@ -217,37 +217,53 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        'RD\$ ${product.price.toStringAsFixed(0)}',
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.black,
+                                if (widget.isGuestMode)
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.lock_outline_rounded, size: 13, color: Color(0xFFB0B8C4)),
+                                      const SizedBox(width: 4),
+                                      const Text(
+                                        'Inicia sesión',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                          color: Color(0xFFB0B8C4),
                                         ),
                                       ),
-                                    ),
-                                    IconButton(
-                                      onPressed: () => _onCartAction(
-                                        context,
-                                        product: product,
+                                    ],
+                                  )
+                                else
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          'RD\$ ${product.price.toStringAsFixed(0)}',
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.black,
+                                          ),
+                                        ),
                                       ),
-                                      icon: const Icon(
-                                        Icons.add_shopping_cart_rounded,
-                                        size: 20,
-                                        color: AppColors.primaryRed,
+                                      IconButton(
+                                        onPressed: () => _onCartAction(
+                                          context,
+                                          product: product,
+                                        ),
+                                        icon: const Icon(
+                                          Icons.add_shopping_cart_rounded,
+                                          size: 20,
+                                          color: AppColors.primaryRed,
+                                        ),
+                                        tooltip: 'Agregar al carrito',
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(
+                                          minWidth: 36,
+                                          minHeight: 36,
+                                        ),
                                       ),
-                                      tooltip: 'Agregar al carrito',
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(
-                                        minWidth: 36,
-                                        minHeight: 36,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                    ],
+                                  ),
                               ],
                             ),
                           ),

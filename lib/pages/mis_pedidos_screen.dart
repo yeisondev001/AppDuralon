@@ -4,6 +4,7 @@ import 'package:app_duralon/styles/app_style.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+
 class MisPedidosScreen extends StatelessWidget {
   const MisPedidosScreen({super.key});
 
@@ -186,6 +187,12 @@ class OrdenDetalleScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // Banner cancelar (solo pendiente)
+          if (order.status == OrderStatus.pendiente)
+            _CancelBanner(order: order),
+          if (order.status == OrderStatus.pendiente)
+            const SizedBox(height: 12),
+
           // Info general
           _Card(
             child: Column(
@@ -357,6 +364,106 @@ class _StatusChip extends StatelessWidget {
       case OrderStatus.entregado:  return (const Color(0xFF15803D), const Color(0xFFDCFCE7));
       case OrderStatus.cancelado:  return (const Color(0xFFB91C1C), const Color(0xFFFFE5E8));
     }
+  }
+}
+
+// ── Banner cancelar pedido ─────────────────────────────────────────────────────
+
+class _CancelBanner extends StatefulWidget {
+  const _CancelBanner({required this.order});
+  final Order order;
+
+  @override
+  State<_CancelBanner> createState() => _CancelBannerState();
+}
+
+class _CancelBannerState extends State<_CancelBanner> {
+  bool _cancelling = false;
+
+  Future<void> _cancel(BuildContext context) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Cancelar pedido?'),
+        content: const Text(
+          'Esta acción no se puede deshacer. El pedido pasará a estado Cancelado.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('No, mantener'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: const Color(0xFFB91C1C)),
+            child: const Text('Sí, cancelar'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+    setState(() => _cancelling = true);
+    try {
+      await OrderService.updateStatus(widget.order.id, OrderStatus.cancelado);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Pedido cancelado.')),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al cancelar: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _cancelling = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7ED),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFED7AA)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline_rounded, color: Color(0xFFB45309), size: 20),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              'Puedes cancelar este pedido mientras esté pendiente.',
+              style: TextStyle(fontSize: 13, color: Color(0xFF92400E)),
+            ),
+          ),
+          const SizedBox(width: 10),
+          _cancelling
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFB45309)),
+                )
+              : TextButton(
+                  onPressed: () => _cancel(context),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFFB91C1C),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    backgroundColor: const Color(0xFFFFE5E5),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text(
+                    'Cancelar',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                  ),
+                ),
+        ],
+      ),
+    );
   }
 }
 

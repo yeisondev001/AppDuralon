@@ -15,7 +15,9 @@ class Product {
     this.listPrice,
     this.minOrderQty = 1,
     this.stepQty = 1,
+    this.packQty,
     this.palletQty,
+    this.cbm,
     this.dimensions = const {},
     this.catalogId,
     this.tab,
@@ -52,8 +54,14 @@ class Product {
   /// Salto/múltiplo de compra.
   final int stepQty;
 
+  /// Unidades por paquete/caja.
+  final int? packQty;
+
   /// Cajas por pallet.
   final int? palletQty;
+
+  /// Metros cúbicos por paquete (m³). Nulo si no está definido en Firestore.
+  final double? cbm;
 
   /// Dimensiones físicas en cm. Claves posibles: 'largo', 'ancho', 'alto', 'peso'.
   final Map<String, double> dimensions;
@@ -138,7 +146,9 @@ class Product {
       listPrice:   rawList is num ? rawList.toDouble() : null,
       minOrderQty: rawMin is int ? rawMin : (rawMin is num ? rawMin.toInt() : 1),
       stepQty:     rawStep is int ? rawStep : (rawStep is num ? rawStep.toInt() : 1),
+      packQty:     (d['packQty'] as num?)?.toInt(),
       palletQty:   rawPallet is int ? rawPallet : (rawPallet is num ? rawPallet.toInt() : null),
+      cbm:         (d['cbm'] as num?)?.toDouble(),
       dimensions:  rawDims.map((k, v) => MapEntry(k, (v as num).toDouble())),
       catalogId:   d['catalogId'] as String?,
       tab:         d['tab']      as String?,

@@ -8,9 +8,11 @@ import 'package:app_duralon/models/cart_item.dart';
 import 'package:app_duralon/models/product.dart';
 import 'package:app_duralon/models/product_variant.dart';
 import 'package:app_duralon/pages/carrito_screen.dart';
+import 'package:app_duralon/pages/login_screen.dart';
 import 'package:app_duralon/services/cart_service.dart';
 import 'package:app_duralon/services/product_rules_service.dart';
 import 'package:app_duralon/styles/app_style.dart';
+import 'package:app_duralon/utils/slide_right_route.dart';
 import 'package:app_duralon/widgets/cart_added_toast.dart';
 import 'package:app_duralon/widgets/duralon_guest_cart_dialog.dart';
 import 'package:app_duralon/widgets/product_image.dart';
@@ -66,12 +68,12 @@ class ProductoScreen extends StatefulWidget {
 }
 
 class _ProductoScreenState extends State<ProductoScreen> {
-  late int _unidades;
+  /// Cantidad en PAQUETES seleccionada (nunca en unidades sueltas).
+  int _paquetes = 1;
   final PageController _imagePageController = PageController();
   final ProductRulesService _productRulesService = ProductRulesService();
 
-  int? _remoteMinOrderQty;
-  int? _remoteStepQty;
+  int? _remoteMinPaquetes;
 
   /// Variante seleccionada (cuando hay variants con modelo completo).
   ProductVariant? _selectedVariant;
@@ -81,16 +83,15 @@ class _ProductoScreenState extends State<ProductoScreen> {
 
   Product get _p => widget.product;
 
-  int get _effectiveMinOrderQty =>
-      _remoteMinOrderQty ?? (_p.minOrderQty > 0 ? _p.minOrderQty : 1);
-
-  // Si stepQty no está definido, el paso = mínimo de paquete (no se puede
-  // pedir fracción de paquete: si el mínimo es 20, los saltos son 20, 40, 60…).
-  int get _stepQty {
-    if (_remoteStepQty != null) return _remoteStepQty!;
-    if (_p.stepQty > 0) return _p.stepQty;
-    return _effectiveMinOrderQty;
+  /// Unidades por paquete: toma la variante si existe, luego packQty del producto,
+  /// luego minOrderQty como fallback.
+  int get _unidadesPorPaquete {
+    if (_selectedVariant != null) return _selectedVariant!.packQty;
+    return _p.packQty ?? (_p.minOrderQty > 0 ? _p.minOrderQty : 1);
   }
+
+  /// Mínimo de paquetes a pedir (siempre ≥ 1).
+  int get _minPaquetes => _remoteMinPaquetes ?? 1;
 
   double get _activePrice {
     if (_selectedVariant != null) {
@@ -101,13 +102,31 @@ class _ProductoScreenState extends State<ProductoScreen> {
     return _p.price;
   }
 
-  double get _total => _activePrice * _unidades;
+  double get _total => _activePrice * _paquetes;
 
   bool get _isDistribuidor =>
       widget.userRole == 'cliente_distribuidor' ||
       widget.userRole == 'admin';
 
   bool get _isAdmin => widget.userRole == 'admin';
+
+  /// Imágenes a mostrar en el carrusel: si hay variante seleccionada con su
+  /// propia foto, esa va primero; luego la foto del producto base + extras.
+  List<String> get _displayImages {
+    final list = <String>[];
+    final variantImg = _selectedVariant?.imageUrl;
+    if (variantImg != null && variantImg.isNotEmpty) {
+      list.add(variantImg);
+    }
+    if (_p.displayImage.isNotEmpty && !list.contains(_p.displayImage)) {
+      list.add(_p.displayImage);
+    }
+    for (final u in _p.imageUrls) {
+      if (u.isNotEmpty && !list.contains(u)) list.add(u);
+    }
+    if (list.isEmpty) list.add(_p.displayImage);
+    return list;
+  }
 
   // ── Lista de colores que muestra el selector ──────────────────
   /// Si hay variantes activas usa sus colores únicos;
@@ -126,7 +145,6 @@ class _ProductoScreenState extends State<ProductoScreen> {
   @override
   void initState() {
     super.initState();
-    _unidades = _effectiveMinOrderQty;
     _loadWholesaleRules();
     // Auto-seleccionar si solo hay un color disponible.
     if (_displayColors.length == 1) {
@@ -145,11 +163,8 @@ class _ProductoScreenState extends State<ProductoScreen> {
       final rule = await _productRulesService.getRuleByProductId(_p.id);
       if (!mounted || rule == null) return;
       setState(() {
-        _remoteMinOrderQty = rule.minOrderQty;
-        _remoteStepQty = rule.stepQty;
-        if (_unidades < _effectiveMinOrderQty) {
-          _unidades = _effectiveMinOrderQty;
-        }
+        _remoteMinPaquetes = rule.minOrderQty > 0 ? rule.minOrderQty : null;
+        if (_paquetes < _minPaquetes) _paquetes = _minPaquetes;
       });
     } catch (_) {}
   }
@@ -167,6 +182,10 @@ class _ProductoScreenState extends State<ProductoScreen> {
         }
       }
     });
+    // Si la variante tiene foto propia, salta a la primera (su foto).
+    if (_imagePageController.hasClients) {
+      _imagePageController.jumpToPage(0);
+    }
   }
 
   void _onAnadirAlCarrito(BuildContext context) {
@@ -174,17 +193,12 @@ class _ProductoScreenState extends State<ProductoScreen> {
       showDuralonGuestCartDialog(context);
       return;
     }
-    final minQty = _effectiveMinOrderQty;
-    if (_unidades < minQty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Cantidad mínima: $minQty unidades.')),
-      );
-      return;
-    }
-    if (_stepQty > 1 && (_unidades - minQty) % _stepQty != 0) {
+    if (_paquetes < _minPaquetes) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Compra en múltiplos de $_stepQty desde $minQty unidades.'),
+          content: Text(
+            'Cantidad mínima: $_minPaquetes paquete${_minPaquetes == 1 ? '' : 's'}.',
+          ),
         ),
       );
       return;
@@ -192,11 +206,11 @@ class _ProductoScreenState extends State<ProductoScreen> {
     final item = CartItem.fromProduct(
       _p,
       _selectedVariant,
-      _unidades,
+      _paquetes,
       _isDistribuidor,
     );
     CartService.instance.addItem(item);
-    showCartAddedToast(context, _p.name, _unidades);
+    showCartAddedToast(context, _p.name, _paquetes);
   }
 
   @override
@@ -337,10 +351,7 @@ class _ProductoScreenState extends State<ProductoScreen> {
                                   behavior: HitTestBehavior.opaque,
                                   child: PageView(
                                     controller: _imagePageController,
-                                    children: [
-                                      _p.displayImage,
-                                      ..._p.imageUrls,
-                                    ]
+                                    children: _displayImages
                                         .map((src) => ProductImage(
                                               src: src,
                                               fit: BoxFit.contain,
@@ -421,36 +432,38 @@ class _ProductoScreenState extends State<ProductoScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Expanded(
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                                  textBaseline: TextBaseline.alphabetic,
-                                  children: [
-                                    Text(
-                                      _activePrice == 0
-                                          ? 'Precio a consultar'
-                                          : 'RD\$ ${_activePrice.toStringAsFixed(0)}',
-                                      style: TextStyle(
-                                        fontSize: _activePrice == 0 ? 16 : 22,
-                                        fontWeight: FontWeight.w800,
-                                        color: _activePrice == 0
-                                            ? const Color(0xFF8E9AAF)
-                                            : Colors.black,
+                                child: widget.isGuestMode
+                                    ? const SizedBox.shrink()
+                                    : Row(
+                                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                                        textBaseline: TextBaseline.alphabetic,
+                                        children: [
+                                          Text(
+                                            _activePrice == 0
+                                                ? 'Precio a consultar'
+                                                : 'RD\$ ${_activePrice.toStringAsFixed(0)}',
+                                            style: TextStyle(
+                                              fontSize: _activePrice == 0 ? 16 : 22,
+                                              fontWeight: FontWeight.w800,
+                                              color: _activePrice == 0
+                                                  ? const Color(0xFF8E9AAF)
+                                                  : Colors.black,
+                                            ),
+                                          ),
+                                          if (_p.listPrice != null) ...[
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              'RD\$ ${_p.listPrice!.toStringAsFixed(0)}',
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                color: Color(0xFF8E9AAF),
+                                                decoration: TextDecoration.lineThrough,
+                                                decorationColor: AppColors.primaryRed,
+                                              ),
+                                            ),
+                                          ],
+                                        ],
                                       ),
-                                    ),
-                                    if (_p.listPrice != null) ...[
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'RD\$ ${_p.listPrice!.toStringAsFixed(0)}',
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          color: Color(0xFF8E9AAF),
-                                          decoration: TextDecoration.lineThrough,
-                                          decorationColor: AppColors.primaryRed,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
                               ),
                               Container(
                                 margin: const EdgeInsets.only(left: 8),
@@ -514,6 +527,64 @@ class _ProductoScreenState extends State<ProductoScreen> {
                             ),
                           ],
 
+                          // ── Banner de precios para invitados ───
+                          if (widget.isGuestMode) ...[
+                            const SizedBox(height: 16),
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.of(context).push<void>(
+                                  slideRightRoute<void>(const LoginScreen()),
+                                );
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEFF6FF),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.35)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF3B82F6).withValues(alpha: 0.12),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.lock_outline_rounded, size: 18, color: Color(0xFF1D4ED8)),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    const Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Precio disponible solo para clientes',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFF1D4ED8),
+                                            ),
+                                          ),
+                                          SizedBox(height: 2),
+                                          Text(
+                                            'Inicia sesión para ver precios y hacer pedidos',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Color(0xFF3B82F6),
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFF3B82F6)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+
                           // ── Selector de color ──────────────────
                           const SizedBox(height: 16),
                           _ColorSelector(
@@ -530,24 +601,27 @@ class _ProductoScreenState extends State<ProductoScreen> {
                             selectedVariant: _selectedVariant,
                             isDistribuidor: _isDistribuidor,
                             isAdmin: _isAdmin,
+                            isGuestMode: widget.isGuestMode,
+                            paquetes: _paquetes,
                           ),
 
                           // Compra mínima
                           const SizedBox(height: 12),
-                          Text(
-                            'Compra mínima: $_effectiveMinOrderQty unidades'
-                            '${_stepQty > 1 ? ' | Múltiplo: $_stepQty' : ''}',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF6A7482),
-                              fontWeight: FontWeight.w600,
+                          if (!widget.isGuestMode)
+                            Text(
+                              'Compra mínima: $_minPaquetes paquete${_minPaquetes == 1 ? '' : 's'}',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF6A7482),
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
 
-                          // Selector de cantidad
+                          // Selector de cantidad (solo clientes)
+                          if (!widget.isGuestMode) ...[
                           const SizedBox(height: 24),
                           const Text(
-                            'Unidades',
+                            'Paquetes',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 13,
@@ -561,8 +635,8 @@ class _ProductoScreenState extends State<ProductoScreen> {
                             children: [
                               _QtyCircleButton(
                                 icon: Icons.remove,
-                                onPressed: _unidades > _effectiveMinOrderQty
-                                    ? () => setState(() => _unidades -= _stepQty)
+                                onPressed: _paquetes > _minPaquetes
+                                    ? () => setState(() => _paquetes -= 1)
                                     : null,
                                 highlight: false,
                               ),
@@ -573,31 +647,81 @@ class _ProductoScreenState extends State<ProductoScreen> {
                                   color: const Color(0xFFF0F2F6),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: Text(
-                                  '$_unidades',
-                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      '$_paquetes',
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    if (_unidadesPorPaquete > 1)
+                                      Text(
+                                        '= ${_paquetes * _unidadesPorPaquete} und.',
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          color: Color(0xFF8E9AAF),
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ),
                               _QtyCircleButton(
                                 icon: Icons.add,
-                                onPressed: _unidades + _stepQty <= 9999
-                                    ? () => setState(() => _unidades += _stepQty)
+                                onPressed: _paquetes < 9999
+                                    ? () => setState(() => _paquetes += 1)
                                     : null,
                                 highlight: true,
                               ),
                             ],
                           ),
-                          const SizedBox(height: 20),
-                          if (_activePrice > 0)
-                            Text(
-                              'Total: RD\$ ${_total.toStringAsFixed(2)}',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black,
-                              ),
-                            ),
+                          ],
+                          if (!widget.isGuestMode) ...[
+                            const SizedBox(height: 20),
+                            // ── Resumen: precio total + CBM total ──
+                            Builder(builder: (context) {
+                              final cbmUnit = _selectedVariant?.cbm ??
+                                  _p.cbm ??
+                                  (() {
+                                    final dims = _selectedVariant?.dimensions.isNotEmpty == true
+                                        ? _selectedVariant!.dimensions
+                                        : _p.dimensions;
+                                    final l = dims['largo'], a = dims['ancho'], h = dims['alto'];
+                                    if (l == null || a == null || h == null) return null;
+                                    return (l * a * h) / 1000000;
+                                  })();
+                              return Column(
+                                children: [
+                                  if (_activePrice > 0)
+                                    Text(
+                                      'Total: RD\$ ${_total.toStringAsFixed(0)}',
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                  if (cbmUnit != null && cbmUnit > 0) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'CBM: ${(cbmUnit * _paquetes).toStringAsFixed(4)} m³'
+                                      '  ($_paquetes × ${cbmUnit.toStringAsFixed(4)})',
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF6A7482),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              );
+                            }),
+                          ],
+                          if (!widget.isGuestMode) ...[
                           const SizedBox(height: 20),
                           SizedBox(
                             width: double.infinity,
@@ -618,6 +742,7 @@ class _ProductoScreenState extends State<ProductoScreen> {
                               ),
                             ),
                           ),
+                          ],
                         ],
                       ),
                     ),
@@ -785,12 +910,16 @@ class _CaracteristicasCard extends StatefulWidget {
     this.selectedVariant,
     required this.isDistribuidor,
     required this.isAdmin,
+    this.isGuestMode = false,
+    this.paquetes = 1,
   });
 
   final Product product;
   final ProductVariant? selectedVariant;
   final bool isDistribuidor;
   final bool isAdmin;
+  final bool isGuestMode;
+  final int paquetes;
 
   @override
   State<_CaracteristicasCard> createState() => _CaracteristicasCardState();
@@ -858,6 +987,16 @@ class _CaracteristicasCardState extends State<_CaracteristicasCard> {
     );
   }
 
+  /// Calcula CBM desde dimensiones si el campo `cbm` no está en Firestore.
+  double? _computeCbm() {
+    final dims = _v?.dimensions.isNotEmpty == true ? _v!.dimensions : _p.dimensions;
+    final l = dims['largo'];
+    final a = dims['ancho'];
+    final h = dims['alto'];
+    if (l == null || a == null || h == null) return null;
+    return (l * a * h) / 1000000;
+  }
+
   List<Widget> _buildRows() {
     final rows = <Widget>[];
 
@@ -877,13 +1016,17 @@ class _CaracteristicasCardState extends State<_CaracteristicasCard> {
     // Empaque
     final packQty = _v?.packQty ?? _p.minOrderQty;
     if (packQty > 0) {
-      rows.add(_CaractRow(label: 'Unidades/caja', value: '$packQty unidades'));
+      rows.add(_CaractRow(label: 'Unidades/paquete', value: '$packQty unidades'));
     }
 
-    // Pallet
-    final palletQty = _v?.palletQty ?? _p.palletQty;
-    if (palletQty != null && palletQty > 0) {
-      rows.add(_CaractRow(label: 'Cajas/pallet', value: '$palletQty cajas'));
+    // CBM total según paquetes seleccionados
+    final cbmUnit = _v?.cbm ?? _p.cbm ?? _computeCbm();
+    if (cbmUnit != null && cbmUnit > 0) {
+      final totalCbm = cbmUnit * widget.paquetes;
+      final label = widget.paquetes > 1
+          ? 'CBM (${widget.paquetes} paq.)'
+          : 'CBM/paquete';
+      rows.add(_CaractRow(label: label, value: '${totalCbm.toStringAsFixed(4)} m³'));
     }
 
     // EAN de la variante (si está seleccionada) o del producto — solo admin
@@ -892,30 +1035,32 @@ class _CaracteristicasCardState extends State<_CaracteristicasCard> {
       rows.add(_CaractRow(label: 'EAN', value: ean));
     }
 
-    // Precios diferenciados por rol (sólo si hay variante seleccionada)
-    if (widget.isAdmin && _v != null) {
-      rows.add(_CaractRow(
-        label: 'Precio minorista',
-        value: 'RD\$ ${_v!.priceRetail.toStringAsFixed(0)}/caja',
-        highlight: true,
-      ));
-      rows.add(_CaractRow(
-        label: 'Precio distribuidor',
-        value: 'RD\$ ${_v!.priceDistributor.toStringAsFixed(0)}/caja',
-        highlight: true,
-      ));
-    } else if (widget.isDistribuidor && _v != null) {
-      rows.add(_CaractRow(
-        label: 'Tu precio',
-        value: 'RD\$ ${_v!.priceDistributor.toStringAsFixed(0)}/caja',
-        highlight: true,
-      ));
-    } else if (_v != null) {
-      rows.add(_CaractRow(
-        label: 'Precio',
-        value: 'RD\$ ${_v!.priceRetail.toStringAsFixed(0)}/caja',
-        highlight: true,
-      ));
+    // Precios diferenciados por rol (ocultos para invitados)
+    if (!widget.isGuestMode) {
+      if (widget.isAdmin && _v != null) {
+        rows.add(_CaractRow(
+          label: 'Precio minorista',
+          value: 'RD\$ ${_v!.priceRetail.toStringAsFixed(0)}/caja',
+          highlight: true,
+        ));
+        rows.add(_CaractRow(
+          label: 'Precio distribuidor',
+          value: 'RD\$ ${_v!.priceDistributor.toStringAsFixed(0)}/caja',
+          highlight: true,
+        ));
+      } else if (widget.isDistribuidor && _v != null) {
+        rows.add(_CaractRow(
+          label: 'Tu precio',
+          value: 'RD\$ ${_v!.priceDistributor.toStringAsFixed(0)}/caja',
+          highlight: true,
+        ));
+      } else if (_v != null) {
+        rows.add(_CaractRow(
+          label: 'Precio',
+          value: 'RD\$ ${_v!.priceRetail.toStringAsFixed(0)}/caja',
+          highlight: true,
+        ));
+      }
     }
 
     // Stock (sólo para ventas/admin)

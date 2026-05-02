@@ -3,6 +3,7 @@
 import 'dart:math';
 
 import 'package:app_duralon/models/product.dart';
+import 'package:app_duralon/utils/product_grouping.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ProductService {
@@ -15,15 +16,18 @@ class ProductService {
   // ── Streams ───────────────────────────────────────────────────────────────────
 
   /// Todos los productos activos en tiempo real, ordenados por nombre.
+  /// Las variantes de color (códigos que sólo difieren en el último carácter)
+  /// se agrupan en un solo producto con [variants] poblado.
   static Stream<List<Product>> streamAll({bool activeOnly = true}) {
     Query<Map<String, dynamic>> q = _col.orderBy('name');
     if (activeOnly) {
       q = q.where('isActive', isEqualTo: true);
     }
-    return q.snapshots().map(_mapSnap);
+    return q.snapshots().map(_mapSnapGrouped);
   }
 
   /// Productos activos filtrados por tab ("hogar" | "industrial").
+  /// Variantes de color agrupadas en un solo producto.
   static Stream<List<Product>> streamByTab(String tab,
       {bool activeOnly = true}) {
     Query<Map<String, dynamic>> q =
@@ -31,10 +35,11 @@ class ProductService {
     if (activeOnly) {
       q = q.where('isActive', isEqualTo: true);
     }
-    return q.snapshots().map(_mapSnap);
+    return q.snapshots().map(_mapSnapGrouped);
   }
 
   /// Productos filtrados por catalogId (ej: "cocina").
+  /// Variantes de color agrupadas en un solo producto.
   static Stream<List<Product>> streamByCatalog(String catalogId,
       {bool activeOnly = true}) {
     Query<Map<String, dynamic>> q =
@@ -42,10 +47,11 @@ class ProductService {
     if (activeOnly) {
       q = q.where('isActive', isEqualTo: true);
     }
-    return q.snapshots().map(_mapSnap);
+    return q.snapshots().map(_mapSnapGrouped);
   }
 
-  /// Stream de TODOS los productos (sin filtro isActive), para el panel de admin.
+  /// Stream de TODOS los productos (sin filtro isActive y SIN agrupar),
+  /// para el panel de admin que necesita ver y editar cada documento.
   static Stream<List<Product>> streamAdmin() {
     return _col.orderBy('name').snapshots().map(_mapSnap);
   }
@@ -123,5 +129,10 @@ class ProductService {
         .map((d) => Product.fromFirestore(
             d as DocumentSnapshot<Map<String, dynamic>>))
         .toList();
+  }
+
+  /// Igual que [_mapSnap] pero agrupa por código base (color = último carácter).
+  static List<Product> _mapSnapGrouped(QuerySnapshot<Map<String, dynamic>> snap) {
+    return groupProductsByBaseCode(_mapSnap(snap));
   }
 }

@@ -11,11 +11,13 @@ class HorizontalProductList extends StatelessWidget {
     required this.products,
     required this.onAddToCart,
     required this.onProductTap,
+    this.isGuestMode = false,
   });
 
   final List<Product> products;
   final ValueChanged<Product> onAddToCart;
   final ValueChanged<Product> onProductTap;
+  final bool isGuestMode;
 
   @override
   Widget build(BuildContext context) {
@@ -73,36 +75,51 @@ class HorizontalProductList extends StatelessWidget {
                       ),
                     ),
                     const Spacer(),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'RD\$ ${product.price.toStringAsFixed(2)}',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.w800,
-                                ),
+                    if (isGuestMode)
+                      Row(
+                        children: [
+                          const Icon(Icons.lock_outline_rounded, size: 14, color: Color(0xFFB0B8C4)),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Inicia sesión',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: const Color(0xFFB0B8C4),
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                        ),
-                        IconButton(
-                          onPressed: () => onAddToCart(product),
-                          icon: const Icon(
-                            Icons.add_shopping_cart_rounded,
-                            size: 20,
-                            color: AppColors.primaryRed,
+                        ],
+                      )
+                    else
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'RD\$ ${product.price.toStringAsFixed(2)}',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                            ),
                           ),
-                          tooltip: 'Agregar al carrito',
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 40,
-                            minHeight: 40,
+                          IconButton(
+                            onPressed: () => onAddToCart(product),
+                            icon: const Icon(
+                              Icons.add_shopping_cart_rounded,
+                              size: 20,
+                              color: AppColors.primaryRed,
+                            ),
+                            tooltip: 'Agregar al carrito',
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 40,
+                              minHeight: 40,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
                   ],
                 ),
               ),

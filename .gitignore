@@ -12,6 +12,12 @@
 .swiftpm/
 migrate_working_dir/
 
+# Claude Code local state (worktrees, sessions, settings)
+.claude/
+
+# Exportes locales con datos personales — nunca commitear
+users_export.json
+
 # IntelliJ related
 *.iml
 *.ipr

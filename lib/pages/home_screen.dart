@@ -60,6 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<CatalogCategory> _catalogs = const [];
   bool _productsLoaded = false;
   bool _catalogsLoaded = false;
+  String? _streamError;
 
   StreamSubscription<List<Product>>? _productsSub;
   StreamSubscription<List<CatalogCategory>>? _catalogsSub;
@@ -107,15 +108,20 @@ class _HomeScreenState extends State<HomeScreen> {
   void _startProductsStream() {
     _productsSub = ProductService.streamAll().listen(
       (products) {
+        debugPrint('[HomeScreen] Productos cargados: ${products.length}');
         if (!mounted) return;
         setState(() {
           _products = products;
           _productsLoaded = true;
         });
       },
-      onError: (_) {
+      onError: (Object e) {
+        debugPrint('[HomeScreen] ProductService error: $e');
         if (!mounted) return;
-        setState(() => _productsLoaded = true);
+        setState(() {
+          _productsLoaded = true;
+          _streamError = 'Productos: $e';
+        });
       },
     );
   }
@@ -123,17 +129,36 @@ class _HomeScreenState extends State<HomeScreen> {
   void _startCatalogsStream() {
     _catalogsSub = CatalogService.streamAll().listen(
       (cats) {
+        debugPrint('[HomeScreen] Catálogos cargados: ${cats.length}');
         if (!mounted) return;
         setState(() {
           _catalogs = cats;
           _catalogsLoaded = true;
         });
       },
-      onError: (_) {
+      onError: (Object e) {
+        debugPrint('[HomeScreen] CatalogService error: $e');
         if (!mounted) return;
-        setState(() => _catalogsLoaded = true);
+        setState(() {
+          _catalogsLoaded = true;
+          _streamError = 'Catálogos: $e';
+        });
       },
     );
+  }
+
+  void _retryStreams() {
+    _productsSub?.cancel();
+    _catalogsSub?.cancel();
+    setState(() {
+      _productsLoaded = false;
+      _catalogsLoaded = false;
+      _streamError = null;
+      _products = const [];
+      _catalogs = const [];
+    });
+    _startProductsStream();
+    _startCatalogsStream();
   }
 
   // ── Secciones del home ────────────────────────────────────────────────────────
@@ -487,6 +512,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 selectedStoreTab: _selectedStoreTab,
                                 searchQuery: _searchQuery,
                                 productSections: _homeProductSections,
+                                streamError: _streamError,
+                                onRetry: _retryStreams,
                                 onMenuTap: _toggleMenu,
                                 onCartTap: () => _handleCartTap(context, null),
                                 onSearchChanged: (v) =>
@@ -503,6 +530,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 onProductTap: (p) =>
                                     _openProductoScreen(context, p),
                                 onAddToCart: (p) => _handleCartTap(context, p),
+                                isGuestMode: widget.isGuestMode,
                               ),
                       ),
                     ),
