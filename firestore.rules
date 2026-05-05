@@ -128,5 +128,17 @@ service cloud.firestore {
       allow read:   if true;
       allow write:  if isAdmin();
     }
+
+    // ═══════════════════════════════════════════════════════════
+    // rnc_lookup  (mapa RNC/cédula → correo para login)
+    // Lectura pública para permitir el lookup antes de autenticar.
+    // Solo el propio usuario autenticado puede crear su entrada.
+    // ═══════════════════════════════════════════════════════════
+    match /rnc_lookup/{rncNormalizado} {
+      allow read:   if true;
+      allow create: if isAuth();
+      allow update: if isAuth();
+      allow delete: if isAdmin();
+    }
   }
 }

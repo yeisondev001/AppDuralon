@@ -31,6 +31,42 @@ class AuthService {
     );
   }
 
+  /// Busca el correo asociado al RNC/cédula en [rnc_lookup] y hace login.
+  Future<UserCredential> signInWithRnc({
+    required String rnc,
+    required String password,
+  }) async {
+    final normalized = _normalizeDigits(rnc);
+    if (normalized.isEmpty) {
+      throw FirebaseAuthException(
+        code: 'invalid-rnc',
+        message: 'Ingresa un RNC o cédula válido.',
+      );
+    }
+
+    final lookupDoc = await _firestore
+        .collection('rnc_lookup')
+        .doc(normalized)
+        .get();
+
+    if (!lookupDoc.exists) {
+      throw FirebaseAuthException(
+        code: 'rnc-not-found',
+        message: 'No se encontró una cuenta con ese RNC o cédula.',
+      );
+    }
+
+    final correo = lookupDoc.data()?['correo'] as String?;
+    if (correo == null || correo.isEmpty) {
+      throw FirebaseAuthException(
+        code: 'rnc-no-email',
+        message: 'Error en la cuenta. Contacta al soporte.',
+      );
+    }
+
+    return signIn(email: correo, password: password);
+  }
+
   Future<UserCredential> signInWithGoogle() async {
     // ── WEB ──────────────────────────────────────────────────────────────────
     // En web, GoogleSignIn.instance.supportsAuthenticate() es false.
@@ -214,6 +250,9 @@ class AuthService {
 
     final customerRef = _firestore.collection('customers').doc(user.uid);
     final userRef = _firestore.collection('users').doc(user.uid);
+    final rncLookupRef = _firestore
+        .collection('rnc_lookup')
+        .doc(normalizedIdentification);
     final now = FieldValue.serverTimestamp();
     final batch = _firestore.batch();
 
@@ -260,6 +299,14 @@ class AuthService {
       'creadoEn': now,
     }, SetOptions(merge: true));
 
+    // Permite que el usuario pueda iniciar sesión con RNC/cédula en el futuro
+    if ((user.email ?? '').isNotEmpty) {
+      batch.set(rncLookupRef, {
+        'correo': (user.email ?? '').trim(),
+        'creadoEn': now,
+      }, SetOptions(merge: true));
+    }
+
     await batch.commit();
   }
 
@@ -299,6 +346,9 @@ class AuthService {
 
     final customerRef = _firestore.collection('customers').doc(user.uid);
     final userRef = _firestore.collection('users').doc(user.uid);
+    final rncLookupRef = _firestore
+        .collection('rnc_lookup')
+        .doc(normalizedIdentification);
 
     final now = FieldValue.serverTimestamp();
     final batch = _firestore.batch();
@@ -331,6 +381,11 @@ class AuthService {
       'estado': 'activo',
       'creadoEn': now,
       'actualizadoEn': now,
+    });
+    // Entrada pública para login por RNC/cédula
+    batch.set(rncLookupRef, {
+      'correo': email.trim(),
+      'creadoEn': now,
     });
     await batch.commit();
   }
