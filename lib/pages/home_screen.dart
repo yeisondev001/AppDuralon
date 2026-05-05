@@ -162,6 +162,8 @@ class _HomeScreenState extends State<HomeScreen> {
           return HomeProductSection(
             categoryId: cat.id,
             title: cat.title,
+            titleEn: cat.titleEn,
+            titleFr: cat.titleFr,
             subtypes: cat.subtypes,
             previewProducts: list,
           );
@@ -298,12 +300,17 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _openProductoScreen(BuildContext context, Product product) {
+  void _openProductoScreen(
+    BuildContext context,
+    Product product, [
+    List<Product>? colorGroup,
+  ]) {
     Navigator.push<void>(
       context,
       slideRightRoute<void>(
         ProductoScreen(
           product: product,
+          colorProducts: colorGroup,
           isGuestMode: widget.isGuestMode,
           userRole: _userRole,
         ),
@@ -500,8 +507,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                       context,
                                       section,
                                     ),
-                                onProductTap: (p) =>
-                                    _openProductoScreen(context, p),
+                                onProductTap: (p, group) =>
+                                    _openProductoScreen(context, p, group),
                                 onAddToCart: (p) => _handleCartTap(context, p),
                               ),
                       ),

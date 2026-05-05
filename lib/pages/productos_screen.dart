@@ -1,12 +1,57 @@
-// Grid 3 columnas con todos los productos de una categoria o subtipo.
-// Tap en una celda abre [ProductoScreen]; [isGuestMode] se reenvia al detalle.
+// Grid con productos agrupados por código base (ej: BAR agrupa BARB/BARC/BARM).
+// Tap en grupo con un solo producto → detalle directo.
+// Tap en grupo con varios colores → selector de color en bottom sheet.
 import 'package:app_duralon/models/product.dart';
 import 'package:app_duralon/pages/producto_screen.dart';
 import 'package:app_duralon/styles/app_style.dart';
+import 'package:app_duralon/utils/color_utils.dart';
 import 'package:app_duralon/utils/slide_right_route.dart';
 import 'package:app_duralon/widgets/duralon_guest_cart_dialog.dart';
 import 'package:app_duralon/widgets/product_image.dart';
 import 'package:flutter/material.dart';
+
+const Map<String, Color> _kColorMap = {
+  'Azul':         Color(0xFF1565C0),
+  'Rojo':         Color(0xFFC62828),
+  'Verde':        Color(0xFF2E7D32),
+  'Amarillo':     Color(0xFFF9A825),
+  'Naranja':      Color(0xFFE65100),
+  'Rosado':       Color(0xFFEC407A),
+  'Fucsia':       Color(0xFFAD1457),
+  'Morado':       Color(0xFF6A1B9A),
+  'Violeta':      Color(0xFF6A1B9A),
+  'Negro':        Color(0xFF212121),
+  'Blanco':       Color(0xFFF5F5F5),
+  'Crema':        Color(0xFFF0DEB8),
+  'Caramelo':     Color(0xFFC8860A),
+  'Gris':         Color(0xFF757575),
+  'Marrón':       Color(0xFF6D4C41),
+  'Ladrillo':     Color(0xFFB71C1C),
+  'Mostaza':      Color(0xFFF57F17),
+  'Terracota':    Color(0xFFBF360C),
+  'Verde Limón':  Color(0xFF8BC34A),
+  'Menta':        Color(0xFF80CBC4),
+  'Celeste':      Color(0xFF4FC3F7),
+  'Clear':        Color(0xFFE0F7FA),
+  'Transparente': Color(0xFFE0F7FA),
+};
+
+class _ProductGroup {
+  _ProductGroup(this.products);
+  final List<Product> products;
+  Product get representative => products.first;
+  bool get isGrouped => products.length > 1;
+
+  // Nombre base: quita el último token si coincide con un color conocido
+  String get displayName {
+    final name = representative.name;
+    final words = name.split(' ');
+    if (words.length > 1 && _kColorMap.containsKey(words.last)) {
+      return words.sublist(0, words.length - 1).join(' ');
+    }
+    return name;
+  }
+}
 
 class ProductosScreen extends StatefulWidget {
   const ProductosScreen({
@@ -27,39 +72,78 @@ class ProductosScreen extends StatefulWidget {
 }
 
 class _ProductosScreenState extends State<ProductosScreen> {
-  // Texto del campo buscar: filtra por nombre o categoria.
   String _query = '';
 
   List<Product> get _filteredProducts {
     final q = _query.trim().toLowerCase();
     if (q.isEmpty) return widget.products;
-    return widget.products.where((product) {
-      return product.name.toLowerCase().contains(q) ||
-          product.category.toLowerCase().contains(q);
+    return widget.products.where((p) {
+      return p.name.toLowerCase().contains(q) ||
+          p.category.toLowerCase().contains(q);
     }).toList();
   }
 
-  void _onCartAction(BuildContext context, {Product? product}) {
-    if (widget.isGuestMode) {
-      showDuralonGuestCartDialog(context);
-      return;
+  /// Agrupa por código base (todo el id menos la última letra).
+  List<_ProductGroup> get _groups {
+    final map = <String, List<Product>>{};
+    for (final p in _filteredProducts) {
+      final last = p.id.isNotEmpty ? p.id[p.id.length - 1] : '';
+      final base = (p.id.length > 1 && RegExp(r'[A-Za-z]').hasMatch(last))
+          ? p.id.substring(0, p.id.length - 1)
+          : p.id;
+      map.putIfAbsent(base, () => []).add(p);
     }
-    final productName = product == null ? '' : ' (${product.name})';
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Agregado al carrito$productName')),
+    return map.values.map(_ProductGroup.new).toList();
+  }
+
+  void _openProduct(BuildContext context, Product product, _ProductGroup group) {
+    Navigator.push<void>(
+      context,
+      slideRightRoute<void>(
+        ProductoScreen(
+          product: product,
+          colorProducts: group.isGrouped ? group.products : null,
+          isGuestMode: widget.isGuestMode,
+          userRole: widget.userRole,
+        ),
+      ),
     );
+  }
+
+  void _showColorPicker(BuildContext context, _ProductGroup group) {
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _ColorPickerSheet(
+        group: group,
+        onSelect: (product) {
+          Navigator.pop(context);
+          _openProduct(context, product, group);
+        },
+      ),
+    );
+  }
+
+  void _onTap(BuildContext context, _ProductGroup group) {
+    if (group.isGrouped) {
+      _showColorPicker(context, group);
+    } else {
+      _openProduct(context, group.representative, group);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _filteredProducts;
+    final groups = _groups;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F4F7),
       body: SafeArea(
         child: Column(
           children: [
-            // AppBar embebida: volver, titulo de seccion, carrito (placeholder)
+            // AppBar
             Padding(
               padding: const EdgeInsets.fromLTRB(6, 8, 6, 8),
               child: Row(
@@ -79,14 +163,15 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     ),
                   ),
                   IconButton(
-                    onPressed: () => _onCartAction(context, product: null),
+                    onPressed: () {
+                      if (widget.isGuestMode) showDuralonGuestCartDialog(context);
+                    },
                     icon: const Icon(Icons.shopping_cart_outlined),
                     tooltip: 'Carrito',
                   ),
                 ],
               ),
             ),
-            // Linea de acento bajo el titulo (marca roja)
             Container(
               width: 50,
               height: 6,
@@ -96,18 +181,15 @@ class _ProductosScreenState extends State<ProductosScreen> {
               ),
             ),
             const SizedBox(height: 10),
-            // Filtro local del listado (no llama a API; solo memoria)
+            // Búsqueda
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10),
               child: TextField(
-                onChanged: (value) => setState(() => _query = value),
+                onChanged: (v) => setState(() => _query = v),
                 decoration: InputDecoration(
                   hintText: 'Buscar en ${widget.sectionTitle.toLowerCase()}...',
                   hintStyle: const TextStyle(color: Color(0xFFA5ADBA)),
-                  prefixIcon: const Icon(
-                    Icons.search_rounded,
-                    color: Color(0xFFA5ADBA),
-                  ),
+                  prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFFA5ADBA)),
                   filled: true,
                   fillColor: const Color(0xFFECEEF2),
                   border: OutlineInputBorder(
@@ -122,13 +204,12 @@ class _ProductosScreenState extends State<ProductosScreen> {
               ),
             ),
             const SizedBox(height: 10),
-            // Contador de resultados visibles
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Mostrando ${filtered.length} resultado/s:',
+                  'Mostrando ${groups.length} producto/s:',
                   style: const TextStyle(
                     color: Color(0xFF4E596C),
                     fontWeight: FontWeight.w500,
@@ -137,9 +218,8 @@ class _ProductosScreenState extends State<ProductosScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            // Celdas: tap en foto+nombre = detalle; carrito = accion (invitado → diálogo)
             Expanded(
-              child: filtered.isEmpty
+              child: groups.isEmpty
                   ? const Center(
                       child: Padding(
                         padding: EdgeInsets.all(24),
@@ -151,7 +231,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     )
                   : GridView.builder(
                       padding: const EdgeInsets.fromLTRB(10, 4, 10, 20),
-                      itemCount: filtered.length,
+                      itemCount: groups.length,
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 3,
@@ -159,104 +239,252 @@ class _ProductosScreenState extends State<ProductosScreen> {
                             mainAxisSpacing: 10,
                             childAspectRatio: 0.62,
                           ),
-                      itemBuilder: (context, index) {
-                        final product = filtered[index];
-                        return Material(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          child: Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: InkWell(
-                                    onTap: () {
-                                      Navigator.push<void>(
-                                        context,
-                                        slideRightRoute<void>(
-                                          ProductoScreen(
-                                            product: product,
-                                            isGuestMode: widget.isGuestMode,
-                                            userRole: widget.userRole,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Expanded(
-                                          child: ClipRRect(
-                                            borderRadius: BorderRadius.circular(8),
-                                            child: Container(
-                                              width: double.infinity,
-                                              color: Colors.white,
-                                              padding: const EdgeInsets.all(6),
-                                              child: ProductImage(
-                                                src: product.displayImage,
-                                                fit: BoxFit.contain,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          product.name,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                            height: 1.1,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        'RD\$ ${product.price.toStringAsFixed(0)}',
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.black,
-                                        ),
-                                      ),
-                                    ),
-                                    IconButton(
-                                      onPressed: () => _onCartAction(
-                                        context,
-                                        product: product,
-                                      ),
-                                      icon: const Icon(
-                                        Icons.add_shopping_cart_rounded,
-                                        size: 20,
-                                        color: AppColors.primaryRed,
-                                      ),
-                                      tooltip: 'Agregar al carrito',
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(
-                                        minWidth: 36,
-                                        minHeight: 36,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
+                      itemBuilder: (context, i) {
+                        final group = groups[i];
+                        return _ProductGroupCard(
+                          group: group,
+                          onTap: () => _onTap(context, group),
                         );
                       },
                     ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ─── Tarjeta del grupo ────────────────────────────────────────────────────────
+
+class _ProductGroupCard extends StatelessWidget {
+  const _ProductGroupCard({required this.group, required this.onTap});
+  final _ProductGroup group;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = group.representative;
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    width: double.infinity,
+                    color: Colors.white,
+                    padding: const EdgeInsets.all(6),
+                    child: ProductImage(
+                      src: p.displayImage,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                group.displayName,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  height: 1.1,
+                ),
+              ),
+              const SizedBox(height: 4),
+              if (group.isGrouped)
+                _ColorDots(products: group.products)
+              else
+                Text(
+                  'RD\$ ${p.price.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ColorDots extends StatelessWidget {
+  const _ColorDots({required this.products});
+  final List<Product> products;
+
+  @override
+  Widget build(BuildContext context) {
+    const maxDots = 5;
+    final colors = products
+        .map((p) => p.color?.split('/').first.trim() ?? '')
+        .where((c) => c.isNotEmpty)
+        .toList();
+    final shown = colors.take(maxDots).toList();
+    final extra = colors.length - shown.length;
+
+    return Row(
+      children: [
+        ...shown.map((c) {
+          if (isTransparentColor(c)) {
+            return Container(
+              width: 12,
+              height: 12,
+              margin: const EdgeInsets.only(right: 3),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFF9E9E9E), width: 0.8),
+              ),
+              child: ClipOval(
+                child: CustomPaint(
+                  size: const Size(12, 12),
+                  painter: const ColorCheckerPainter(),
+                ),
+              ),
+            );
+          }
+          final col = _kColorMap[c] ?? const Color(0xFFB0B8C4);
+          final isLight = (0.299 * col.r + 0.587 * col.g + 0.114 * col.b) / 255 > 0.85;
+          return Container(
+            width: 12,
+            height: 12,
+            margin: const EdgeInsets.only(right: 3),
+            decoration: BoxDecoration(
+              color: col,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isLight ? const Color(0xFFCCCCCC) : Colors.transparent,
+                width: 0.8,
+              ),
+            ),
+          );
+        }),
+        if (extra > 0)
+          Text(
+            '+$extra',
+            style: const TextStyle(fontSize: 9, color: Color(0xFF8E9AAF)),
+          ),
+      ],
+    );
+  }
+}
+
+// ─── Bottom sheet selector de color ──────────────────────────────────────────
+
+class _ColorPickerSheet extends StatelessWidget {
+  const _ColorPickerSheet({required this.group, required this.onSelect});
+  final _ProductGroup group;
+  final ValueChanged<Product> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFD1D5DB),
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            group.displayName,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Selecciona un color',
+            style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: group.products.map((p) {
+              final colorName = p.color?.split('/').first.trim() ?? '';
+              final isTransparent = isTransparentColor(colorName);
+              final col = _kColorMap[colorName] ?? const Color(0xFFB0B8C4);
+              final isLight = (0.299 * col.r + 0.587 * col.g + 0.114 * col.b) / 255 > 0.85;
+              return GestureDetector(
+                onTap: () => onSelect(p),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isTransparent ? Colors.white : col.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isTransparent ? const Color(0xFF9E9E9E) : col.withValues(alpha: 0.6),
+                      width: isTransparent ? 1.5 : 1.0,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isTransparent)
+                        Container(
+                          width: 14,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: const Color(0xFF9E9E9E), width: 0.8),
+                          ),
+                          child: ClipOval(
+                            child: CustomPaint(
+                              size: const Size(14, 14),
+                              painter: const ColorCheckerPainter(),
+                            ),
+                          ),
+                        )
+                      else
+                        Container(
+                          width: 14,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: col,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isLight ? const Color(0xFFCCCCCC) : Colors.transparent,
+                            ),
+                          ),
+                        ),
+                      const SizedBox(width: 6),
+                      Text(
+                        colorName.isNotEmpty ? colorName : p.name,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: isTransparent
+                              ? const Color(0xFF374151)
+                              : (isLight ? const Color(0xFF374151) : col.withValues(alpha: 1)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
       ),
     );
   }
