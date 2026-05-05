@@ -1,3 +1,4 @@
+import 'package:app_duralon/config/app_locale.dart';
 import 'package:flutter/material.dart';
 
 class MainCategoriesBanner extends StatelessWidget {
@@ -31,10 +32,10 @@ class MainCategoriesBanner extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'TODAS LAS CATEGORIAS',
-                    style: TextStyle(
+                    LocaleScope.tr(context, 'all_categories'),
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 17,
                       fontWeight: FontWeight.w800,

@@ -9,13 +9,28 @@ class CatalogCategory {
     required this.tab,
     required this.order,
     required this.subtypes,
+    this.titleEn,
+    this.titleFr,
   });
 
   /// ID estable en Firestore (ej: "cocina", "articulos_hogar").
   final String id;
 
-  /// Nombre visible (ej: "Cocina", "Artículos del Hogar").
+  /// Nombre visible en español (ej: "Cocina", "Artículos del Hogar").
   final String title;
+
+  /// Nombre en inglés (opcional; si es null se usa [title]).
+  final String? titleEn;
+
+  /// Nombre en francés (opcional; si es null se usa [title]).
+  final String? titleFr;
+
+  /// Devuelve el título en el idioma indicado, con fallback a español.
+  String titleFor(String lang) {
+    if (lang == 'en' && titleEn != null && titleEn!.isNotEmpty) return titleEn!;
+    if (lang == 'fr' && titleFr != null && titleFr!.isNotEmpty) return titleFr!;
+    return title;
+  }
 
   /// Tab al que pertenece: "hogar" | "industrial".
   final String tab;
@@ -32,6 +47,8 @@ class CatalogCategory {
     return CatalogCategory(
       id: doc.id,
       title: d['title'] as String? ?? doc.id,
+      titleEn: d['titleEn'] as String?,
+      titleFr: d['titleFr'] as String?,
       tab: d['tab'] as String? ?? 'hogar',
       order: (d['order'] as num?)?.toInt() ?? 0,
       subtypes: List<String>.from(d['subtypes'] as List? ?? const []),
@@ -50,6 +67,8 @@ class CatalogCategory {
   CatalogCategory copyWith({
     String? id,
     String? title,
+    String? titleEn,
+    String? titleFr,
     String? tab,
     int? order,
     List<String>? subtypes,
@@ -57,6 +76,8 @@ class CatalogCategory {
     return CatalogCategory(
       id: id ?? this.id,
       title: title ?? this.title,
+      titleEn: titleEn ?? this.titleEn,
+      titleFr: titleFr ?? this.titleFr,
       tab: tab ?? this.tab,
       order: order ?? this.order,
       subtypes: subtypes ?? this.subtypes,

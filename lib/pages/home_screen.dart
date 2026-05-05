@@ -8,6 +8,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:app_duralon/config/app_locale.dart';
 import 'package:app_duralon/models/catalog_category.dart';
 import 'package:app_duralon/models/home_product_section.dart';
 import 'package:app_duralon/models/product.dart';
@@ -145,7 +146,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Construye las secciones del home a partir de los catálogos y productos de Firebase.
-  List<HomeProductSection> get _homeProductSections {
+  /// [lang] se pasa explícitamente para que el getter sea puro (sin leer globales).
+  List<HomeProductSection> _buildHomeProductSections(String lang) {
     final q = _searchQuery.trim().toLowerCase();
     return _activeCatalogs
         .map((cat) {
@@ -154,14 +156,14 @@ class _HomeScreenState extends State<HomeScreen> {
             list = list
                 .where(
                   (p) =>
-                      p.name.toLowerCase().contains(q) ||
+                      p.nameFor(lang).toLowerCase().contains(q) ||
                       p.category.toLowerCase().contains(q),
                 )
                 .toList();
           }
           return HomeProductSection(
             categoryId: cat.id,
-            title: cat.title,
+            title: cat.titleFor(lang),
             subtypes: cat.subtypes,
             previewProducts: list,
           );
@@ -329,6 +331,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Registra dependencia de LocaleScope: HomeScreen se reconstruye al cambiar idioma.
+    final lang = LocaleScope.lang(context);
     return Scaffold(
       backgroundColor: const Color(0xFFF3F5F8),
       body: SafeArea(
@@ -486,7 +490,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             : CatalogoScreen(
                                 selectedStoreTab: _selectedStoreTab,
                                 searchQuery: _searchQuery,
-                                productSections: _homeProductSections,
+                                productSections: _buildHomeProductSections(lang),
                                 onMenuTap: _toggleMenu,
                                 onCartTap: () => _handleCartTap(context, null),
                                 onSearchChanged: (v) =>

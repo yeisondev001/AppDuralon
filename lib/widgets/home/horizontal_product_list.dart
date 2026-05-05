@@ -1,5 +1,6 @@
 // Carrusel horizontal: tocar imagen+nombre abre detalle. El carrito está fuera del
 // [InkWell] del detalle para que siempre dispare [onAddToCart] (invitado → diálogo).
+import 'package:app_duralon/config/app_locale.dart';
 import 'package:app_duralon/models/product.dart';
 import 'package:app_duralon/styles/app_style.dart';
 import 'package:app_duralon/widgets/product_image.dart';
@@ -62,7 +63,7 @@ class HorizontalProductList extends StatelessWidget {
                           ),
                           const SizedBox(height: 10),
                           Text(
-                            product.name,
+                            product.nameFor(LocaleScope.lang(context)),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.titleSmall?.copyWith(

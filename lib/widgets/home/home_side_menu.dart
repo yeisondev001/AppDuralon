@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:app_duralon/config/app_locale.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -142,57 +143,56 @@ class _HomeSideMenuState extends State<HomeSideMenu> {
                   // ── Ítems de navegación ───────────────────────────────────────────
                   _MenuItem(
                     icon: Icons.home_outlined,
-                    title: 'Inicio',
+                    title: LocaleScope.tr(context, 'Inicio'),
                     selected: widget.selectedItem == 'Inicio',
                     onTap: () => widget.onItemTap('Inicio'),
                   ),
                   _MenuItem(
                     icon: Icons.grid_view_rounded,
-                    title: 'Catalogo',
+                    title: LocaleScope.tr(context, 'Catalogo'),
                     selected: widget.selectedItem == 'Catalogo',
                     onTap: () => widget.onItemTap('Catalogo'),
                   ),
                   _MenuItem(
                     icon: Icons.person_outline_rounded,
-                    title: 'Mi perfil',
+                    title: LocaleScope.tr(context, 'Mi perfil'),
                     selected: widget.selectedItem == 'Mi perfil',
                     onTap: () => widget.onItemTap('Mi perfil'),
                   ),
                   _MenuItem(
                     icon: Icons.local_offer_outlined,
-                    title: 'Ofertas',
+                    title: LocaleScope.tr(context, 'Ofertas'),
                     selected: widget.selectedItem == 'Ofertas',
                     onTap: () => widget.onItemTap('Ofertas'),
                   ),
                   _MenuItem(
                     icon: Icons.receipt_long_outlined,
-                    title: 'Mis pedidos',
+                    title: LocaleScope.tr(context, 'Mis pedidos'),
                     selected: widget.selectedItem == 'Mis pedidos',
                     onTap: () => widget.onItemTap('Mis pedidos'),
                   ),
-
                   _MenuItem(
                     icon: Icons.location_on_outlined,
-                    title: 'Mis direcciones',
+                    title: LocaleScope.tr(context, 'Mis direcciones'),
                     selected: widget.selectedItem == 'Mis direcciones',
                     onTap: () => widget.onItemTap('Mis direcciones'),
                   ),
                   _MenuItem(
                     icon: Icons.credit_card_outlined,
-                    title: 'Metodos de pago',
+                    title: LocaleScope.tr(context, 'Metodos de pago'),
                     selected: widget.selectedItem == 'Metodos de pago',
                     onTap: () => widget.onItemTap('Metodos de pago'),
                   ),
                   _MenuItem(
                     icon: Icons.support_agent_rounded,
-                    title: 'Soporte',
+                    title: LocaleScope.tr(context, 'Soporte'),
                     selected: widget.selectedItem == 'Soporte',
                     onTap: () => widget.onItemTap('Soporte'),
                   ),
                   if (widget.showWholesaleRules)
                     _MenuItem(
                       icon: Icons.tune_rounded,
-                      title: 'Reglas mayoristas',
+                      title: LocaleScope.tr(context, 'Reglas mayoristas'),
                       selected: widget.selectedItem == 'Reglas mayoristas',
                       onTap: () => widget.onItemTap('Reglas mayoristas'),
                     ),
@@ -206,7 +206,7 @@ class _HomeSideMenuState extends State<HomeSideMenu> {
                     ),
                     _MenuItem(
                       icon: Icons.admin_panel_settings_rounded,
-                      title: 'Panel de administración',
+                      title: LocaleScope.tr(context, 'Panel de administración'),
                       selected:
                           widget.selectedItem == 'Panel de administración',
                       onTap: () => widget.onItemTap('Panel de administración'),
@@ -218,14 +218,14 @@ class _HomeSideMenuState extends State<HomeSideMenu> {
                   if (isLoggedIn)
                     _MenuItem(
                       icon: Icons.logout_rounded,
-                      title: 'Cerrar sesión',
+                      title: LocaleScope.tr(context, 'Cerrar sesión'),
                       onTap: () => _signOut(context),
                       textColor: const Color(0xFFC62828),
                     )
                   else
                     _MenuItem(
                       icon: Icons.login_rounded,
-                      title: 'Iniciar sesion',
+                      title: LocaleScope.tr(context, 'Iniciar sesion'),
                       onTap:
                           widget.onLoginTap ??
                           () {
@@ -244,14 +244,14 @@ class _HomeSideMenuState extends State<HomeSideMenu> {
                         borderRadius: BorderRadius.circular(8),
                         onTap: () =>
                             showTerminosYCondicionesBottomSheet(context),
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
                             horizontal: 12,
                             vertical: 8,
                           ),
                           child: Text(
-                            'Términos y condiciones',
-                            style: TextStyle(
+                            LocaleScope.tr(context, 'Términos y condiciones'),
+                            style: const TextStyle(
                               color: Color(0xFF7D8798),
                               fontSize: 15,
                               fontWeight: FontWeight.w500,
@@ -268,14 +268,14 @@ class _HomeSideMenuState extends State<HomeSideMenu> {
                       child: InkWell(
                         borderRadius: BorderRadius.circular(8),
                         onTap: () => showQuienesSomosBottomSheet(context),
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
                             horizontal: 12,
                             vertical: 8,
                           ),
                           child: Text(
-                            'Quiénes somos',
-                            style: TextStyle(
+                            LocaleScope.tr(context, 'Quiénes somos'),
+                            style: const TextStyle(
                               color: Color(0xFF7D8798),
                               fontSize: 15,
                               fontWeight: FontWeight.w500,

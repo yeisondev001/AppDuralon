@@ -2,6 +2,7 @@
 // acordeon). [CatalogoStandaloneScreen] es otra ruta, pantalla completa con arbol.
 import 'dart:async';
 
+import 'package:app_duralon/config/app_locale.dart';
 import 'package:app_duralon/data/catalog_category_icons.dart';
 import 'package:app_duralon/models/catalog_category.dart';
 import 'package:app_duralon/models/home_product_section.dart';
@@ -50,7 +51,10 @@ class CatalogoScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const labels = ['HOGAR', 'INDUSTRIAL'];
+    final labels = [
+      LocaleScope.tr(context, 'tab_hogar'),
+      LocaleScope.tr(context, 'tab_industrial'),
+    ];
 
     return CustomScrollView(
       slivers: [
@@ -123,7 +127,7 @@ class CatalogoScreen extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
               child: Text(
-                'Resultados para "${searchQuery.trim()}"',
+                '${LocaleScope.tr(context, 'search_results_prefix')} "${searchQuery.trim()}"',
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       color: const Color(0xFF5C6B82),
                       fontWeight: FontWeight.w600,
@@ -132,15 +136,15 @@ class CatalogoScreen extends StatelessWidget {
             ),
           ),
         if (productSections.isEmpty)
-          const SliverFillRemaining(
+          SliverFillRemaining(
             hasScrollBody: false,
             child: Center(
               child: Padding(
-                padding: EdgeInsets.all(24),
+                padding: const EdgeInsets.all(24),
                 child: Text(
-                  'No se encontraron productos con esa busqueda.',
+                  LocaleScope.tr(context, 'no_products'),
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Color(0xFF5C6B82),
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -202,9 +206,9 @@ class CatalogoScreen extends StatelessWidget {
                             minimumSize: Size.zero,
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
-                          child: const Text(
-                            'Ver todos',
-                            style: TextStyle(
+                          child: Text(
+                            LocaleScope.tr(context, 'ver_todos'),
+                            style: const TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 13,
                             ),
@@ -370,11 +374,11 @@ class _CatalogoStandaloneScreenState
                     onPressed: _toggleMenu,
                     icon: const Icon(Icons.menu_rounded),
                   ),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Catálogo',
+                      LocaleScope.tr(context, 'catalog_title'),
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 35 / 2, fontWeight: FontWeight.w800),
+                      style: const TextStyle(fontSize: 35 / 2, fontWeight: FontWeight.w800),
                     ),
                   ),
                   IconButton(
@@ -396,7 +400,9 @@ class _CatalogoStandaloneScreenState
             Row(
               children: List.generate(2, (index) {
                 final active = _selectedTab == index;
-                final title = index == 0 ? 'HOGAR' : 'INDUSTRIAL';
+                final title = index == 0
+                    ? LocaleScope.tr(context, 'tab_hogar')
+                    : LocaleScope.tr(context, 'tab_industrial');
                 final activeColor = index == 1
                     ? AppColors.primaryBlue
                     : AppColors.primaryRed;
@@ -435,7 +441,7 @@ class _CatalogoStandaloneScreenState
               child: TextField(
                 onChanged: (value) => setState(() => _searchQuery = value),
                 decoration: InputDecoration(
-                  hintText: 'Filtrar por nombre de sección...',
+                  hintText: LocaleScope.tr(context, 'filter_hint'),
                   hintStyle: const TextStyle(color: Color(0xFFA5ADBA)),
                   prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFFA5ADBA)),
                   filled: true,

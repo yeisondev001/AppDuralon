@@ -1,11 +1,13 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:app_duralon/config/app_locale.dart';
 import 'package:app_duralon/pages/google_onboarding/onboarding_flow.dart';
 import 'package:app_duralon/pages/home_screen.dart';
 import 'package:app_duralon/services/auth_service.dart';
 import 'package:app_duralon/styles/app_style.dart';
 import 'package:app_duralon/utils/slide_right_route.dart';
+import 'package:app_duralon/widgets/language_picker.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -151,9 +153,11 @@ class _LoginScreenState extends State<LoginScreen> {
         child: SafeArea(
           child: Material(
             color: Colors.white,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            child: Stack(
               children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
                 Expanded(
                   child: ListView(
                     padding: EdgeInsets.symmetric(
@@ -181,7 +185,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: Text(
-                          '¡Bienvenido!',
+                          LocaleScope.tr(context, 'welcome'),
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: AppColors.primaryBlue,
@@ -282,8 +286,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                           label: Text(
                             _iniciandoConGoogle
-                                ? 'Conectando...'
-                                : 'Continuar con Google',
+                                ? LocaleScope.tr(context, 'connecting')
+                                : LocaleScope.tr(context, 'continue_google'),
                             style: TextStyle(
                               color: AppColors.primaryBlue,
                               fontSize: _scaled(18, scale, 16, 20),
@@ -327,8 +331,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                           label: Text(
                             _iniciandoConApple
-                                ? 'Conectando...'
-                                : 'Continuar con Apple',
+                                ? LocaleScope.tr(context, 'connecting')
+                                : LocaleScope.tr(context, 'continue_apple'),
                             style: TextStyle(
                               color: AppColors.textDark,
                               fontSize: _scaled(18, scale, 16, 20),
@@ -339,7 +343,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       SizedBox(height: sectionGap),
                       Text(
-                        'Echar un vistazo como invitado',
+                        LocaleScope.tr(context, 'browse_guest'),
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: AppColors.primaryRed,
@@ -362,11 +366,19 @@ class _LoginScreenState extends State<LoginScreen> {
                             size: _scaled(34, scale, 28, 40),
                             color: AppColors.primaryRed,
                           ),
-                          tooltip: 'Continuar como invitado',
+                          tooltip: LocaleScope.tr(context, 'continue_guest'),
                         ),
                       ),
                     ],
                   ),
+                ),
+                  ],
+                ),
+                // Selector de idioma: esquina superior izquierda
+                const Positioned(
+                  top: 4,
+                  left: 4,
+                  child: LanguagePicker(),
                 ),
               ],
             ),

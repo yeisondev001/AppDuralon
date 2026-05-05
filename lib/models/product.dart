@@ -9,6 +9,8 @@ class Product {
     required this.name,
     required this.category,
     required this.price,
+    this.nameEn,
+    this.nameFr,
     this.description,
     this.color,
     this.ean,
@@ -28,6 +30,19 @@ class Product {
   final String id;
 
   final String name;
+
+  /// Nombre en inglés (opcional; si es null se usa [name]).
+  final String? nameEn;
+
+  /// Nombre en francés (opcional; si es null se usa [name]).
+  final String? nameFr;
+
+  /// Devuelve el nombre en el idioma indicado, con fallback a español.
+  String nameFor(String lang) {
+    if (lang == 'en' && nameEn != null && nameEn!.isNotEmpty) return nameEn!;
+    if (lang == 'fr' && nameFr != null && nameFr!.isNotEmpty) return nameFr!;
+    return name;
+  }
 
   /// Subtipo visible (ej: "Envases"). Coincide con el subtype del catálogo.
   final String category;
@@ -128,6 +143,8 @@ class Product {
       name: (d['name'] as String?)?.trim().isNotEmpty == true
           ? d['name'] as String
           : 'Producto ${doc.id}',
+      nameEn: d['nameEn'] as String?,
+      nameFr: d['nameFr'] as String?,
       category: (d['category'] as String?)?.trim().isNotEmpty == true
           ? d['category'] as String
           : 'General',
@@ -177,6 +194,8 @@ class Product {
   Product copyWith({
     String? id,
     String? name,
+    String? nameEn,
+    String? nameFr,
     String? category,
     double? price,
     String? description,
@@ -197,6 +216,8 @@ class Product {
     return Product(
       id:          id          ?? this.id,
       name:        name        ?? this.name,
+      nameEn:      nameEn      ?? this.nameEn,
+      nameFr:      nameFr      ?? this.nameFr,
       category:    category    ?? this.category,
       price:       price       ?? this.price,
       description: description ?? this.description,

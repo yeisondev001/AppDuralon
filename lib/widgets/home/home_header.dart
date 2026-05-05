@@ -1,6 +1,8 @@
+import 'package:app_duralon/config/app_locale.dart';
 import 'package:app_duralon/pages/carrito_screen.dart';
 import 'package:app_duralon/services/cart_service.dart';
 import 'package:app_duralon/styles/app_style.dart';
+import 'package:app_duralon/widgets/language_picker.dart';
 import 'package:flutter/material.dart';
 
 class HomeHeader extends StatefulWidget {
@@ -61,7 +63,7 @@ class _HomeHeaderState extends State<HomeHeader> {
           const SizedBox(width: 8),
           Expanded(
             child: SearchBar(
-              hintText: 'Buscar productos',
+              hintText: LocaleScope.tr(context, 'search_hint'),
               onChanged: widget.onSearchChanged,
               leading: const Icon(Icons.search_rounded),
               constraints: const BoxConstraints(minWidth: 0, minHeight: 48),
@@ -85,7 +87,7 @@ class _HomeHeaderState extends State<HomeHeader> {
                   foregroundColor: AppColors.primaryBlue,
                 ),
                 icon: const Icon(Icons.shopping_cart_rounded, size: 22),
-                tooltip: 'Carrito',
+                tooltip: LocaleScope.tr(context, 'cart_tooltip'),
               ),
               if (cartCount > 0)
                 Positioned(
@@ -113,6 +115,7 @@ class _HomeHeaderState extends State<HomeHeader> {
                 ),
             ],
           ),
+          const LanguagePicker(),
         ],
       ),
     );
