@@ -17,12 +17,19 @@ class MisDireccionesScreen extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF1A2230)),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF1A2230),
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           'Mis direcciones',
-          style: TextStyle(color: Color(0xFF1A2230), fontWeight: FontWeight.w700, fontSize: 18),
+          style: TextStyle(
+            color: Color(0xFF1A2230),
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+          ),
         ),
         centerTitle: true,
         actions: [
@@ -40,7 +47,12 @@ class MisDireccionesScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
           if (snap.hasError) {
-            return Center(child: Text('Error: ${snap.error}', style: const TextStyle(color: Color(0xFF94A3B8))));
+            return Center(
+              child: Text(
+                'Error: ${snap.error}',
+                style: const TextStyle(color: Color(0xFF94A3B8)),
+              ),
+            );
           }
           final addresses = snap.data ?? [];
           if (addresses.isEmpty) {
@@ -49,7 +61,7 @@ class MisDireccionesScreen extends StatelessWidget {
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: addresses.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            separatorBuilder: (_, _) => const SizedBox(height: 10),
             itemBuilder: (context, i) => _AddressCard(
               address: addresses[i],
               uid: uid,
@@ -63,7 +75,10 @@ class MisDireccionesScreen extends StatelessWidget {
         backgroundColor: AppColors.primaryBlue,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_location_alt_rounded),
-        label: const Text('Agregar', style: TextStyle(fontWeight: FontWeight.w600)),
+        label: const Text(
+          'Agregar',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }
@@ -73,24 +88,41 @@ class MisDireccionesScreen extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.location_off_rounded, size: 72, color: Colors.grey.shade300),
+          Icon(
+            Icons.location_off_rounded,
+            size: 72,
+            color: Colors.grey.shade300,
+          ),
           const SizedBox(height: 16),
-          const Text('Sin direcciones guardadas',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF475569))),
+          const Text(
+            'Sin direcciones guardadas',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF475569),
+            ),
+          ),
           const SizedBox(height: 8),
-          const Text('Agrega tu primera dirección de entrega',
-              style: TextStyle(fontSize: 14, color: Color(0xFF94A3B8))),
+          const Text(
+            'Agrega tu primera dirección de entrega',
+            style: TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
+          ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
             onPressed: () => _openForm(context, uid, null),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryBlue,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
             icon: const Icon(Icons.add_location_alt_rounded),
-            label: const Text('Agregar dirección', style: TextStyle(fontWeight: FontWeight.w600)),
+            label: const Text(
+              'Agregar dirección',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),
@@ -111,7 +143,11 @@ class MisDireccionesScreen extends StatelessWidget {
 // ── Tarjeta de dirección ───────────────────────────────────────────────────────
 
 class _AddressCard extends StatelessWidget {
-  const _AddressCard({required this.address, required this.uid, required this.onEdit});
+  const _AddressCard({
+    required this.address,
+    required this.uid,
+    required this.onEdit,
+  });
   final CustomerAddress address;
   final String uid;
   final VoidCallback onEdit;
@@ -125,7 +161,13 @@ class _AddressCard extends StatelessWidget {
         border: address.isDefault
             ? Border.all(color: AppColors.primaryBlue, width: 1.5)
             : null,
-        boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 4, offset: Offset(0, 2))],
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -135,9 +177,14 @@ class _AddressCard extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: address.isDefault ? AppColors.primaryBlue : const Color(0xFFF1F3F6),
+                    color: address.isDefault
+                        ? AppColors.primaryBlue
+                        : const Color(0xFFF1F3F6),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
@@ -146,7 +193,9 @@ class _AddressCard extends StatelessWidget {
                       Icon(
                         _iconForLabel(address.label),
                         size: 14,
-                        color: address.isDefault ? Colors.white : const Color(0xFF64748B),
+                        color: address.isDefault
+                            ? Colors.white
+                            : const Color(0xFF64748B),
                       ),
                       const SizedBox(width: 4),
                       Text(
@@ -154,7 +203,9 @@ class _AddressCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: address.isDefault ? Colors.white : const Color(0xFF64748B),
+                          color: address.isDefault
+                              ? Colors.white
+                              : const Color(0xFF64748B),
                         ),
                       ),
                     ],
@@ -162,48 +213,82 @@ class _AddressCard extends StatelessWidget {
                 ),
                 if (address.isDefault) ...[
                   const SizedBox(width: 8),
-                  const Text('Principal',
-                      style: TextStyle(fontSize: 11, color: AppColors.primaryBlue, fontWeight: FontWeight.w600)),
+                  const Text(
+                    'Principal',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.primaryBlue,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ],
                 const Spacer(),
                 PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert_rounded, size: 20, color: Color(0xFF94A3B8)),
+                  icon: const Icon(
+                    Icons.more_vert_rounded,
+                    size: 20,
+                    color: Color(0xFF94A3B8),
+                  ),
                   onSelected: (v) => _onAction(context, v),
                   itemBuilder: (_) => [
                     const PopupMenuItem(value: 'edit', child: Text('Editar')),
                     if (!address.isDefault)
-                      const PopupMenuItem(value: 'default', child: Text('Marcar como principal')),
+                      const PopupMenuItem(
+                        value: 'default',
+                        child: Text('Marcar como principal'),
+                      ),
                     const PopupMenuItem(
                       value: 'delete',
-                      child: Text('Eliminar', style: TextStyle(color: Color(0xFFDC2626))),
+                      child: Text(
+                        'Eliminar',
+                        style: TextStyle(color: Color(0xFFDC2626)),
+                      ),
                     ),
                   ],
                 ),
               ],
             ),
             const SizedBox(height: 10),
-            Text(address.calle,
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
+            Text(
+              address.calle,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF0F172A),
+              ),
+            ),
             const SizedBox(height: 2),
             Text(
-              [address.ciudad, if (address.provincia.isNotEmpty) address.provincia].join(', '),
+              [
+                address.ciudad,
+                if (address.provincia.isNotEmpty) address.provincia,
+              ].join(', '),
               style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
             ),
             if (address.referencia.isNotEmpty) ...[
               const SizedBox(height: 4),
-              Text(address.referencia,
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+              Text(
+                address.referencia,
+                style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+              ),
             ],
             if (address.hasCoords) ...[
               const SizedBox(height: 8),
               Row(
                 children: [
-                  const Icon(Icons.gps_fixed_rounded, size: 12, color: Color(0xFF22C55E)),
+                  const Icon(
+                    Icons.gps_fixed_rounded,
+                    size: 12,
+                    color: Color(0xFF22C55E),
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     '${address.lat!.toStringAsFixed(5)}, ${address.lng!.toStringAsFixed(5)}',
                     style: const TextStyle(
-                        fontFamily: 'monospace', fontSize: 11, color: Color(0xFF64748B)),
+                      fontFamily: 'monospace',
+                      fontSize: 11,
+                      color: Color(0xFF64748B),
+                    ),
                   ),
                 ],
               ),
@@ -216,10 +301,14 @@ class _AddressCard extends StatelessWidget {
 
   IconData _iconForLabel(String label) {
     switch (label.toLowerCase()) {
-      case 'casa': return Icons.home_rounded;
-      case 'trabajo': return Icons.work_rounded;
-      case 'otro': return Icons.place_rounded;
-      default: return Icons.location_on_rounded;
+      case 'casa':
+        return Icons.home_rounded;
+      case 'trabajo':
+        return Icons.work_rounded;
+      case 'otro':
+        return Icons.place_rounded;
+      default:
+        return Icons.location_on_rounded;
     }
   }
 
@@ -236,10 +325,15 @@ class _AddressCard extends StatelessWidget {
             title: const Text('Eliminar dirección'),
             content: Text('¿Eliminar "${address.label} - ${address.calle}"?'),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancelar'),
+              ),
               TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                style: TextButton.styleFrom(foregroundColor: const Color(0xFFDC2626)),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFFDC2626),
+                ),
                 child: const Text('Eliminar'),
               ),
             ],
@@ -303,19 +397,28 @@ class _AddressFormScreenState extends State<_AddressFormScreen> {
   }
 
   Future<void> _captureGps() async {
-    setState(() { _loadingGps = true; _gpsError = null; });
+    setState(() {
+      _loadingGps = true;
+      _gpsError = null;
+    });
     try {
       final permission = await Geolocator.checkPermission();
       LocationPermission perm = permission;
       if (perm == LocationPermission.denied) {
         perm = await Geolocator.requestPermission();
       }
-      if (perm == LocationPermission.deniedForever || perm == LocationPermission.denied) {
-        setState(() { _gpsError = 'Permiso de ubicación denegado.'; _loadingGps = false; });
+      if (perm == LocationPermission.deniedForever ||
+          perm == LocationPermission.denied) {
+        setState(() {
+          _gpsError = 'Permiso de ubicación denegado.';
+          _loadingGps = false;
+        });
         return;
       }
       final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
       setState(() {
         _lat = pos.latitude;
@@ -323,7 +426,10 @@ class _AddressFormScreenState extends State<_AddressFormScreen> {
         _loadingGps = false;
       });
     } catch (e) {
-      setState(() { _gpsError = 'No se pudo obtener ubicación.'; _loadingGps = false; });
+      setState(() {
+        _gpsError = 'No se pudo obtener ubicación.';
+        _loadingGps = false;
+      });
     }
   }
 
@@ -351,9 +457,9 @@ class _AddressFormScreenState extends State<_AddressFormScreen> {
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al guardar: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error al guardar: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -374,7 +480,11 @@ class _AddressFormScreenState extends State<_AddressFormScreen> {
         ),
         title: Text(
           isEdit ? 'Editar dirección' : 'Nueva dirección',
-          style: const TextStyle(color: Color(0xFF1A2230), fontWeight: FontWeight.w700, fontSize: 18),
+          style: const TextStyle(
+            color: Color(0xFF1A2230),
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+          ),
         ),
         centerTitle: true,
       ),
@@ -384,7 +494,14 @@ class _AddressFormScreenState extends State<_AddressFormScreen> {
           padding: const EdgeInsets.all(20),
           children: [
             // Tipo de dirección
-            const Text('Tipo', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+            const Text(
+              'Tipo',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF64748B),
+              ),
+            ),
             const SizedBox(height: 8),
             Row(
               children: _labels.map((l) {
@@ -410,17 +527,25 @@ class _AddressFormScreenState extends State<_AddressFormScreen> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: _lat != null ? const Color(0xFFF0FDF4) : const Color(0xFFF8FAFC),
+                color: _lat != null
+                    ? const Color(0xFFF0FDF4)
+                    : const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: _lat != null ? const Color(0xFF22C55E) : const Color(0xFFE2E8F0),
+                  color: _lat != null
+                      ? const Color(0xFF22C55E)
+                      : const Color(0xFFE2E8F0),
                 ),
               ),
               child: Row(
                 children: [
                   Icon(
-                    _lat != null ? Icons.gps_fixed_rounded : Icons.gps_not_fixed_rounded,
-                    color: _lat != null ? const Color(0xFF22C55E) : const Color(0xFF94A3B8),
+                    _lat != null
+                        ? Icons.gps_fixed_rounded
+                        : Icons.gps_not_fixed_rounded,
+                    color: _lat != null
+                        ? const Color(0xFF22C55E)
+                        : const Color(0xFF94A3B8),
                     size: 22,
                   ),
                   const SizedBox(width: 12),
@@ -439,15 +564,21 @@ class _AddressFormScreenState extends State<_AddressFormScreen> {
                             _gpsError ?? 'Sin coordenadas GPS',
                             style: TextStyle(
                               fontSize: 13,
-                              color: _gpsError != null ? const Color(0xFFDC2626) : const Color(0xFF94A3B8),
+                              color: _gpsError != null
+                                  ? const Color(0xFFDC2626)
+                                  : const Color(0xFF94A3B8),
                             ),
                           ),
                   ),
                   const SizedBox(width: 8),
                   _loadingGps
                       ? const SizedBox(
-                          width: 20, height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryBlue),
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primaryBlue,
+                          ),
                         )
                       : TextButton.icon(
                           onPressed: _captureGps,
@@ -455,7 +586,10 @@ class _AddressFormScreenState extends State<_AddressFormScreen> {
                           label: Text(_lat != null ? 'Actualizar' : 'Capturar'),
                           style: TextButton.styleFrom(
                             foregroundColor: AppColors.primaryBlue,
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
                           ),
                         ),
                 ],
@@ -468,7 +602,8 @@ class _AddressFormScreenState extends State<_AddressFormScreen> {
               controller: _calleCtrl,
               label: 'Calle y número',
               hint: 'Ej: Av. Winston Churchill 1099',
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Campo requerido' : null,
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Campo requerido' : null,
             ),
             const SizedBox(height: 14),
 
@@ -477,7 +612,8 @@ class _AddressFormScreenState extends State<_AddressFormScreen> {
               controller: _ciudadCtrl,
               label: 'Ciudad / Municipio',
               hint: 'Ej: Santo Domingo',
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Campo requerido' : null,
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Campo requerido' : null,
             ),
             const SizedBox(height: 14),
 
@@ -502,11 +638,15 @@ class _AddressFormScreenState extends State<_AddressFormScreen> {
             SwitchListTile(
               value: _isDefault,
               onChanged: (v) => setState(() => _isDefault = v),
-              title: const Text('Dirección principal',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-              subtitle: const Text('Se usará por defecto al confirmar pedidos',
-                  style: TextStyle(fontSize: 12)),
-              activeColor: AppColors.primaryBlue,
+              title: const Text(
+                'Dirección principal',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              subtitle: const Text(
+                'Se usará por defecto al confirmar pedidos',
+                style: TextStyle(fontSize: 12),
+              ),
+              activeThumbColor: AppColors.primaryBlue,
               contentPadding: EdgeInsets.zero,
             ),
             const SizedBox(height: 32),
@@ -519,16 +659,26 @@ class _AddressFormScreenState extends State<_AddressFormScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryBlue,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                   elevation: 0,
                 ),
                 child: _saving
                     ? const SizedBox(
-                        width: 22, height: 22,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.5,
+                        ),
+                      )
                     : Text(
                         isEdit ? 'Guardar cambios' : 'Agregar dirección',
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
               ),
             ),
@@ -548,8 +698,14 @@ class _AddressFormScreenState extends State<_AddressFormScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF64748B),
+          ),
+        ),
         const SizedBox(height: 6),
         TextFormField(
           controller: controller,
@@ -570,13 +726,19 @@ class _AddressFormScreenState extends State<_AddressFormScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.primaryBlue, width: 1.5),
+              borderSide: const BorderSide(
+                color: AppColors.primaryBlue,
+                width: 1.5,
+              ),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Color(0xFFDC2626)),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 12,
+            ),
           ),
         ),
       ],

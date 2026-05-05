@@ -1,6 +1,8 @@
+import 'package:app_duralon/config/app_strings.dart';
 import 'package:app_duralon/models/order.dart';
 import 'package:app_duralon/pages/mis_pedidos_screen.dart';
 import 'package:app_duralon/services/cart_service.dart';
+import 'package:app_duralon/services/locale_service.dart';
 import 'package:app_duralon/services/order_service.dart';
 import 'package:app_duralon/styles/app_style.dart';
 import 'package:app_duralon/widgets/cart/cart_item_card.dart';
@@ -55,9 +57,9 @@ class _CarritoScreenState extends State<CarritoScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              'Confirmar pedido',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            Text(
+              S.confirmOrder,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 6),
             Text(
@@ -69,7 +71,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
               controller: notasController,
               maxLines: 3,
               decoration: InputDecoration(
-                hintText: 'Notas de entrega (opcional)',
+                hintText: S.deliveryNotes,
                 filled: true,
                 fillColor: const Color(0xFFF8FAFC),
                 border: OutlineInputBorder(
@@ -92,12 +94,12 @@ class _CarritoScreenState extends State<CarritoScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 elevation: 0,
               ),
-              child: const Text('Confirmar pedido', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+              child: Text(S.confirmOrder, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
             ),
             const SizedBox(height: 8),
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancelar'),
+              child: Text(S.cancel),
             ),
           ],
         ),
@@ -143,7 +145,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al confirmar pedido: $e')),
+        SnackBar(content: Text('${S.orderError}: $e')),
       );
     } finally {
       if (mounted) setState(() => _enviando = false);
@@ -162,7 +164,9 @@ class _CarritoScreenState extends State<CarritoScreen> {
     final items = _cart.items;
     final user = FirebaseAuth.instance.currentUser;
 
-    return Scaffold(
+    return ListenableBuilder(
+      listenable: LocaleService.instance,
+      builder: (context, _) => Scaffold(
       backgroundColor: const Color(0xFFF3F4F7),
       body: SafeArea(
         child: Column(
@@ -175,7 +179,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
                       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
                       children: [
                         Text(
-                          'PRODUCTOS · ${items.length}',
+                          '${S.products} · ${items.length}',
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
@@ -189,9 +193,9 @@ class _CarritoScreenState extends State<CarritoScreen> {
                               child: CartItemCard(
                                 item: it,
                                 onIncrement: () =>
-                                    _cart.updateQty(it.id, it.stepQty),
+                                    _cart.updateQty(it.id, 1),
                                 onDecrement: () =>
-                                    _cart.updateQty(it.id, -it.stepQty),
+                                    _cart.updateQty(it.id, -1),
                                 onRemove: () => _cart.removeItem(it.id),
                               ),
                             )),
@@ -208,6 +212,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
             if (items.isNotEmpty) _buildFooter(context),
           ],
         ),
+      ),
       ),
     );
   }
@@ -234,9 +239,9 @@ class _CarritoScreenState extends State<CarritoScreen> {
                 ),
               ),
               const Spacer(),
-              const Text(
-                'Mi pedido',
-                style: TextStyle(
+              Text(
+                S.cart,
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF0F172A),
@@ -340,18 +345,18 @@ class _CarritoScreenState extends State<CarritoScreen> {
             color: Colors.grey.shade300,
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Tu carrito está vacío',
-            style: TextStyle(
+          Text(
+            S.cartEmpty,
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
               color: Color(0xFF475569),
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Agrega productos desde el catálogo',
-            style: TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
+          Text(
+            S.cartEmptySub,
+            style: const TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
           ),
           const SizedBox(height: 24),
           OutlinedButton(
@@ -367,9 +372,9 @@ class _CarritoScreenState extends State<CarritoScreen> {
                 vertical: 12,
               ),
             ),
-            child: const Text(
-              'Ver catálogo',
-              style: TextStyle(fontWeight: FontWeight.w600),
+            child: Text(
+              S.viewCatalog,
+              style: const TextStyle(fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -392,7 +397,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '${_cart.totalPiezas} unidades',
+                '${_cart.totalPiezas} ${S.units}',
                 style: const TextStyle(
                   fontSize: 12,
                   color: Color(0xFF64748B),
@@ -425,7 +430,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
               ),
               child: _enviando
                   ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                  : const Text('Confirmar pedido →', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                  : Text(S.confirmOrderBtn, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
             ),
           ),
         ],

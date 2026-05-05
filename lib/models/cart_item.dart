@@ -13,8 +13,8 @@ class CartItem {
     required this.cantidad,
     required this.stock,
     this.imageUrl,
-    this.stepQty = 1,
-    this.minOrderQty = 1,
+    this.packQty = 1,
+    this.cbmPerEmpaque,
   });
 
   final String id;
@@ -24,32 +24,48 @@ class CartItem {
   final String categoria;
   final String? color;
   final double precio;
+
+  /// Número de empaques en el pedido.
   int cantidad;
+
   final int stock;
   final String? imageUrl;
 
-  /// Unidades por empaque (salto mínimo para +/−).
-  final int stepQty;
+  /// Unidades por empaque.
+  final int packQty;
 
-  /// Cantidad mínima de compra; también el piso del botón "−".
-  final int minOrderQty;
+  /// CBM por empaque; null si el producto no tiene dimensiones.
+  final double? cbmPerEmpaque;
 
+  int get totalUnidades => cantidad * packQty;
+  double? get totalCbm => cbmPerEmpaque != null ? cbmPerEmpaque! * cantidad : null;
   double get total => precio * cantidad;
 
   static CartItem fromProduct(
     Product p,
     ProductVariant? variant,
-    int qty,
+    int empaques,
     bool isDistribuidor,
   ) {
     final codigo = variant?.codigo.isNotEmpty == true ? variant!.codigo : p.id;
     final precio = variant != null
         ? (isDistribuidor ? variant.priceDistributor : variant.priceRetail)
         : p.price;
-    final step = variant != null && variant.packQty > 1
-        ? variant.packQty
-        : (p.stepQty > 1 ? p.stepQty : 1);
-    final minQty = p.minOrderQty > 0 ? p.minOrderQty : step;
+    final pack = (variant?.packQty ?? p.minOrderQty) > 0
+        ? (variant?.packQty ?? p.minOrderQty)
+        : 1;
+
+    double? cbm;
+    final dims = variant?.dimensions.isNotEmpty == true
+        ? variant!.dimensions
+        : p.dimensions;
+    final l = dims['largo'];
+    final a = dims['ancho'];
+    final h = dims['alto'];
+    if (l != null && a != null && h != null) {
+      cbm = (l * a * h) / 1_000_000 * pack;
+    }
+
     return CartItem(
       id: '${p.id}_$codigo',
       productId: p.id,
@@ -60,11 +76,11 @@ class CartItem {
           ? variant.color
           : null,
       precio: precio,
-      cantidad: qty,
+      cantidad: empaques,
       stock: variant?.stock ?? 9999,
       imageUrl: p.imageUrl,
-      stepQty: step,
-      minOrderQty: minQty,
+      packQty: pack,
+      cbmPerEmpaque: cbm,
     );
   }
 }

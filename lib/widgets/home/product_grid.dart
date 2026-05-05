@@ -1,4 +1,5 @@
 import 'package:app_duralon/models/product.dart';
+import 'package:app_duralon/services/locale_service.dart';
 import 'package:app_duralon/widgets/product_image.dart';
 import 'package:flutter/material.dart';
 
@@ -83,13 +84,16 @@ class _ProductCard extends StatelessWidget {
                   ),
             ),
             const SizedBox(height: 2),
-            Text(
-              product.name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+            ListenableBuilder(
+              listenable: LocaleService.instance,
+              builder: (context, _) => Text(
+                product.nameFor(LocaleService.instance.language.name),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
             ),
             const SizedBox(height: 6),
             Text(

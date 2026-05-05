@@ -1,3 +1,5 @@
+import 'package:app_duralon/config/app_strings.dart';
+import 'package:app_duralon/services/locale_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -11,8 +13,6 @@ class PerfilScreen extends StatefulWidget {
 }
 
 class _PerfilScreenState extends State<PerfilScreen> {
-  // La pantalla se muestra de inmediato con los datos de Auth.
-  // Firestore carga en segundo plano y actualiza cuando llega.
   bool _firestoreLoading = true;
   Map<String, dynamic>? _userData;
   Map<String, dynamic>? _customerData;
@@ -38,7 +38,6 @@ class _PerfilScreenState extends State<PerfilScreen> {
     }
 
     try {
-      // Tiempo límite de 10 s para no quedarse colgado.
       final results = await Future.wait([
         FirebaseFirestore.instance
             .collection('users')
@@ -61,7 +60,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
       if (!mounted) return;
       setState(() {
         _firestoreLoading = false;
-        _firestoreError = 'No se pudieron cargar los datos adicionales.';
+        _firestoreError = S.loadError;
       });
     }
   }
@@ -70,133 +69,135 @@ class _PerfilScreenState extends State<PerfilScreen> {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF3F5F8),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Color(0xFF1A2230),
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Mi perfil',
-          style: TextStyle(
-            color: Color(0xFF1A2230),
-            fontWeight: FontWeight.w700,
-            fontSize: 20,
-          ),
-        ),
-        centerTitle: true,
-        bottom: const PreferredSize(
-          preferredSize: Size.fromHeight(1),
-          child: Divider(height: 1, color: Color(0xFFE5E8EF)),
-        ),
-      ),
-      body: user == null
-          ? const Center(child: Text('No hay sesión activa.'))
-          : RefreshIndicator(
-              color: AppColors.primaryBlue,
-              onRefresh: _loadFirestoreData,
-              child: ListView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 20,
-                ),
-                children: [
-                  _AvatarHeader(user: user, userData: _userData),
-                  const SizedBox(height: 20),
-                  if (_firestoreError != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.warning_amber_rounded,
-                            color: Color(0xFFE65100),
-                            size: 18,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              _firestoreError!,
-                              style: const TextStyle(
-                                color: Color(0xFFE65100),
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: _loadFirestoreData,
-                            child: const Text('Reintentar'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  _InfoCard(
-                    title: 'Información de cuenta',
-                    icon: Icons.manage_accounts_outlined,
-                    trailing: _firestoreLoading
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: AppColors.primaryBlue,
-                            ),
-                          )
-                        : null,
-                    children: _buildCuentaRows(user, _userData),
-                  ),
-                  const SizedBox(height: 14),
-                  if (!_firestoreLoading && _customerData != null)
-                    _InfoCard(
-                      title: 'Información de cliente',
-                      icon: Icons.storefront_outlined,
-                      children: _buildClienteRows(_userData, _customerData!),
-                    ),
-                ],
+    return ListenableBuilder(
+      listenable: LocaleService.instance,
+      builder: (context, _) {
+        return Scaffold(
+          backgroundColor: const Color(0xFFF3F5F8),
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: Color(0xFF1A2230),
+              ),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: Text(
+              S.myProfile,
+              style: const TextStyle(
+                color: Color(0xFF1A2230),
+                fontWeight: FontWeight.w700,
+                fontSize: 20,
               ),
             ),
+            centerTitle: true,
+            bottom: const PreferredSize(
+              preferredSize: Size.fromHeight(1),
+              child: Divider(height: 1, color: Color(0xFFE5E8EF)),
+            ),
+          ),
+          body: user == null
+              ? Center(child: Text(S.noSession))
+              : RefreshIndicator(
+                  color: AppColors.primaryBlue,
+                  onRefresh: _loadFirestoreData,
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 20,
+                    ),
+                    children: [
+                      _AvatarHeader(user: user, userData: _userData),
+                      const SizedBox(height: 20),
+                      if (_firestoreError != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.warning_amber_rounded,
+                                color: Color(0xFFE65100),
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _firestoreError!,
+                                  style: const TextStyle(
+                                    color: Color(0xFFE65100),
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: _loadFirestoreData,
+                                child: Text(S.retry),
+                              ),
+                            ],
+                          ),
+                        ),
+                      _InfoCard(
+                        title: S.accountInfo,
+                        icon: Icons.manage_accounts_outlined,
+                        trailing: _firestoreLoading
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.primaryBlue,
+                                ),
+                              )
+                            : null,
+                        children: _buildCuentaRows(user, _userData),
+                      ),
+                      const SizedBox(height: 14),
+                      if (!_firestoreLoading && _customerData != null)
+                        _InfoCard(
+                          title: S.clientInfo,
+                          icon: Icons.storefront_outlined,
+                          children: _buildClienteRows(_userData, _customerData!),
+                        ),
+                    ],
+                  ),
+                ),
+        );
+      },
     );
   }
 
-  /// Campos de la tarjeta "Información de cuenta" según el rol.
   List<Widget> _buildCuentaRows(User user, Map<String, dynamic>? data) {
     final role = data?['rol'] as String?;
     final esInterno = role == 'admin';
 
     return [
-      // Todos ven su nombre y correo.
       _InfoRow(
-        label: 'Nombre',
+        label: S.name,
         value: data?['nombre'] as String? ?? user.displayName ?? '—',
       ),
       _InfoRow(
-        label: 'Correo',
+        label: S.email,
         value: data?['correo'] as String? ?? user.email ?? '—',
       ),
       _InfoRow(
-        label: 'Miembro desde',
+        label: S.memberSince,
         value: _formatTimestamp(data?['creadoEn'] as Timestamp?),
       ),
-      // Solo admin y vendedor ven los campos técnicos.
       if (esInterno) ...[
-        _InfoRow(label: 'Rol', value: role ?? '—', isRole: true),
+        _InfoRow(label: S.role, value: role ?? '—', isRole: true),
         _InfoRow(
-          label: 'Estado',
+          label: S.status,
           value: data?['estado'] as String? ?? '—',
           isStatus: true,
         ),
         _InfoRow(
-          label: 'Proveedor',
+          label: S.provider,
           value: _providerLabel(data?['proveedorLogin'] as String?),
         ),
         _InfoRow(
-          label: 'ID de usuario',
+          label: S.userId,
           value: user.uid,
           mono: true,
           small: true,
@@ -205,7 +206,6 @@ class _PerfilScreenState extends State<PerfilScreen> {
     ];
   }
 
-  /// Campos de la tarjeta "Información de cliente" según el rol.
   List<Widget> _buildClienteRows(
     Map<String, dynamic>? userData,
     Map<String, dynamic> customer,
@@ -219,15 +219,15 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
     return [
       _InfoRow(
-        label: 'Nombre',
+        label: S.name,
         value: customer['nombreCompleto'] as String? ?? '—',
       ),
       _InfoRow(
-        label: 'Correo',
+        label: S.email,
         value: customer['correo'] as String? ?? '—',
       ),
       _InfoRow(
-        label: 'Tipo de cliente',
+        label: S.clientType,
         value: _taxpayerTypeLabel(taxpayerType),
       ),
       _InfoRow(
@@ -240,24 +240,23 @@ class _PerfilScreenState extends State<PerfilScreen> {
             : '—',
       ),
       _InfoRow(
-        label: 'Dirección fiscal',
+        label: S.fiscalAddress,
         value: (fiscalAddress != null && fiscalAddress.trim().isNotEmpty)
             ? fiscalAddress
             : '—',
       ),
-      // Solo admin y vendedor ven estado, crédito e ID técnico.
       if (esInterno) ...[
         _InfoRow(
-          label: 'Estado',
+          label: S.status,
           value: customer['estado'] as String? ?? '—',
           isCustomerStatus: true,
         ),
         _InfoRow(
-          label: 'Crédito habilitado',
-          value: (customer['creditoHabilitado'] == true) ? 'Sí' : 'No',
+          label: S.creditEnabled,
+          value: (customer['creditoHabilitado'] == true) ? S.yes : S.no,
         ),
         _InfoRow(
-          label: 'Registrado',
+          label: S.registered,
           value: _formatTimestamp(customer['creadoEn'] as Timestamp?),
         ),
       ],
@@ -269,7 +268,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
       case 'google':
         return 'Google';
       case 'email':
-        return 'Correo y contraseña';
+        return S.loginProvider;
       default:
         return provider ?? '—';
     }
@@ -278,13 +277,13 @@ class _PerfilScreenState extends State<PerfilScreen> {
   String _taxpayerTypeLabel(String? type) {
     switch (type) {
       case 'empresa':
-        return 'Empresa';
+        return S.taxpayerCompany;
       case 'zona_franca':
-        return 'Zona Franca';
+        return S.taxpayerFreeZone;
       case 'gubernamental':
-        return 'Gubernamental';
+        return S.taxpayerGov;
       case 'persona_fisica':
-        return 'Persona Física';
+        return S.taxpayerPerson;
       default:
         return '—';
     }
@@ -309,18 +308,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
     if (ts == null) return '—';
     final dt = ts.toDate().toLocal();
     final months = [
-      'ene',
-      'feb',
-      'mar',
-      'abr',
-      'may',
-      'jun',
-      'jul',
-      'ago',
-      'sep',
-      'oct',
-      'nov',
-      'dic',
+      'ene', 'feb', 'mar', 'abr', 'may', 'jun',
+      'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
     ];
     return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
   }
@@ -333,6 +322,15 @@ class _AvatarHeader extends StatelessWidget {
   final User user;
   final Map<String, dynamic>? userData;
 
+  String _roleLabel(String? r) => switch (r) {
+        'cliente_minorista' => S.roleRetail,
+        'cliente_distribuidor' => S.roleDistrib,
+        'cliente' => S.roleClient,
+        'admin' => S.roleAdmin,
+        'vendedor' => S.roleSeller,
+        _ => r ?? '',
+      };
+
   @override
   Widget build(BuildContext context) {
     final name = userData?['nombre'] as String? ?? user.displayName ?? '';
@@ -341,19 +339,13 @@ class _AvatarHeader extends StatelessWidget {
     final role = userData?['rol'] as String?;
 
     final initials = _initials(name, email);
-    const roleLabels = {
-      'cliente_minorista': 'Cliente Minorista',
-      'cliente_distribuidor': 'Cliente Distribuidor',
-      'cliente': 'Cliente',
-      'admin': 'Administrador',
-    };
     const roleColors = {
       'cliente_minorista': Color(0xFF1565C0),
       'cliente_distribuidor': Color(0xFF00838F),
       'cliente': Color(0xFF1565C0),
       'admin': Color(0xFFC62828),
     };
-    final roleLabel = roleLabels[role] ?? role ?? '';
+    final roleLabel = _roleLabel(role);
     final roleColor = roleColors[role] ?? const Color(0xFF546E7A);
 
     return Container(
@@ -372,7 +364,6 @@ class _AvatarHeader extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Avatar
           Container(
             width: 96,
             height: 96,
@@ -593,23 +584,25 @@ class _RoleBadge extends StatelessWidget {
   const _RoleBadge({required this.role});
   final String role;
 
+  String _label() => switch (role) {
+        'cliente_minorista' => S.roleRetail,
+        'cliente_distribuidor' => S.roleDistrib,
+        'cliente' => S.roleClient,
+        'admin' => S.roleAdmin,
+        'vendedor' => S.roleSeller,
+        _ => role,
+      };
+
   @override
   Widget build(BuildContext context) {
-    const labels = {
-      'cliente_minorista': 'Cliente Minorista',
-      'cliente_distribuidor': 'Cliente Distribuidor',
-      'cliente': 'Cliente',
-      'admin': 'Administrador',
-    };
     const colors = {
       'cliente_minorista': Color(0xFF1565C0),
       'cliente_distribuidor': Color(0xFF00838F),
       'cliente': Color(0xFF1565C0),
       'admin': Color(0xFFC62828),
     };
-    final label = labels[role] ?? role;
     final color = colors[role] ?? const Color(0xFF546E7A);
-    return _Badge(label: label, color: color);
+    return _Badge(label: _label(), color: color);
   }
 }
 
@@ -622,7 +615,7 @@ class _StatusBadge extends StatelessWidget {
     final color = status == 'activo'
         ? const Color(0xFF2E7D32)
         : const Color(0xFF9E9E9E);
-    final label = status == 'activo' ? 'Activo' : status;
+    final label = status == 'activo' ? S.statusActive : status;
     return _Badge(label: label, color: color);
   }
 }
@@ -640,9 +633,9 @@ class _CustomerStatusBadge extends StatelessWidget {
       _ => const Color(0xFF9E9E9E),
     };
     final label = switch (status) {
-      'activo' => 'Activo',
-      'pendiente_validacion' => 'Pendiente validación',
-      'suspendido' => 'Suspendido',
+      'activo' => S.statusActive,
+      'pendiente_validacion' => S.statusPending,
+      'suspendido' => S.statusSuspended,
       _ => status,
     };
     return _Badge(label: label, color: color);

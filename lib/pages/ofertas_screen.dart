@@ -1,7 +1,9 @@
+import 'package:app_duralon/config/app_strings.dart';
 import 'package:app_duralon/models/cart_item.dart';
 import 'package:app_duralon/models/product.dart';
 import 'package:app_duralon/pages/producto_screen.dart';
 import 'package:app_duralon/services/cart_service.dart';
+import 'package:app_duralon/services/locale_service.dart';
 import 'package:app_duralon/services/product_service.dart';
 import 'package:app_duralon/styles/app_style.dart';
 import 'package:app_duralon/utils/slide_right_route.dart';
@@ -10,18 +12,13 @@ import 'package:app_duralon/widgets/duralon_guest_cart_dialog.dart';
 import 'package:flutter/material.dart';
 
 class OfertasScreen extends StatelessWidget {
-  const OfertasScreen({
-    super.key,
-    this.isGuestMode = false,
-    this.userRole,
-  });
+  const OfertasScreen({super.key, this.isGuestMode = false, this.userRole});
 
   final bool isGuestMode;
   final String? userRole;
 
   bool get _isDistribuidor =>
-      userRole == 'cliente_distribuidor' ||
-      userRole == 'admin';
+      userRole == 'cliente_distribuidor' || userRole == 'admin';
 
   @override
   Widget build(BuildContext context) {
@@ -31,12 +28,22 @@ class OfertasScreen extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF1A2230)),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF1A2230),
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Ofertas',
-          style: TextStyle(color: Color(0xFF1A2230), fontWeight: FontWeight.w700, fontSize: 18),
+        title: ListenableBuilder(
+          listenable: LocaleService.instance,
+          builder: (context, _) => Text(
+            S.offers,
+            style: const TextStyle(
+              color: Color(0xFF1A2230),
+              fontWeight: FontWeight.w700,
+              fontSize: 18,
+            ),
+          ),
         ),
         centerTitle: true,
       ),
@@ -44,12 +51,20 @@ class OfertasScreen extends StatelessWidget {
         stream: ProductService.streamAll(),
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: AppColors.primaryBlue));
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.primaryBlue),
+            );
           }
-          final ofertas = (snap.data ?? [])
-              .where((p) => p.listPrice != null && p.listPrice! > p.price && p.price > 0)
-              .toList()
-            ..sort((a, b) => _descuento(b).compareTo(_descuento(a)));
+          final ofertas =
+              (snap.data ?? [])
+                  .where(
+                    (p) =>
+                        p.listPrice != null &&
+                        p.listPrice! > p.price &&
+                        p.price > 0,
+                  )
+                  .toList()
+                ..sort((a, b) => _descuento(b).compareTo(_descuento(a)));
 
           if (ofertas.isEmpty) {
             return _buildEmpty();
@@ -63,14 +78,21 @@ class OfertasScreen extends StatelessWidget {
                   child: Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.primaryRed.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.local_offer_rounded, size: 14, color: AppColors.primaryRed),
+                            const Icon(
+                              Icons.local_offer_rounded,
+                              size: 14,
+                              color: AppColors.primaryRed,
+                            ),
                             const SizedBox(width: 6),
                             Text(
                               '${ofertas.length} productos en oferta',
@@ -102,11 +124,13 @@ class OfertasScreen extends StatelessWidget {
                       isDistribuidor: _isDistribuidor,
                       onTap: () => Navigator.push<void>(
                         context,
-                        slideRightRoute<void>(ProductoScreen(
-                          product: ofertas[i],
-                          isGuestMode: isGuestMode,
-                          userRole: userRole,
-                        )),
+                        slideRightRoute<void>(
+                          ProductoScreen(
+                            product: ofertas[i],
+                            isGuestMode: isGuestMode,
+                            userRole: userRole,
+                          ),
+                        ),
                       ),
                       onAddToCart: () => _addToCart(context, ofertas[i]),
                     ),
@@ -133,7 +157,11 @@ class OfertasScreen extends StatelessWidget {
       _isDistribuidor,
     );
     CartService.instance.addItem(item);
-    showCartAddedToast(context, product.name, product.minOrderQty > 0 ? product.minOrderQty : 1);
+    showCartAddedToast(
+      context,
+      product.name,
+      product.minOrderQty > 0 ? product.minOrderQty : 1,
+    );
   }
 
   int _descuento(Product p) {
@@ -146,16 +174,24 @@ class OfertasScreen extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.local_offer_outlined, size: 72, color: Colors.grey.shade300),
+          Icon(
+            Icons.local_offer_outlined,
+            size: 72,
+            color: Colors.grey.shade300,
+          ),
           const SizedBox(height: 16),
-          const Text(
-            'No hay ofertas disponibles',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+          Text(
+            S.offersEmpty,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF475569),
+            ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Pronto publicaremos promociones especiales',
-            style: TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
+          Text(
+            S.offersEmptySub,
+            style: const TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
           ),
         ],
       ),
@@ -180,7 +216,8 @@ class _OfertaCard extends StatelessWidget {
 
   int get _pct {
     if (product.listPrice == null || product.listPrice! <= 0) return 0;
-    return (((product.listPrice! - product.price) / product.listPrice!) * 100).round();
+    return (((product.listPrice! - product.price) / product.listPrice!) * 100)
+        .round();
   }
 
   String _fmt(double n) =>
@@ -194,7 +231,13 @@ class _OfertaCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 6, offset: Offset(0, 2))],
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0A000000),
+              blurRadius: 6,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -203,14 +246,17 @@ class _OfertaCard extends StatelessWidget {
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                  child: product.imageUrl != null && product.imageUrl!.isNotEmpty
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(16),
+                  ),
+                  child:
+                      product.imageUrl != null && product.imageUrl!.isNotEmpty
                       ? Image.network(
                           product.imageUrl!,
                           height: 130,
                           width: double.infinity,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _placeholder(),
+                          errorBuilder: (_, _, _) => _placeholder(),
                         )
                       : _placeholder(),
                 ),
@@ -218,7 +264,10 @@ class _OfertaCard extends StatelessWidget {
                   top: 8,
                   left: 8,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.primaryRed,
                       borderRadius: BorderRadius.circular(20),
@@ -242,11 +291,18 @@ class _OfertaCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      product.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+                    ListenableBuilder(
+                      listenable: LocaleService.instance,
+                      builder: (context, _) => Text(
+                        product.nameFor(LocaleService.instance.language.name),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 4),
                     // Precio tachado
@@ -279,11 +335,19 @@ class _OfertaCard extends StatelessWidget {
                           foregroundColor: Colors.white,
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(vertical: 8),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                           minimumSize: Size.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        child: const Text('Agregar', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                        child: Text(
+                          S.add,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -297,11 +361,16 @@ class _OfertaCard extends StatelessWidget {
   }
 
   Widget _placeholder() => Container(
-        height: 130,
-        width: double.infinity,
-        color: AppColors.lightBlue,
-        child: Center(
-          child: Image.asset('assets/images/duralon_logo.png', width: 48, height: 48, fit: BoxFit.contain),
-        ),
-      );
+    height: 130,
+    width: double.infinity,
+    color: AppColors.lightBlue,
+    child: Center(
+      child: Image.asset(
+        'assets/images/duralon_logo.png',
+        width: 48,
+        height: 48,
+        fit: BoxFit.contain,
+      ),
+    ),
+  );
 }

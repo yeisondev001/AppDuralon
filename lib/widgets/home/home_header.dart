@@ -1,6 +1,9 @@
+import 'package:app_duralon/config/app_strings.dart';
 import 'package:app_duralon/pages/carrito_screen.dart';
 import 'package:app_duralon/services/cart_service.dart';
+import 'package:app_duralon/services/locale_service.dart';
 import 'package:app_duralon/styles/app_style.dart';
+import 'package:app_duralon/widgets/language_selector.dart';
 import 'package:flutter/material.dart';
 
 class HomeHeader extends StatefulWidget {
@@ -40,7 +43,9 @@ class _HomeHeaderState extends State<HomeHeader> {
   Widget build(BuildContext context) {
     final cartCount = _cart.totalPiezas;
     final padH = MediaQuery.sizeOf(context).width < 360 ? 10.0 : 16.0;
-    return Padding(
+    return ValueListenableBuilder<AppLanguage>(
+      valueListenable: LocaleService.instance,
+      builder: (context, lang, child) => Padding(
       padding: EdgeInsets.fromLTRB(padH, 16, padH, 8),
       child: Row(
         children: [
@@ -49,7 +54,7 @@ class _HomeHeaderState extends State<HomeHeader> {
             constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
             onPressed: widget.onMenuTap,
             icon: const Icon(Icons.menu_rounded),
-            tooltip: 'Menu',
+            tooltip: S.menuTooltip,
           ),
           const SizedBox(width: 2),
           Image.asset(
@@ -61,7 +66,7 @@ class _HomeHeaderState extends State<HomeHeader> {
           const SizedBox(width: 8),
           Expanded(
             child: SearchBar(
-              hintText: 'Buscar productos',
+              hintText: S.searchHint,
               onChanged: widget.onSearchChanged,
               leading: const Icon(Icons.search_rounded),
               constraints: const BoxConstraints(minWidth: 0, minHeight: 48),
@@ -71,6 +76,7 @@ class _HomeHeaderState extends State<HomeHeader> {
             ),
           ),
           const SizedBox(width: 4),
+          // ── Carrito ───────────────────────────────────────────────
           Stack(
             clipBehavior: Clip.none,
             children: [
@@ -85,7 +91,7 @@ class _HomeHeaderState extends State<HomeHeader> {
                   foregroundColor: AppColors.primaryBlue,
                 ),
                 icon: const Icon(Icons.shopping_cart_rounded, size: 22),
-                tooltip: 'Carrito',
+                tooltip: S.cartTooltip,
               ),
               if (cartCount > 0)
                 Positioned(
@@ -113,8 +119,11 @@ class _HomeHeaderState extends State<HomeHeader> {
                 ),
             ],
           ),
+          const SizedBox(width: 4),
+          // ── Selector de idioma ────────────────────────────────────
+          const LanguageSelectorButton(onSurface: true),
         ],
       ),
-    );
+    ));
   }
 }

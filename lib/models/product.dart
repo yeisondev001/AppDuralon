@@ -7,6 +7,8 @@ class Product {
   const Product({
     required this.id,
     required this.name,
+    this.nameEn,
+    this.nameFr,
     required this.category,
     required this.price,
     this.description,
@@ -28,6 +30,12 @@ class Product {
   final String id;
 
   final String name;
+
+  /// Nombre en inglés (opcional). Si está vacío usa [name].
+  final String? nameEn;
+
+  /// Nombre en francés (opcional). Si está vacío usa [name].
+  final String? nameFr;
 
   /// Subtipo visible (ej: "Envases"). Coincide con el subtype del catálogo.
   final String category;
@@ -111,6 +119,14 @@ class Product {
   double? get alto  => dimensions['alto'];
   double? get peso  => dimensions['peso'];
 
+  /// Devuelve el nombre en el idioma indicado; cae en español si no hay traducción.
+  /// [lang] es el código de idioma: 'es', 'en', 'fr'.
+  String nameFor(String lang) {
+    if (lang == 'en' && nameEn?.isNotEmpty == true) return nameEn!;
+    if (lang == 'fr' && nameFr?.isNotEmpty == true) return nameFr!;
+    return name;
+  }
+
   // ── Serialización ─────────────────────────────────────────────
   factory Product.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final d = doc.data() ?? const {};
@@ -128,6 +144,8 @@ class Product {
       name: (d['name'] as String?)?.trim().isNotEmpty == true
           ? d['name'] as String
           : 'Producto ${doc.id}',
+      nameEn: d['nameEn'] as String?,
+      nameFr: d['nameFr'] as String?,
       category: (d['category'] as String?)?.trim().isNotEmpty == true
           ? d['category'] as String
           : 'General',
@@ -177,6 +195,8 @@ class Product {
   Product copyWith({
     String? id,
     String? name,
+    String? nameEn,
+    String? nameFr,
     String? category,
     double? price,
     String? description,
@@ -197,6 +217,8 @@ class Product {
     return Product(
       id:          id          ?? this.id,
       name:        name        ?? this.name,
+      nameEn:      nameEn      ?? this.nameEn,
+      nameFr:      nameFr      ?? this.nameFr,
       category:    category    ?? this.category,
       price:       price       ?? this.price,
       description: description ?? this.description,

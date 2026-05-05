@@ -4,7 +4,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:app_duralon/config/app_strings.dart';
 import 'package:app_duralon/pages/login_screen.dart';
+import 'package:app_duralon/services/locale_service.dart';
 import 'package:app_duralon/utils/slide_right_route.dart';
 import 'package:app_duralon/utils/show_quienes_somos_bottom_sheet.dart';
 import 'package:app_duralon/utils/show_terminos_bottom_sheet.dart';
@@ -19,23 +21,15 @@ const Set<String> kSideMenuItemsRequiringAccount = {
   'Mi perfil',
   'Ofertas',
   'Mis pedidos',
-
   'Mis direcciones',
   'Metodos de pago',
   'Soporte',
 };
 
-// ─── Colores y etiquetas por rol ──────────────────────────────────────────────
-const _kRoleLabels = {
-  'cliente_minorista': 'Cliente Minorista',
-  'cliente_distribuidor': 'Cliente Distribuidor',
-  'cliente': 'Cliente', // retrocompat
-  'admin': 'Administrador',
-};
 const _kRoleColors = {
   'cliente_minorista': Color(0xFF1565C0),
   'cliente_distribuidor': Color(0xFF00838F),
-  'cliente': Color(0xFF1565C0), // retrocompat
+  'cliente': Color(0xFF1565C0),
   'admin': Color(0xFFC62828),
 };
 
@@ -82,15 +76,10 @@ class _HomeSideMenuState extends State<HomeSideMenu> {
   }
 
   Future<void> _signOut(BuildContext context) async {
-    // En móvil: cerrar sesión en Google Y revocar acceso para que
-    // aparezca el selector de cuenta en el próximo login.
-    // En web: Google Sign-In no se inicializa, solo cerramos Firebase.
     if (!kIsWeb) {
       try {
         await GoogleSignIn.instance.disconnect();
-      } catch (_) {
-        // Si disconnect falla (ej. no hay sesión Google activa), ignorar.
-      }
+      } catch (_) {}
     }
     await FirebaseAuth.instance.signOut();
     if (!context.mounted) return;
@@ -109,188 +98,187 @@ class _HomeSideMenuState extends State<HomeSideMenu> {
       MediaQuery.sizeOf(context).width,
     );
 
-    return SafeArea(
-      child: Container(
-        width: drawerW,
-        color: const Color(0xFFF5F5F5),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 18),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: Image.asset(
-                'assets/images/duralon_logo.png',
-                width: 84,
-                height: 84,
-                fit: BoxFit.contain,
-              ),
-            ),
-            const SizedBox(height: 10),
+    return ListenableBuilder(
+      listenable: LocaleService.instance,
+      builder: (context, _) {
+        return SafeArea(
+          child: Container(
+            width: drawerW,
+            color: const Color(0xFFF5F5F5),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 18),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: Image.asset(
+                    'assets/images/duralon_logo.png',
+                    width: 84,
+                    height: 84,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                const SizedBox(height: 10),
 
-            // ── Encabezado de usuario ──────────────────────────────────────────
-            _UserHeader(user: user, role: _role, showRole: _role == 'admin'),
-            const SizedBox(height: 8),
-            const Divider(height: 1, indent: 16, endIndent: 16),
-            const SizedBox(height: 6),
+                _UserHeader(user: user, role: _role, showRole: _role == 'admin'),
+                const SizedBox(height: 8),
+                const Divider(height: 1, indent: 16, endIndent: 16),
+                const SizedBox(height: 6),
 
-            Expanded(
-              child: ListView(
-                physics: const ClampingScrollPhysics(),
-                padding: EdgeInsets.zero,
-                children: [
-                  // ── Ítems de navegación ───────────────────────────────────────────
-                  _MenuItem(
-                    icon: Icons.home_outlined,
-                    title: 'Inicio',
-                    selected: widget.selectedItem == 'Inicio',
-                    onTap: () => widget.onItemTap('Inicio'),
-                  ),
-                  _MenuItem(
-                    icon: Icons.grid_view_rounded,
-                    title: 'Catalogo',
-                    selected: widget.selectedItem == 'Catalogo',
-                    onTap: () => widget.onItemTap('Catalogo'),
-                  ),
-                  _MenuItem(
-                    icon: Icons.person_outline_rounded,
-                    title: 'Mi perfil',
-                    selected: widget.selectedItem == 'Mi perfil',
-                    onTap: () => widget.onItemTap('Mi perfil'),
-                  ),
-                  _MenuItem(
-                    icon: Icons.local_offer_outlined,
-                    title: 'Ofertas',
-                    selected: widget.selectedItem == 'Ofertas',
-                    onTap: () => widget.onItemTap('Ofertas'),
-                  ),
-                  _MenuItem(
-                    icon: Icons.receipt_long_outlined,
-                    title: 'Mis pedidos',
-                    selected: widget.selectedItem == 'Mis pedidos',
-                    onTap: () => widget.onItemTap('Mis pedidos'),
-                  ),
-
-                  _MenuItem(
-                    icon: Icons.location_on_outlined,
-                    title: 'Mis direcciones',
-                    selected: widget.selectedItem == 'Mis direcciones',
-                    onTap: () => widget.onItemTap('Mis direcciones'),
-                  ),
-                  _MenuItem(
-                    icon: Icons.credit_card_outlined,
-                    title: 'Metodos de pago',
-                    selected: widget.selectedItem == 'Metodos de pago',
-                    onTap: () => widget.onItemTap('Metodos de pago'),
-                  ),
-                  _MenuItem(
-                    icon: Icons.support_agent_rounded,
-                    title: 'Soporte',
-                    selected: widget.selectedItem == 'Soporte',
-                    onTap: () => widget.onItemTap('Soporte'),
-                  ),
-                  if (widget.showWholesaleRules)
-                    _MenuItem(
-                      icon: Icons.tune_rounded,
-                      title: 'Reglas mayoristas',
-                      selected: widget.selectedItem == 'Reglas mayoristas',
-                      onTap: () => widget.onItemTap('Reglas mayoristas'),
-                    ),
-                  if (widget.showAdminPanel) ...[
-                    const Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
+                Expanded(
+                  child: ListView(
+                    physics: const ClampingScrollPhysics(),
+                    padding: EdgeInsets.zero,
+                    children: [
+                      _MenuItem(
+                        icon: Icons.home_outlined,
+                        title: S.menuHome,
+                        selected: widget.selectedItem == 'Inicio',
+                        onTap: () => widget.onItemTap('Inicio'),
                       ),
-                      child: Divider(height: 1, color: Color(0xFFE0E0E0)),
-                    ),
-                    _MenuItem(
-                      icon: Icons.admin_panel_settings_rounded,
-                      title: 'Panel de administración',
-                      selected:
-                          widget.selectedItem == 'Panel de administración',
-                      onTap: () => widget.onItemTap('Panel de administración'),
-                      textColor: const Color(0xFFC62828),
-                    ),
-                  ],
-
-                  // ── Botón inferior: cerrar/iniciar sesión ─────────────────────────
-                  if (isLoggedIn)
-                    _MenuItem(
-                      icon: Icons.logout_rounded,
-                      title: 'Cerrar sesión',
-                      onTap: () => _signOut(context),
-                      textColor: const Color(0xFFC62828),
-                    )
-                  else
-                    _MenuItem(
-                      icon: Icons.login_rounded,
-                      title: 'Iniciar sesion',
-                      onTap:
-                          widget.onLoginTap ??
-                          () {
-                            Navigator.push<void>(
-                              context,
-                              slideRightRoute<void>(const LoginScreen()),
-                            );
-                          },
-                    ),
-
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(8),
-                        onTap: () =>
-                            showTerminosYCondicionesBottomSheet(context),
-                        child: const Padding(
+                      _MenuItem(
+                        icon: Icons.grid_view_rounded,
+                        title: S.menuCatalog,
+                        selected: widget.selectedItem == 'Catalogo',
+                        onTap: () => widget.onItemTap('Catalogo'),
+                      ),
+                      _MenuItem(
+                        icon: Icons.person_outline_rounded,
+                        title: S.menuProfile,
+                        selected: widget.selectedItem == 'Mi perfil',
+                        onTap: () => widget.onItemTap('Mi perfil'),
+                      ),
+                      _MenuItem(
+                        icon: Icons.local_offer_outlined,
+                        title: S.menuOffers,
+                        selected: widget.selectedItem == 'Ofertas',
+                        onTap: () => widget.onItemTap('Ofertas'),
+                      ),
+                      _MenuItem(
+                        icon: Icons.receipt_long_outlined,
+                        title: S.menuOrders,
+                        selected: widget.selectedItem == 'Mis pedidos',
+                        onTap: () => widget.onItemTap('Mis pedidos'),
+                      ),
+                      _MenuItem(
+                        icon: Icons.location_on_outlined,
+                        title: S.menuAddresses,
+                        selected: widget.selectedItem == 'Mis direcciones',
+                        onTap: () => widget.onItemTap('Mis direcciones'),
+                      ),
+                      _MenuItem(
+                        icon: Icons.credit_card_outlined,
+                        title: S.menuPayments,
+                        selected: widget.selectedItem == 'Metodos de pago',
+                        onTap: () => widget.onItemTap('Metodos de pago'),
+                      ),
+                      _MenuItem(
+                        icon: Icons.support_agent_rounded,
+                        title: S.menuSupport,
+                        selected: widget.selectedItem == 'Soporte',
+                        onTap: () => widget.onItemTap('Soporte'),
+                      ),
+                      if (widget.showWholesaleRules)
+                        _MenuItem(
+                          icon: Icons.tune_rounded,
+                          title: S.menuWholesale,
+                          selected: widget.selectedItem == 'Reglas mayoristas',
+                          onTap: () => widget.onItemTap('Reglas mayoristas'),
+                        ),
+                      if (widget.showAdminPanel) ...[
+                        const Padding(
                           padding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
+                            horizontal: 16,
+                            vertical: 4,
                           ),
-                          child: Text(
-                            'Términos y condiciones',
-                            style: TextStyle(
-                              color: Color(0xFF7D8798),
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
+                          child: Divider(height: 1, color: Color(0xFFE0E0E0)),
+                        ),
+                        _MenuItem(
+                          icon: Icons.admin_panel_settings_rounded,
+                          title: S.menuAdmin,
+                          selected: widget.selectedItem == 'Panel de administración',
+                          onTap: () => widget.onItemTap('Panel de administración'),
+                          textColor: const Color(0xFFC62828),
+                        ),
+                      ],
+
+                      if (isLoggedIn)
+                        _MenuItem(
+                          icon: Icons.logout_rounded,
+                          title: S.menuLogout,
+                          onTap: () => _signOut(context),
+                          textColor: const Color(0xFFC62828),
+                        )
+                      else
+                        _MenuItem(
+                          icon: Icons.login_rounded,
+                          title: S.menuLogin,
+                          onTap: widget.onLoginTap ??
+                              () {
+                                Navigator.push<void>(
+                                  context,
+                                  slideRightRoute<void>(const LoginScreen()),
+                                );
+                              },
+                        ),
+
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(8),
+                            onTap: () =>
+                                showTerminosYCondicionesBottomSheet(context),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              child: Text(
+                                S.menuTerms,
+                                style: const TextStyle(
+                                  color: Color(0xFF7D8798),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(8),
-                        onTap: () => showQuienesSomosBottomSheet(context),
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          child: Text(
-                            'Quiénes somos',
-                            style: TextStyle(
-                              color: Color(0xFF7D8798),
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(8),
+                            onTap: () => showQuienesSomosBottomSheet(context),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              child: Text(
+                                S.menuAbout,
+                                style: const TextStyle(
+                                  color: Color(0xFF7D8798),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -303,14 +291,23 @@ class _UserHeader extends StatelessWidget {
   final String? role;
   final bool showRole;
 
+  String _roleLabel(String? r) => switch (r) {
+        'cliente_minorista' => S.roleRetail,
+        'cliente_distribuidor' => S.roleDistrib,
+        'cliente' => S.roleClient,
+        'admin' => S.roleAdmin,
+        'vendedor' => S.roleSeller,
+        _ => r ?? '',
+      };
+
   @override
   Widget build(BuildContext context) {
     if (user == null) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
         child: Text(
-          'Modo invitado',
-          style: TextStyle(
+          S.guestMode,
+          style: const TextStyle(
             color: Color(0xFF9AA3AF),
             fontSize: 15,
             fontWeight: FontWeight.w500,
@@ -324,14 +321,13 @@ class _UserHeader extends StatelessWidget {
     final photoUrl = user!.photoURL;
     final initials = _initials(displayName, email);
 
-    final roleLabel = _kRoleLabels[role] ?? role ?? '';
+    final roleLabel = _roleLabel(role);
     final roleColor = _kRoleColors[role] ?? const Color(0xFF546E7A);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Row(
         children: [
-          // Avatar circular
           CircleAvatar(
             radius: 28,
             backgroundColor: const Color(0xFFD6E4F0),

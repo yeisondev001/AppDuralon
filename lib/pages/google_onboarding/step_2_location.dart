@@ -4,7 +4,6 @@
 // Último paso: guarda los datos en Firestore al finalizar.
 // =============================================================================
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart' show FirebaseException;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -20,16 +19,16 @@ import 'package:app_duralon/utils/slide_right_route.dart';
 
 const _kCountries = <_Country>[
   _Country('República Dominicana', '🇩🇴'),
-  _Country('Puerto Rico',          '🇵🇷'),
-  _Country('Costa Rica',           '🇨🇷'),
-  _Country('Canadá',               '🇨🇦'),
-  _Country('Estados Unidos',       '🇺🇸'),
-  _Country('Panamá',               '🇵🇦'),
-  _Country('Trinidad y Tobago',    '🇹🇹'),
-  _Country('Haití',                '🇭🇹'),
-  _Country('Aruba',                '🇦🇼'),
-  _Country('Jamaica',              '🇯🇲'),
-  _Country('Barbados',             '🇧🇧'),
+  _Country('Puerto Rico', '🇵🇷'),
+  _Country('Costa Rica', '🇨🇷'),
+  _Country('Canadá', '🇨🇦'),
+  _Country('Estados Unidos', '🇺🇸'),
+  _Country('Panamá', '🇵🇦'),
+  _Country('Trinidad y Tobago', '🇹🇹'),
+  _Country('Haití', '🇭🇹'),
+  _Country('Aruba', '🇦🇼'),
+  _Country('Jamaica', '🇯🇲'),
+  _Country('Barbados', '🇧🇧'),
 ];
 
 class _Country {
@@ -56,23 +55,23 @@ class _Step2LocationScreenState extends State<Step2LocationScreen> {
   late final TextEditingController _addressCtrl;
   late final TextEditingController _phoneCtrl;
 
-  final FocusNode _cityFocus    = FocusNode();
+  final FocusNode _cityFocus = FocusNode();
   final FocusNode _addressFocus = FocusNode();
-  final FocusNode _phoneFocus   = FocusNode();
+  final FocusNode _phoneFocus = FocusNode();
 
   bool _saving = false;
 
   @override
   void initState() {
     super.initState();
-    _country     = widget.data.country;
-    _cityCtrl    = TextEditingController(text: widget.data.city    ?? '');
+    _country = widget.data.country;
+    _cityCtrl = TextEditingController(text: widget.data.city ?? '');
     _addressCtrl = TextEditingController(text: widget.data.address ?? '');
-    _phoneCtrl   = TextEditingController(text: widget.data.phone   ?? '');
+    _phoneCtrl = TextEditingController(text: widget.data.phone ?? '');
 
-    _cityCtrl.addListener(()    => setState(() {}));
+    _cityCtrl.addListener(() => setState(() {}));
     _addressCtrl.addListener(() => setState(() {}));
-    _phoneCtrl.addListener(()   => setState(() {}));
+    _phoneCtrl.addListener(() => setState(() {}));
 
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => _cityFocus.requestFocus(),
@@ -101,10 +100,14 @@ class _Step2LocationScreenState extends State<Step2LocationScreen> {
 
   String _taxpayerType(ClientType? t) {
     switch (t) {
-      case ClientType.empresa:       return 'empresa';
-      case ClientType.zonaFranca:    return 'zona_franca';
-      case ClientType.gubernamental: return 'gubernamental';
-      default:                       return 'persona_fisica';
+      case ClientType.empresa:
+        return 'empresa';
+      case ClientType.zonaFranca:
+        return 'zona_franca';
+      case ClientType.gubernamental:
+        return 'gubernamental';
+      default:
+        return 'persona_fisica';
     }
   }
 
@@ -116,20 +119,20 @@ class _Step2LocationScreenState extends State<Step2LocationScreen> {
     if (user == null) return;
 
     widget.data.country = _country;
-    widget.data.city    = _cityCtrl.text.trim();
+    widget.data.city = _cityCtrl.text.trim();
     widget.data.address = _addressCtrl.text.trim();
-    widget.data.phone   = _phoneCtrl.text.trim();
+    widget.data.phone = _phoneCtrl.text.trim();
 
     setState(() => _saving = true);
     try {
       await _authService.completeGoogleCustomerOnboarding(
-        user:          user,
-        taxpayerType:  _taxpayerType(widget.data.clientType),
-        fullName:      widget.data.name    ?? '',
+        user: user,
+        taxpayerType: _taxpayerType(widget.data.clientType),
+        fullName: widget.data.name ?? '',
         identification: widget.data.taxId ?? '',
-        city:          widget.data.city    ?? '',
-        country:       widget.data.country,
-        phone:         widget.data.phone   ?? '',
+        city: widget.data.city ?? '',
+        country: widget.data.country,
+        phone: widget.data.phone ?? '',
         fiscalAddress: widget.data.address ?? '',
       );
       if (!mounted) return;
@@ -141,9 +144,7 @@ class _Step2LocationScreenState extends State<Step2LocationScreen> {
     } on DuplicateIdentificationException {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Esa identificación ya está registrada.'),
-        ),
+        const SnackBar(content: Text('Esa identificación ya está registrada.')),
       );
     } on InvalidIdentificationException {
       if (!mounted) return;
@@ -161,9 +162,7 @@ class _Step2LocationScreenState extends State<Step2LocationScreen> {
           ? 'Sin permisos en Firestore. Verifica las reglas de seguridad.'
           : 'Error Firebase [${e.code}]: ${e.message}';
       debugPrint('FirebaseException en onboarding: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg)),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } catch (e) {
       if (!mounted) return;
       debugPrint('Error inesperado en onboarding: $e');
@@ -250,9 +249,7 @@ class _Step2LocationScreenState extends State<Step2LocationScreen> {
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: AppColors.border,
-                          ),
+                          borderSide: const BorderSide(color: AppColors.border),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -269,10 +266,9 @@ class _Step2LocationScreenState extends State<Step2LocationScreen> {
                       child: ListView.separated(
                         controller: scrollCtrl,
                         itemCount: filtered.length,
-                        separatorBuilder: (_, __) =>
-                            const SizedBox(height: 6),
+                        separatorBuilder: (_, _) => const SizedBox(height: 6),
                         itemBuilder: (_, i) {
-                          final c   = filtered[i];
+                          final c = filtered[i];
                           final sel = _country == c.name;
                           return Material(
                             color: Colors.transparent,
@@ -290,8 +286,9 @@ class _Step2LocationScreenState extends State<Step2LocationScreen> {
                                 ),
                                 decoration: BoxDecoration(
                                   color: sel
-                                      ? AppColors.accentBlue
-                                          .withValues(alpha: 0.08)
+                                      ? AppColors.accentBlue.withValues(
+                                          alpha: 0.08,
+                                        )
                                       : AppColors.surface,
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
@@ -305,8 +302,7 @@ class _Step2LocationScreenState extends State<Step2LocationScreen> {
                                   children: [
                                     Text(
                                       c.flag,
-                                      style:
-                                          const TextStyle(fontSize: 20),
+                                      style: const TextStyle(fontSize: 20),
                                     ),
                                     const SizedBox(width: 10),
                                     Expanded(
@@ -452,8 +448,10 @@ class _Step2LocationScreenState extends State<Step2LocationScreen> {
                     size: 20,
                   ),
                 ),
-                prefixIconConstraints:
-                    const BoxConstraints(minWidth: 52, minHeight: 0),
+                prefixIconConstraints: const BoxConstraints(
+                  minWidth: 52,
+                  minHeight: 0,
+                ),
                 filled: true,
                 fillColor: AppColors.surface,
                 contentPadding: const EdgeInsets.symmetric(

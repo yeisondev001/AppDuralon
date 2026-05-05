@@ -1,4 +1,5 @@
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
@@ -19,21 +20,23 @@ const String _kGoogleIosClientId =
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // En web la sesión no debe persistir entre recargas de página — solo vive
+  // en memoria. El usuario siempre verá el login al refrescar.
+  if (kIsWeb) {
+    await FirebaseAuth.instance.setPersistence(Persistence.NONE);
+  }
 
   // ── Crashlytics ───────────────────────────────────────────────────────────
   // Crashlytics solo disponible en móvil (no en web).
   if (!kIsWeb) {
     // Habilitado en todos los modos para poder probar desde el panel de admin.
     // Cuando la app pase a producción, cambiar a: !kDebugMode
-    await FirebaseCrashlytics.instance
-        .setCrashlyticsCollectionEnabled(true);
+    await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
 
     // Captura errores del framework Flutter (widgets, rendering, etc.).
-    FlutterError.onError =
-        FirebaseCrashlytics.instance.recordFlutterFatalError;
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
 
     // Captura errores async fuera del framework (Isolate raíz, futures sin catch).
     PlatformDispatcher.instance.onError = (error, stack) {

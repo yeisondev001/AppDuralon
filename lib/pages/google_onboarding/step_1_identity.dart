@@ -124,7 +124,7 @@ class _Step1IdentityScreenState extends State<Step1IdentityScreen> {
             const _SectionLabel('Tipo de cliente'),
             const SizedBox(height: 10),
             DropdownButtonFormField<ClientType>(
-              value: _selectedType,
+              initialValue: _selectedType,
               isExpanded: true,
               icon: const Icon(
                 Icons.keyboard_arrow_down_rounded,

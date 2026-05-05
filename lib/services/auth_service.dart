@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -8,6 +9,8 @@ class DuplicateRncException implements Exception {}
 class InvalidRncException implements Exception {}
 
 class DuplicateIdentificationException implements Exception {}
+
+class UserNotActiveException implements Exception {}
 
 class InvalidIdentificationException implements Exception {}
 
@@ -444,5 +447,106 @@ class AuthService {
     final remainder = total % 11;
     final verifier = remainder <= 1 ? 1 : 11 - remainder;
     return verifier == int.parse(rnc[8]);
+  }
+
+  /// Inicia sesión con RNC y contraseña.
+  /// El email de Firebase se construye como {rnc}@duralon.com.
+  /// Lanza [UserNotActiveException] si la cuenta existe pero está inactiva.
+  Future<UserCredential> signInWithRnc({
+    required String rnc,
+    required String password,
+  }) async {
+    final normalizedRnc = _normalizeDigits(rnc);
+    final email = '$normalizedRnc@duralon.com';
+
+    final credential = await _firebaseAuth.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+
+    final uid = credential.user?.uid;
+    if (uid != null) {
+      final doc = await _firestore.collection('users').doc(uid).get();
+      final estado = doc.data()?['estado'] as String?;
+      if (doc.exists && estado != null && estado != 'activo') {
+        await _firebaseAuth.signOut();
+        throw UserNotActiveException();
+      }
+    }
+
+    return credential;
+  }
+
+  /// Crea una cuenta de cliente por RNC sin cerrar la sesión actual del admin.
+  /// Usa una instancia secundaria de Firebase Auth para la creación.
+  Future<void> crearClienteConRnc({
+    required String rnc,
+    required String nombre,
+    required String password,
+    String rol = 'cliente_distribuidor',
+  }) async {
+    final normalizedRnc = _normalizeDigits(rnc);
+    if (normalizedRnc.isEmpty) throw InvalidRncException();
+
+    final email = '$normalizedRnc@duralon.com';
+    final appName = 'temp_create_$normalizedRnc';
+
+    // Verifica duplicado por RNC antes de crear
+    final existing = await _firestore
+        .collection('customers')
+        .where('rncNormalizado', isEqualTo: normalizedRnc)
+        .limit(1)
+        .get();
+    if (existing.docs.isNotEmpty) throw DuplicateRncException();
+
+    // Instancia secundaria para no cerrar sesión del admin
+    FirebaseApp? secondaryApp;
+    try {
+      secondaryApp = await Firebase.initializeApp(
+        name: appName,
+        options: Firebase.app().options,
+      );
+      final secondaryAuth = FirebaseAuth.instanceFor(app: secondaryApp);
+      final cred = await secondaryAuth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      final uid = cred.user!.uid;
+
+      final now = FieldValue.serverTimestamp();
+      final batch = _firestore.batch();
+      batch.set(_firestore.collection('users').doc(uid), {
+        'uid': uid,
+        'clienteId': uid,
+        'correo': email,
+        'nombre': nombre.trim(),
+        'rnc': normalizedRnc,
+        'rol': rol,
+        'estado': 'activo',
+        'proveedorLogin': 'email',
+        'creadoEn': now,
+        'actualizadoEn': now,
+      });
+      batch.set(_firestore.collection('customers').doc(uid), {
+        'clienteId': uid,
+        'nombre': nombre.trim(),
+        'correo': email,
+        'rnc': rnc.trim(),
+        'rncNormalizado': normalizedRnc,
+        'identificacion': rnc.trim(),
+        'identificacionNormalizada': normalizedRnc,
+        'tipoIdentificacion': 'rnc',
+        'tipoContribuyente': 'empresa',
+        'estado': 'activo',
+        'creditoHabilitado': false,
+        'pais': 'república dominicana',
+        'creadoEn': now,
+        'actualizadoEn': now,
+      });
+      await batch.commit();
+      await secondaryAuth.signOut();
+    } finally {
+      await secondaryApp?.delete();
+    }
   }
 }

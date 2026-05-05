@@ -1,6 +1,6 @@
-// Carrusel horizontal: productos agrupados por código base (variantes de color).
-// Un grupo con varios colores muestra dots de color. El tap abre ProductoScreen
-// con la lista completa de variantes para que el usuario elija en el detalle.
+// Carrusel horizontal: productos agrupados por código base.
+// Color: último char letra → dots de color. Tamaño: sufijo numérico → tags de tamaño.
+// El tap abre ProductoScreen con la lista completa del grupo.
 import 'package:app_duralon/models/product.dart';
 import 'package:app_duralon/services/locale_service.dart';
 import 'package:app_duralon/styles/app_style.dart';
@@ -34,37 +34,53 @@ const Map<String, Color> _kColorMap = {
   'Transparente': Color(0xFFE0F7FA),
 };
 
+enum _GroupType { color, size, single }
+
 class _ProductGroup {
-  _ProductGroup(this.products);
+  _ProductGroup(this.products, this.type);
   final List<Product> products;
+  final _GroupType type;
   Product get representative => products.first;
   bool get isGrouped => products.length > 1;
 
-  // Nombre base: quita el último token si coincide con un color conocido
   String displayNameFor(String lang) {
-    final name = representative.nameFor(lang);
-    final words = name.split(' ');
-    if (words.length > 1 && _kColorMap.containsKey(words.last)) {
-      return words.sublist(0, words.length - 1).join(' ');
+    if (type == _GroupType.color) {
+      final name = representative.nameFor(lang);
+      final words = name.split(' ');
+      if (words.length > 1 && _kColorMap.containsKey(words.last)) {
+        return words.sublist(0, words.length - 1).join(' ');
+      }
+      final nameEs = representative.name;
+      final wordsEs = nameEs.split(' ');
+      if (wordsEs.length > 1 && _kColorMap.containsKey(wordsEs.last)) {
+        final cleaned = representative.nameFor(lang)
+            .split(' ')
+            .where((w) => !_kColorMap.containsKey(w))
+            .join(' ')
+            .trim();
+        return cleaned.isNotEmpty
+            ? cleaned
+            : wordsEs.sublist(0, wordsEs.length - 1).join(' ');
+      }
+      return name;
     }
-    // Fallback: intenta con el nombre en español
-    final nameEs = representative.name;
-    final wordsEs = nameEs.split(' ');
-    if (wordsEs.length > 1 && _kColorMap.containsKey(wordsEs.last)) {
-      return representative.nameFor(lang)
-          .split(' ')
-          .where((w) => !_kColorMap.containsKey(w))
-          .join(' ')
-          .trim()
-          .isNotEmpty
-          ? representative.nameFor(lang)
-              .split(' ')
-              .where((w) => !_kColorMap.containsKey(w))
-              .join(' ')
-              .trim()
-          : wordsEs.sublist(0, wordsEs.length - 1).join(' ');
+    if (type == _GroupType.size) {
+      var name = representative.nameFor(lang);
+      final words = name.split(' ');
+      if (words.length > 1 && _kColorMap.containsKey(words.last)) {
+        name = words.sublist(0, words.length - 1).join(' ').trim();
+      }
+      final cleaned = name
+          .replaceAll(RegExp(r'\s+\d+\s*(lts?|[Ll]|ml)?\s*$', caseSensitive: false), '')
+          .trim();
+      return cleaned.isNotEmpty ? cleaned : representative.nameFor(lang);
     }
-    return name;
+    return representative.nameFor(lang);
+  }
+
+  String sizeOf(Product p) {
+    final match = RegExp(r'\d+').firstMatch(p.id);
+    return match?.group(0) ?? p.id;
   }
 }
 
@@ -84,15 +100,75 @@ class HorizontalProductList extends StatelessWidget {
   final void Function(Product, List<Product>?) onProductTap;
 
   List<_ProductGroup> get _groups {
-    final map = <String, List<Product>>{};
+    final pass1 = <String, ({List<Product> products, _GroupType type})>{};
     for (final p in products) {
       final last = p.id.isNotEmpty ? p.id[p.id.length - 1] : '';
-      final base = (p.id.length > 1 && RegExp(r'[A-Za-z]').hasMatch(last))
-          ? p.id.substring(0, p.id.length - 1)
-          : p.id;
-      map.putIfAbsent(base, () => []).add(p);
+      String base;
+      _GroupType type;
+      if (p.id.length > 1 && RegExp(r'[A-Za-z]').hasMatch(last)) {
+        base = p.id.substring(0, p.id.length - 1);
+        type = _GroupType.color;
+      } else {
+        final stripped = p.id.replaceAll(RegExp(r'\d+$'), '');
+        if (stripped.length >= 2 && RegExp(r'^[A-Za-z]+$').hasMatch(stripped)) {
+          base = stripped;
+          type = _GroupType.size;
+        } else {
+          base = p.id;
+          type = _GroupType.single;
+        }
+      }
+      if (pass1.containsKey(base)) {
+        pass1[base]!.products.add(p);
+      } else {
+        pass1[base] = (products: [p], type: type);
+      }
     }
-    return map.values.map(_ProductGroup.new).toList();
+
+    final mixedRe = RegExp(r'^([A-Za-z]+)\d+([A-Za-z]+)$');
+    final mixed = <String, List<Product>>{};
+    final absorbedKeys = <String>{};
+    for (final entry in pass1.entries) {
+      if (entry.value.products.length != 1) continue;
+      final p = entry.value.products.first;
+      final m = mixedRe.firstMatch(p.id);
+      if (m == null) continue;
+      final key = '${m.group(1)}§${m.group(2)}';
+      mixed.putIfAbsent(key, () => []).add(p);
+      absorbedKeys.add(entry.key);
+    }
+
+    final result = <_ProductGroup>[];
+    for (final entry in mixed.entries) {
+      final prods = entry.value;
+      if (prods.length > 1) {
+        prods.sort((a, b) {
+          final aNum = int.tryParse(RegExp(r'\d+').firstMatch(a.id)?.group(0) ?? '') ?? 0;
+          final bNum = int.tryParse(RegExp(r'\d+').firstMatch(b.id)?.group(0) ?? '') ?? 0;
+          return aNum.compareTo(bNum);
+        });
+        result.add(_ProductGroup(prods, _GroupType.size));
+      } else {
+        for (final p in prods) {
+          absorbedKeys.remove(p.id.substring(0, p.id.length - 1));
+        }
+      }
+    }
+    for (final entry in pass1.entries) {
+      if (absorbedKeys.contains(entry.key)) continue;
+      var type = entry.value.type;
+      final prods = entry.value.products;
+      if (prods.length == 1) type = _GroupType.single;
+      if (type == _GroupType.size) {
+        prods.sort((a, b) {
+          final aNum = int.tryParse(RegExp(r'\d+$').firstMatch(a.id)?.group(0) ?? '') ?? 0;
+          final bNum = int.tryParse(RegExp(r'\d+$').firstMatch(b.id)?.group(0) ?? '') ?? 0;
+          return aNum.compareTo(bNum);
+        });
+      }
+      result.add(_ProductGroup(prods, type));
+    }
+    return result;
   }
 
   @override
@@ -106,7 +182,7 @@ class HorizontalProductList extends StatelessWidget {
         final groups = _groups;
 
         return SizedBox(
-          height: 258,
+          height: 278,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
@@ -141,6 +217,7 @@ class HorizontalProductList extends StatelessWidget {
                                   width: double.infinity,
                                   color: Colors.white,
                                   padding: const EdgeInsets.all(8),
+                                  alignment: Alignment.center,
                                   child: ProductImage(
                                     src: product.displayImage,
                                     fit: BoxFit.contain,
@@ -159,9 +236,12 @@ class HorizontalProductList extends StatelessWidget {
                                     .titleSmall
                                     ?.copyWith(fontWeight: FontWeight.w700),
                               ),
-                              if (group.isGrouped) ...[
+                              if (group.isGrouped && group.type == _GroupType.color) ...[
                                 const SizedBox(height: 4),
                                 _ColorDots(products: group.products),
+                              ] else if (group.isGrouped && group.type == _GroupType.size) ...[
+                                const SizedBox(height: 4),
+                                _SizeTags(group: group),
                               ],
                             ],
                           ),
@@ -206,6 +286,47 @@ class HorizontalProductList extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _SizeTags extends StatelessWidget {
+  const _SizeTags({required this.group});
+  final _ProductGroup group;
+
+  @override
+  Widget build(BuildContext context) {
+    const maxTags = 4;
+    final shown = group.products.take(maxTags).toList();
+    final extra = group.products.length - shown.length;
+    return Row(
+      children: [
+        ...shown.map((p) {
+          final label = group.sizeOf(p);
+          return Container(
+            margin: const EdgeInsets.only(right: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+            decoration: BoxDecoration(
+              color: const Color(0xFFDDE8FF),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: const Color(0xFF90A4D8), width: 0.6),
+            ),
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF2C4EA5),
+              ),
+            ),
+          );
+        }),
+        if (extra > 0)
+          Text(
+            '+$extra',
+            style: const TextStyle(fontSize: 9, color: Color(0xFF8E9AAF)),
+          ),
+      ],
     );
   }
 }

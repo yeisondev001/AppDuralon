@@ -88,8 +88,6 @@ class _ProductoScreenState extends State<ProductoScreen> {
     return qty > 0 ? qty : 1;
   }
 
-  int get _totalUnidades => _empaques * _packQty;
-
   double? get _cbmPerEmpaque {
     final dims = _selectedVariant?.dimensions.isNotEmpty == true
         ? _selectedVariant!.dimensions
@@ -98,11 +96,17 @@ class _ProductoScreenState extends State<ProductoScreen> {
     final a = dims['ancho'];
     final h = dims['alto'];
     if (l == null || a == null || h == null) return null;
-    return (l * a * h) / 1_000_000 * _packQty;
+    return (l * a * h) / 1_000_000;
   }
 
-  int get _effectiveMinOrderQty => 1;
-  int get _stepQty => 1;
+  /// Unidades mínimas = 1 empaque.
+  int get _effectiveMinOrderQty => _packQty;
+
+  /// El paso es el tamaño del empaque (nunca de 1 en 1).
+  int get _stepQty => _packQty;
+
+  /// Empaques implícitos derivados de las unidades seleccionadas.
+  int get _numPaquetes => _packQty > 0 ? _empaques ~/ _packQty : _empaques;
 
   double get _activePrice {
     if (_selectedVariant != null) {
@@ -113,13 +117,31 @@ class _ProductoScreenState extends State<ProductoScreen> {
     return _p.price;
   }
 
-  double get _total => _activePrice * _empaques;
+  double get _total => _activePrice * _numPaquetes;
 
   bool get _isDistribuidor =>
       widget.userRole == 'cliente_distribuidor' ||
       widget.userRole == 'admin';
 
   bool get _isAdmin => widget.userRole == 'admin';
+
+  /// true cuando los productos del grupo varían solo en el número (tamaño).
+  bool get _isSizeGroup {
+    final cp = widget.colorProducts;
+    if (cp == null || cp.length < 2) return false;
+    // Patrón 1: sufijo numérico puro (CADA5, CADA18)
+    if (cp.every((p) => p.id.isNotEmpty && RegExp(r'\d$').hasMatch(p.id))) return true;
+    // Patrón 2: letras+dígitos+letras con mismo prefijo y sufijo (CAD34R, CAD51R)
+    final re = RegExp(r'^([A-Za-z]+)(\d+)([A-Za-z]+)$');
+    final ms = cp.map((p) => re.firstMatch(p.id)).toList();
+    if (ms.every((m) => m != null)) {
+      final prefix = ms.first!.group(1)!;
+      final suffix = ms.first!.group(3)!;
+      final sameFrame = ms.every((m) => m!.group(1)! == prefix && m.group(3)! == suffix);
+      if (sameFrame && ms.map((m) => m!.group(2)!).toSet().length > 1) return true;
+    }
+    return false;
+  }
 
   List<String> get _displayColors {
     if (_p.hasVariants) {
@@ -136,7 +158,7 @@ class _ProductoScreenState extends State<ProductoScreen> {
   void initState() {
     super.initState();
     _activeColorProduct = widget.product;
-    _empaques = 1;
+    _empaques = 1; // temporal, se recalcula tras seleccionar variante
     if (_displayColors.length == 1) {
       _selectedColor = _displayColors.first;
       if (_p.hasVariants && _p.activeVariants.isNotEmpty) {
@@ -146,16 +168,15 @@ class _ProductoScreenState extends State<ProductoScreen> {
         );
       }
     }
+    _empaques = _packQty; // mínimo = 1 empaque en unidades
   }
 
   void _onProductColorSelected(Product product) {
     if (product.id == _activeColorProduct.id) return;
     setState(() {
       _activeColorProduct = product;
-      _empaques = 1;
       _selectedColor = null;
       _selectedVariant = null;
-      // Auto-select if only one color variant
       if (_displayColors.length == 1) {
         _selectedColor = _displayColors.first;
         if (_p.hasVariants && _p.activeVariants.isNotEmpty) {
@@ -165,6 +186,7 @@ class _ProductoScreenState extends State<ProductoScreen> {
           );
         }
       }
+      _empaques = _packQty; // reiniciar al mínimo del nuevo producto
     });
     _imagePageController.jumpToPage(0);
   }
@@ -181,6 +203,13 @@ class _ProductoScreenState extends State<ProductoScreen> {
               .firstWhere((v) => v.color == color, orElse: () => _p.activeVariants.first);
         }
       }
+      // Ajustar cantidad al nuevo packQty (redondear al múltiplo superior más cercano)
+      final newPack = _packQty;
+      if (_empaques < newPack) {
+        _empaques = newPack;
+      } else if (_empaques % newPack != 0) {
+        _empaques = ((_empaques / newPack).ceil()) * newPack;
+      }
     });
   }
 
@@ -189,29 +218,28 @@ class _ProductoScreenState extends State<ProductoScreen> {
       showDuralonGuestCartDialog(context);
       return;
     }
-    final minQty = _effectiveMinOrderQty;
-    if (_empaques < minQty) {
+    if (_empaques < _packQty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${S.minQtyError}: $minQty ${minQty != 1 ? S.packagePlural : S.package}.')),
+        SnackBar(content: Text('${S.minQtyError}: $_packQty ${S.units} (1 ${S.package}).')),
       );
       return;
     }
-    if (_stepQty > 1 && (_empaques - minQty) % _stepQty != 0) {
+    if (_empaques % _packQty != 0) {
+      // Ajustar automáticamente al múltiplo superior
+      setState(() => _empaques = ((_empaques / _packQty).ceil()) * _packQty);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${S.multipleError} $_stepQty ${S.packagePlural} ${S.from} $minQty.'),
-        ),
+        SnackBar(content: Text('${S.multipleError} $_packQty ${S.units}. Ajustado a $_empaques.')),
       );
       return;
     }
     final item = CartItem.fromProduct(
       _p,
       _selectedVariant,
-      _empaques,
+      _numPaquetes,
       _isDistribuidor,
     );
     CartService.instance.addItem(item);
-    showCartAddedToast(context, _p.name, _empaques);
+    showCartAddedToast(context, _p.name, _numPaquetes);
   }
 
   Widget _buildPriceLocked(BuildContext context) {
@@ -594,8 +622,17 @@ class _ProductoScreenState extends State<ProductoScreen> {
                                 ),
                               ],
 
+                              // ── Selector de tamaño (grupo por número) ──
+                              if (_isSizeGroup) ...[
+                                const SizedBox(height: 16),
+                                _ProductSizeSelector(
+                                  products: widget.colorProducts!,
+                                  activeProductId: _activeColorProduct.id,
+                                  onSelect: _onProductColorSelected,
+                                ),
+                              ]
                               // ── Selector de producto por color ─────
-                              if (widget.colorProducts != null &&
+                              else if (widget.colorProducts != null &&
                                   widget.colorProducts!.length > 1) ...[
                                 const SizedBox(height: 16),
                                 _ProductColorSelector(
@@ -636,8 +673,7 @@ class _ProductoScreenState extends State<ProductoScreen> {
                                 // Compra mínima
                                 const SizedBox(height: 12),
                                 Text(
-                                  '${S.minPurchase}: $_effectiveMinOrderQty ${_effectiveMinOrderQty != 1 ? S.packagePlural : S.package}'
-                                  '${_stepQty > 1 ? '  |  ${S.multiple}: $_stepQty' : ''}',
+                                  '${S.minPurchase}: 1 ${S.package}  ·  $_packQty ${S.units}/${S.package}',
                                   style: const TextStyle(
                                     fontSize: 13,
                                     color: Color(0xFF6A7482),
@@ -645,10 +681,10 @@ class _ProductoScreenState extends State<ProductoScreen> {
                                   ),
                                 ),
 
-                                // Selector de empaques
+                                // Selector de cantidad (en unidades, paso = packQty)
                                 const SizedBox(height: 24),
                                 Text(
-                                  S.packages,
+                                  S.units,
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
                                     fontSize: 13,
@@ -679,10 +715,10 @@ class _ProductoScreenState extends State<ProductoScreen> {
                                         children: [
                                           Text(
                                             '$_empaques',
-                                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
                                           ),
                                           Text(
-                                            _empaques != 1 ? S.packagePlural : S.package,
+                                            S.units,
                                             style: const TextStyle(
                                               fontSize: 10,
                                               color: Color(0xFF8E9AAF),
@@ -694,7 +730,7 @@ class _ProductoScreenState extends State<ProductoScreen> {
                                     ),
                                     _QtyCircleButton(
                                       icon: Icons.add,
-                                      onPressed: _empaques + _stepQty <= 9999
+                                      onPressed: _numPaquetes < 9999
                                           ? () => setState(() => _empaques += _stepQty)
                                           : null,
                                       highlight: true,
@@ -703,7 +739,7 @@ class _ProductoScreenState extends State<ProductoScreen> {
                                 ),
                                 const SizedBox(height: 10),
                                 Text(
-                                  '$_empaques ${_empaques != 1 ? S.packagePlural : S.package} = $_totalUnidades ${S.units}  ($_packQty und/emp)',
+                                  '= $_numPaquetes ${_numPaquetes != 1 ? S.packagePlural : S.package}  ·  $_packQty ${S.units}/${S.package}',
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
                                     fontSize: 12,
@@ -714,7 +750,7 @@ class _ProductoScreenState extends State<ProductoScreen> {
                                 if (_cbmPerEmpaque != null) ...[
                                   const SizedBox(height: 4),
                                   Text(
-                                    'CBM: ${(_cbmPerEmpaque! * _empaques).toStringAsFixed(4)} m³  (${_cbmPerEmpaque!.toStringAsFixed(4)} m³/${S.package})',
+                                    'CBM: ${(_cbmPerEmpaque! * _numPaquetes).toStringAsFixed(4)} m³  (${_cbmPerEmpaque!.toStringAsFixed(4)} m³/${S.package})',
                                     textAlign: TextAlign.center,
                                     style: const TextStyle(
                                       fontSize: 12,
@@ -767,6 +803,104 @@ class _ProductoScreenState extends State<ProductoScreen> {
           ),
         );
       },
+    );
+  }
+}
+
+// =============================================================================
+// Selector de producto por tamaño (grupo por número)
+// =============================================================================
+class _ProductSizeSelector extends StatelessWidget {
+  const _ProductSizeSelector({
+    required this.products,
+    required this.activeProductId,
+    required this.onSelect,
+  });
+
+  final List<Product> products;
+  final String activeProductId;
+  final ValueChanged<Product> onSelect;
+
+  String _sizeOf(String id) {
+    final match = RegExp(r'\d+').firstMatch(id); // primer bloque numérico
+    return match?.group(0) ?? id;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sorted = [...products]
+      ..sort((a, b) {
+        final aNum = int.tryParse(_sizeOf(a.id)) ?? 0;
+        final bNum = int.tryParse(_sizeOf(b.id)) ?? 0;
+        return aNum.compareTo(bNum);
+      });
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Tamaño',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF1E2A3A),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: sorted.map((p) {
+            final sizeLabel = _sizeOf(p.id);
+            final isSelected = p.id == activeProductId;
+            return GestureDetector(
+              onTap: () => onSelect(p),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppColors.primaryBlue
+                      : AppColors.primaryBlue.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isSelected
+                        ? AppColors.primaryBlue
+                        : AppColors.primaryBlue.withValues(alpha: 0.4),
+                    width: isSelected ? 2 : 1,
+                  ),
+                  boxShadow: isSelected
+                      ? [BoxShadow(
+                          color: AppColors.primaryBlue.withValues(alpha: 0.3),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        )]
+                      : [],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      sizeLabel,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                        color: isSelected ? Colors.white : AppColors.primaryBlue,
+                      ),
+                    ),
+                    if (isSelected) ...[
+                      const SizedBox(width: 4),
+                      const Icon(Icons.check_rounded, size: 14, color: Colors.white),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 4),
+        const Divider(height: 1, color: Color(0xFFEEEEEE)),
+      ],
     );
   }
 }
@@ -1209,13 +1343,12 @@ class _CaracteristicasCardState extends State<_CaracteristicasCard> {
       rows.add(_CaractRow(label: S.weightLabel, value: '${dims['peso']!.toStringAsFixed(2)} kg'));
     }
 
-    // CBM fijo por empaque
+    // CBM fijo por empaque — las dimensiones del Excel son de la CAJA, no del producto individual
     final l = dims['largo'];
     final a = dims['ancho'];
     final h = dims['alto'];
-    final pack = (_v?.packQty ?? _p.minOrderQty) > 0 ? (_v?.packQty ?? _p.minOrderQty) : 1;
     if (l != null && a != null && h != null) {
-      final cbm = (l * a * h) / 1_000_000 * pack;
+      final cbm = (l * a * h) / 1_000_000;
       rows.add(_CaractRow(label: S.cbmPerPack, value: '${cbm.toStringAsFixed(4)} m³'));
     }
 

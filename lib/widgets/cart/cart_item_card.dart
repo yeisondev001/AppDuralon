@@ -18,7 +18,6 @@ class CartItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final atMin = item.cantidad <= item.minOrderQty;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -79,12 +78,12 @@ class CartItemCard extends StatelessWidget {
           const _DashedDivider(),
           const SizedBox(height: 12),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               _QtyGroup(
-                qty: item.cantidad,
-                stepQty: item.stepQty,
-                minQty: item.minOrderQty,
-                atMin: atMin,
+                empaques: item.cantidad,
+                packQty: item.packQty,
+                atMin: item.cantidad <= 1,
                 onIncrement: onIncrement,
                 onDecrement: onDecrement,
               ),
@@ -93,7 +92,7 @@ class CartItemCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    'RD\$${_fmt(item.precio)} c/u',
+                    'RD\$${_fmt(item.precio)}/paq',
                     style: const TextStyle(
                       fontSize: 11,
                       color: Color(0xFF94A3B8),
@@ -109,6 +108,17 @@ class CartItemCard extends StatelessWidget {
                       color: Color(0xFF0F172A),
                     ),
                   ),
+                  if (item.totalCbm != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      'CBM: ${item.totalCbm!.toStringAsFixed(4)} m³',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF64748B),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ],
@@ -160,7 +170,7 @@ class _Thumb extends StatelessWidget {
             ? Image.network(
                 imageUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _placeholder(),
+                errorBuilder: (_, _, _) => _placeholder(),
               )
             : _placeholder(),
       ),
@@ -187,26 +197,22 @@ class _Thumb extends StatelessWidget {
 
 class _QtyGroup extends StatelessWidget {
   const _QtyGroup({
-    required this.qty,
-    required this.stepQty,
-    required this.minQty,
+    required this.empaques,
+    required this.packQty,
     required this.atMin,
     required this.onIncrement,
     required this.onDecrement,
   });
 
-  final int qty;
-  final int stepQty;
-  final int minQty;
+  final int empaques;
+  final int packQty;
   final bool atMin;
   final VoidCallback onIncrement;
   final VoidCallback onDecrement;
 
   @override
   Widget build(BuildContext context) {
-    final byBox = stepQty > 1;
-    // Número que se muestra en el contador: cajas si hay stepQty, unidades si no
-    final displayCount = byBox ? (qty / stepQty).round() : qty;
+    final totalUnidades = empaques * packQty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -225,7 +231,7 @@ class _QtyGroup extends StatelessWidget {
               SizedBox(
                 width: 42,
                 child: Text(
-                  '$displayCount',
+                  '$empaques',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontFamily: 'monospace',
@@ -239,16 +245,10 @@ class _QtyGroup extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        if (byBox)
-          Text(
-            '${displayCount == 1 ? 'caja' : 'cajas'} · $qty unidades',
-            style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
-          )
-        else
-          Text(
-            '${qty == 1 ? 'unidad' : 'unidades'}',
-            style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
-          ),
+        Text(
+          '${empaques == 1 ? 'empaque' : 'empaques'} · $totalUnidades und',
+          style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
+        ),
       ],
     );
   }

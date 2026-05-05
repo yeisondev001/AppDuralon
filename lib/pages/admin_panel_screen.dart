@@ -3,6 +3,7 @@ import 'package:app_duralon/models/order.dart';
 import 'package:app_duralon/models/product.dart';
 import 'package:app_duralon/models/product_variant.dart';
 import 'package:app_duralon/pages/mis_pedidos_screen.dart';
+import 'package:app_duralon/services/auth_service.dart';
 import 'package:app_duralon/services/catalog_service.dart';
 import 'package:app_duralon/services/order_service.dart';
 import 'package:app_duralon/services/product_seeder.dart';
@@ -43,8 +44,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Color(0xFF1A2230)),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF1A2230),
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -87,39 +90,211 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
 // ═══════════════════════════════════════════════════════════════════════════════
 // PESTAÑA USUARIOS
 // ═══════════════════════════════════════════════════════════════════════════════
-class _UsuariosTab extends StatelessWidget {
+class _UsuariosTab extends StatefulWidget {
   const _UsuariosTab();
 
   @override
+  State<_UsuariosTab> createState() => _UsuariosTabState();
+}
+
+class _UsuariosTabState extends State<_UsuariosTab> {
+  final _authService = AuthService();
+
+  Future<void> _mostrarDialogoCrearCliente() async {
+    final rncCtrl = TextEditingController();
+    final nombreCtrl = TextEditingController();
+    final passCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool cargando = false;
+    bool passVisible = false;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: const Text(
+            'Crear cliente',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: rncCtrl,
+                  keyboardType: TextInputType.number,
+                  maxLength: 11,
+                  decoration: const InputDecoration(
+                    labelText: 'RNC',
+                    hintText: '9 dígitos',
+                    counterText: '',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Ingresa el RNC';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: nombreCtrl,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(
+                    labelText: 'Nombre / Empresa',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty)
+                      return 'Ingresa el nombre';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: passCtrl,
+                  obscureText: !passVisible,
+                  decoration: InputDecoration(
+                    labelText: 'Contraseña',
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        passVisible ? Icons.visibility_off : Icons.visibility,
+                      ),
+                      onPressed: () =>
+                          setLocal(() => passVisible = !passVisible),
+                    ),
+                  ),
+                  validator: (v) {
+                    if (v == null || v.length < 6) return 'Mínimo 6 caracteres';
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: cargando ? null : () => Navigator.pop(dialogCtx),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: cargando
+                  ? null
+                  : () async {
+                      if (!formKey.currentState!.validate()) return;
+                      setLocal(() => cargando = true);
+                      try {
+                        await _authService.crearClienteConRnc(
+                          rnc: rncCtrl.text.trim(),
+                          nombre: nombreCtrl.text.trim(),
+                          password: passCtrl.text,
+                        );
+                        if (!ctx.mounted) return;
+                        Navigator.pop(dialogCtx);
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Cliente creado correctamente.'),
+                            backgroundColor: Color(0xFF2E7D32),
+                          ),
+                        );
+                      } on DuplicateRncException {
+                        setLocal(() => cargando = false);
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Ya existe un cliente con ese RNC.'),
+                            backgroundColor: Color(0xFFC62828),
+                          ),
+                        );
+                      } on InvalidRncException {
+                        setLocal(() => cargando = false);
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('RNC inválido.'),
+                            backgroundColor: Color(0xFFC62828),
+                          ),
+                        );
+                      } catch (e) {
+                        setLocal(() => cargando = false);
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error: $e'),
+                            backgroundColor: const Color(0xFFC62828),
+                          ),
+                        );
+                      }
+                    },
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primaryBlue,
+              ),
+              child: cargando
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Crear'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance.collection('users').snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return const Center(
-            child: Text('Error al cargar usuarios.',
-                style: TextStyle(color: Color(0xFFC62828))),
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _mostrarDialogoCrearCliente,
+        backgroundColor: AppColors.primaryBlue,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.person_add_rounded),
+        label: const Text(
+          'Crear cliente',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+      ),
+      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: FirebaseFirestore.instance.collection('users').snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return const Center(
+              child: Text(
+                'Error al cargar usuarios.',
+                style: TextStyle(color: Color(0xFFC62828)),
+              ),
+            );
+          }
+          if (!snapshot.hasData) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.primaryBlue),
+            );
+          }
+          final docs = snapshot.data!.docs;
+          if (docs.isEmpty) {
+            return const Center(child: Text('No hay usuarios registrados.'));
+          }
+          return ListView.separated(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
+            itemCount: docs.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 10),
+            itemBuilder: (context, i) {
+              final data = docs[i].data();
+              final uid = docs[i].id;
+              return _UserCard(uid: uid, data: data);
+            },
           );
-        }
-        if (!snapshot.hasData) {
-          return const Center(
-              child: CircularProgressIndicator(color: AppColors.primaryBlue));
-        }
-        final docs = snapshot.data!.docs;
-        if (docs.isEmpty) {
-          return const Center(child: Text('No hay usuarios registrados.'));
-        }
-        return ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: docs.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 10),
-          itemBuilder: (context, i) {
-            final data = docs[i].data();
-            final uid = docs[i].id;
-            return _UserCard(uid: uid, data: data);
-          },
-        );
-      },
+        },
+      ),
     );
   }
 }
@@ -129,22 +304,18 @@ class _UserCard extends StatelessWidget {
   final String uid;
   final Map<String, dynamic> data;
 
-  static const _roles = [
-    'cliente_minorista',
-    'cliente_distribuidor',
-    'admin',
-  ];
+  static const _roles = ['cliente_minorista', 'cliente_distribuidor', 'admin'];
   static const _roleColors = {
-    'cliente_minorista':   Color(0xFF1565C0),
+    'cliente_minorista': Color(0xFF1565C0),
     'cliente_distribuidor': Color(0xFF00838F),
-    'cliente':             Color(0xFF1565C0), // retrocompat
-    'admin':               Color(0xFFC62828),
+    'cliente': Color(0xFF1565C0), // retrocompat
+    'admin': Color(0xFFC62828),
   };
   static const _roleLabels = {
-    'cliente_minorista':   'Cliente Minorista',
+    'cliente_minorista': 'Cliente Minorista',
     'cliente_distribuidor': 'Cliente Distribuidor',
-    'cliente':             'Cliente',             // retrocompat
-    'admin':               'Administrador',
+    'cliente': 'Cliente', // retrocompat
+    'admin': 'Administrador',
   };
 
   Future<void> _changeRole(BuildContext context, String newRole) async {
@@ -157,7 +328,8 @@ class _UserCard extends StatelessWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-                'Rol cambiado a "${_roleLabels[newRole] ?? newRole}" correctamente.'),
+              'Rol cambiado a "${_roleLabels[newRole] ?? newRole}" correctamente.',
+            ),
             backgroundColor: const Color(0xFF2E7D32),
           ),
         );
@@ -191,7 +363,8 @@ class _UserCard extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFFC62828)),
+              foregroundColor: const Color(0xFFC62828),
+            ),
             child: const Text('Eliminar'),
           ),
         ],
@@ -235,15 +408,11 @@ class _UserCard extends StatelessWidget {
             final color = _roleColors[role] ?? Colors.grey;
             final isSelected = role == currentRole;
             return ListTile(
-              leading: CircleAvatar(
-                radius: 8,
-                backgroundColor: color,
-              ),
+              leading: CircleAvatar(radius: 8, backgroundColor: color),
               title: Text(
                 _roleLabels[role] ?? role,
                 style: TextStyle(
-                  fontWeight:
-                      isSelected ? FontWeight.w700 : FontWeight.normal,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
                   color: isSelected ? color : null,
                 ),
               ),
@@ -301,11 +470,16 @@ class _UserCard extends StatelessWidget {
                   : null,
               child: (photoUrl == null || photoUrl.isEmpty)
                   ? Text(
-                      (name.isNotEmpty ? name[0] : email.isNotEmpty ? email[0] : '?')
+                      (name.isNotEmpty
+                              ? name[0]
+                              : email.isNotEmpty
+                              ? email[0]
+                              : '?')
                           .toUpperCase(),
                       style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primaryBlue),
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryBlue,
+                      ),
                     )
                   : null,
             ),
@@ -315,14 +489,21 @@ class _UserCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (name.isNotEmpty)
-                    Text(name,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                            color: Color(0xFF1A2230))),
-                  Text(email,
+                    Text(
+                      name,
                       style: const TextStyle(
-                          fontSize: 12, color: Color(0xFF6B7685))),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: Color(0xFF1A2230),
+                      ),
+                    ),
+                  Text(
+                    email,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF6B7685),
+                    ),
+                  ),
                   const SizedBox(height: 5),
                   Row(
                     children: [
@@ -345,14 +526,18 @@ class _UserCard extends StatelessWidget {
               children: [
                 IconButton(
                   tooltip: 'Cambiar rol',
-                  icon: const Icon(Icons.manage_accounts_rounded,
-                      color: AppColors.primaryBlue),
+                  icon: const Icon(
+                    Icons.manage_accounts_rounded,
+                    color: AppColors.primaryBlue,
+                  ),
                   onPressed: () => _showRoleDialog(context),
                 ),
                 IconButton(
                   tooltip: 'Eliminar usuario',
-                  icon: const Icon(Icons.delete_outline_rounded,
-                      color: Color(0xFFC62828)),
+                  icon: const Icon(
+                    Icons.delete_outline_rounded,
+                    color: Color(0xFFC62828),
+                  ),
                   onPressed: () => _deleteUser(context),
                 ),
               ],
@@ -378,8 +563,10 @@ class _CatalogosTabState extends State<_CatalogosTab> {
   bool _seeding = false;
   bool _seedingHogarCatalog = false;
   bool _seedingIndustrialCatalog = false;
+  bool _seedingDimensions = false;
   String _hogarCatalogProgress = '';
   String _industrialCatalogProgress = '';
+  String _dimensionsProgress = '';
 
   Future<void> _seed() async {
     setState(() => _seeding = true);
@@ -421,7 +608,9 @@ class _CatalogosTabState extends State<_CatalogosTab> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('¡Catálogo Hogar 2026 cargado exitosamente en Firebase!'),
+            content: Text(
+              '¡Catálogo Hogar 2026 cargado exitosamente en Firebase!',
+            ),
             backgroundColor: Color(0xFF2E7D32),
             duration: Duration(seconds: 4),
           ),
@@ -460,7 +649,9 @@ class _CatalogosTabState extends State<_CatalogosTab> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('¡Catálogo Industrial 2025 cargado exitosamente en Firebase!'),
+            content: Text(
+              '¡Catálogo Industrial 2025 cargado exitosamente en Firebase!',
+            ),
             backgroundColor: Color(0xFF2E7D32),
             duration: Duration(seconds: 4),
           ),
@@ -485,8 +676,48 @@ class _CatalogosTabState extends State<_CatalogosTab> {
     }
   }
 
-  void _showCategoryDialog(BuildContext ctx,
-      {CatalogCategory? existing}) {
+  Future<void> _seedDimensions() async {
+    setState(() {
+      _seedingDimensions = true;
+      _dimensionsProgress = 'Iniciando…';
+    });
+    try {
+      final result = await ProductSeeder.seedProductDimensions(
+        onProgress: (msg) {
+          if (mounted) setState(() => _dimensionsProgress = msg);
+        },
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Empaques actualizados: ${result['updated']} · sin datos: ${result['skipped']}',
+            ),
+            backgroundColor: const Color(0xFF0059B7),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al actualizar empaques: $e'),
+            backgroundColor: const Color(0xFFC62828),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _seedingDimensions = false;
+          _dimensionsProgress = '';
+        });
+      }
+    }
+  }
+
+  void _showCategoryDialog(BuildContext ctx, {CatalogCategory? existing}) {
     showDialog<void>(
       context: ctx,
       barrierDismissible: false,
@@ -495,7 +726,9 @@ class _CatalogosTabState extends State<_CatalogosTab> {
   }
 
   Future<void> _deleteCategory(
-      BuildContext context, CatalogCategory cat) async {
+    BuildContext context,
+    CatalogCategory cat,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -511,7 +744,8 @@ class _CatalogosTabState extends State<_CatalogosTab> {
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFFC62828)),
+              foregroundColor: const Color(0xFFC62828),
+            ),
             child: const Text('Eliminar'),
           ),
         ],
@@ -547,9 +781,10 @@ class _CatalogosTabState extends State<_CatalogosTab> {
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primaryBlue,
         icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text('Nueva categoría',
-            style:
-                TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+        label: const Text(
+          'Nueva categoría',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+        ),
         onPressed: () => _showCategoryDialog(context),
       ),
       body: StreamBuilder<List<CatalogCategory>>(
@@ -557,15 +792,17 @@ class _CatalogosTabState extends State<_CatalogosTab> {
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(
-              child: Text('Error: ${snapshot.error}',
-                  style: const TextStyle(color: Color(0xFFC62828))),
+              child: Text(
+                'Error: ${snapshot.error}',
+                style: const TextStyle(color: Color(0xFFC62828)),
+              ),
             );
           }
           final cats = snapshot.data;
           if (cats == null) {
             return const Center(
-                child:
-                    CircularProgressIndicator(color: AppColors.primaryBlue));
+              child: CircularProgressIndicator(color: AppColors.primaryBlue),
+            );
           }
           return Column(
             children: [
@@ -580,15 +817,20 @@ class _CatalogosTabState extends State<_CatalogosTab> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.info_outline_rounded,
-                          color: AppColors.primaryBlue, size: 18),
+                      const Icon(
+                        Icons.info_outline_rounded,
+                        color: AppColors.primaryBlue,
+                        size: 18,
+                      ),
                       const SizedBox(width: 10),
                       const Expanded(
                         child: Text(
                           'Carga las categorías por defecto desde el árbol de catálogo '
                           'local. Ejecuta una sola vez para inicializar Firebase.',
                           style: TextStyle(
-                              fontSize: 12, color: AppColors.primaryBlue),
+                            fontSize: 12,
+                            color: AppColors.primaryBlue,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -596,7 +838,9 @@ class _CatalogosTabState extends State<_CatalogosTab> {
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.primaryBlue,
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                         ),
                         onPressed: _seeding ? null : _seed,
                         child: _seeding
@@ -604,12 +848,17 @@ class _CatalogosTabState extends State<_CatalogosTab> {
                                 width: 16,
                                 height: 16,
                                 child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white),
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
                               )
-                            : const Text('Cargar',
+                            : const Text(
+                                'Cargar',
                                 style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700)),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                       ),
                     ],
                   ),
@@ -630,15 +879,20 @@ class _CatalogosTabState extends State<_CatalogosTab> {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.inventory_2_rounded,
-                              color: Color(0xFFF57F17), size: 18),
+                          const Icon(
+                            Icons.inventory_2_rounded,
+                            color: Color(0xFFF57F17),
+                            size: 18,
+                          ),
                           const SizedBox(width: 10),
                           const Expanded(
                             child: Text(
                               'Catálogo Hogar 2026 — Carga categorías y productos de hogar '
                               '(Cocina, Hogar, Jardinería, Muebles e Infantil).',
                               style: TextStyle(
-                                  fontSize: 12, color: Color(0xFF795548)),
+                                fontSize: 12,
+                                color: Color(0xFF795548),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -646,32 +900,42 @@ class _CatalogosTabState extends State<_CatalogosTab> {
                             style: FilledButton.styleFrom(
                               backgroundColor: const Color(0xFFF57F17),
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 8),
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
                             ),
-                            onPressed:
-                                _seedingHogarCatalog ? null : _seedCatalogHogar2026,
+                            onPressed: _seedingHogarCatalog
+                                ? null
+                                : _seedCatalogHogar2026,
                             child: _seedingHogarCatalog
                                 ? const SizedBox(
                                     width: 16,
                                     height: 16,
                                     child: CircularProgressIndicator(
-                                        strokeWidth: 2, color: Colors.white),
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
                                   )
                                 : Text(
                                     'Cargar Hogar (${ProductSeeder.hogarProductsCount})',
                                     style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700)),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
                           ),
                         ],
                       ),
-                      if (_seedingHogarCatalog && _hogarCatalogProgress.isNotEmpty)
+                      if (_seedingHogarCatalog &&
+                          _hogarCatalogProgress.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 8, left: 28),
                           child: Text(
                             _hogarCatalogProgress,
                             style: const TextStyle(
-                                fontSize: 11, color: Color(0xFF795548)),
+                              fontSize: 11,
+                              color: Color(0xFF795548),
+                            ),
                           ),
                         ),
                     ],
@@ -693,14 +957,19 @@ class _CatalogosTabState extends State<_CatalogosTab> {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.warehouse_rounded,
-                              color: Color(0xFF2E7D32), size: 18),
+                          const Icon(
+                            Icons.warehouse_rounded,
+                            color: Color(0xFF2E7D32),
+                            size: 18,
+                          ),
                           const SizedBox(width: 10),
                           const Expanded(
                             child: Text(
                               'Catálogo Industrial 2025 — Carga Cajones, Paletas y Otros.',
                               style: TextStyle(
-                                  fontSize: 12, color: Color(0xFF1B5E20)),
+                                fontSize: 12,
+                                color: Color(0xFF1B5E20),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -708,7 +977,9 @@ class _CatalogosTabState extends State<_CatalogosTab> {
                             style: FilledButton.styleFrom(
                               backgroundColor: const Color(0xFF2E7D32),
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 8),
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
                             ),
                             onPressed: _seedingIndustrialCatalog
                                 ? null
@@ -718,13 +989,16 @@ class _CatalogosTabState extends State<_CatalogosTab> {
                                     width: 16,
                                     height: 16,
                                     child: CircularProgressIndicator(
-                                        strokeWidth: 2, color: Colors.white),
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
                                   )
                                 : Text(
                                     'Cargar Industrial (${ProductSeeder.industrialProductsCount})',
                                     style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                           ),
                         ],
@@ -736,7 +1010,83 @@ class _CatalogosTabState extends State<_CatalogosTab> {
                           child: Text(
                             _industrialCatalogProgress,
                             style: const TextStyle(
-                                fontSize: 11, color: Color(0xFF1B5E20)),
+                              fontSize: 11,
+                              color: Color(0xFF1B5E20),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              // ── Banner Empaques / Dimensiones ─────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE3F2FD),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF90CAF9)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.inventory_2_rounded,
+                            color: Color(0xFF0059B7),
+                            size: 18,
+                          ),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Text(
+                              'Empaques 2026 — Actualiza packQty, palletQty, EAN y dimensiones de 666 productos.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF0D47A1),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF0059B7),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                            ),
+                            onPressed: _seedingDimensions ? null : _seedDimensions,
+                            child: _seedingDimensions
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text(
+                                    'Cargar Empaques',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                          ),
+                        ],
+                      ),
+                      if (_seedingDimensions && _dimensionsProgress.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8, left: 28),
+                          child: Text(
+                            _dimensionsProgress,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF0D47A1),
+                            ),
                           ),
                         ),
                     ],
@@ -749,17 +1099,24 @@ class _CatalogosTabState extends State<_CatalogosTab> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.category_outlined,
-                            size: 56, color: Color(0xFFB0BEC5)),
+                        Icon(
+                          Icons.category_outlined,
+                          size: 56,
+                          color: Color(0xFFB0BEC5),
+                        ),
                         SizedBox(height: 12),
-                        Text('No hay categorías en Firebase aún.',
-                            style: TextStyle(color: Color(0xFF8A94A6))),
+                        Text(
+                          'No hay categorías en Firebase aún.',
+                          style: TextStyle(color: Color(0xFF8A94A6)),
+                        ),
                         SizedBox(height: 6),
                         Text(
                           'Presiona "Cargar" para inicializar con los datos por defecto.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                              fontSize: 12, color: Color(0xFF8A94A6)),
+                            fontSize: 12,
+                            color: Color(0xFF8A94A6),
+                          ),
                         ),
                       ],
                     ),
@@ -768,19 +1125,16 @@ class _CatalogosTabState extends State<_CatalogosTab> {
               else
                 Expanded(
                   child: ListView.separated(
-                    padding:
-                        const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
                     itemCount: cats.length,
-                    separatorBuilder: (_, __) =>
-                        const SizedBox(height: 10),
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
                     itemBuilder: (context, i) {
                       final cat = cats[i];
                       return _CatalogCard(
                         category: cat,
                         onEdit: () =>
                             _showCategoryDialog(context, existing: cat),
-                        onDelete: () =>
-                            _deleteCategory(context, cat),
+                        onDelete: () => _deleteCategory(context, cat),
                       );
                     },
                   ),
@@ -794,10 +1148,11 @@ class _CatalogosTabState extends State<_CatalogosTab> {
 }
 
 class _CatalogCard extends StatelessWidget {
-  const _CatalogCard(
-      {required this.category,
-      required this.onEdit,
-      required this.onDelete});
+  const _CatalogCard({
+    required this.category,
+    required this.onEdit,
+    required this.onDelete,
+  });
   final CatalogCategory category;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
@@ -825,18 +1180,12 @@ class _CatalogCard extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: isHogar
-                    ? const Color(0xFFFFECEC)
-                    : AppColors.lightBlue,
+                color: isHogar ? const Color(0xFFFFECEC) : AppColors.lightBlue,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
-                isHogar
-                    ? Icons.home_outlined
-                    : Icons.factory_outlined,
-                color: isHogar
-                    ? AppColors.primaryRed
-                    : AppColors.primaryBlue,
+                isHogar ? Icons.home_outlined : Icons.factory_outlined,
+                color: isHogar ? AppColors.primaryRed : AppColors.primaryBlue,
               ),
             ),
             const SizedBox(width: 12),
@@ -844,34 +1193,40 @@ class _CatalogCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(category.title,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                          color: Color(0xFF1A2230))),
+                  Text(
+                    category.title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color: Color(0xFF1A2230),
+                    ),
+                  ),
                   const SizedBox(height: 3),
                   Wrap(
                     spacing: 4,
                     runSpacing: 2,
-                    children: category.subtypes
-                        .take(4)
-                        .map((s) => _SmallBadge(
-                              label: s,
-                              color: isHogar
-                                  ? AppColors.primaryRed
-                                  : AppColors.primaryBlue,
-                            ))
-                        .toList()
-                      ..addAll(
-                        category.subtypes.length > 4
-                            ? [
-                                _SmallBadge(
-                                    label:
-                                        '+${category.subtypes.length - 4}',
-                                    color: const Color(0xFF9E9E9E))
-                              ]
-                            : [],
-                      ),
+                    children:
+                        category.subtypes
+                            .take(4)
+                            .map(
+                              (s) => _SmallBadge(
+                                label: s,
+                                color: isHogar
+                                    ? AppColors.primaryRed
+                                    : AppColors.primaryBlue,
+                              ),
+                            )
+                            .toList()
+                          ..addAll(
+                            category.subtypes.length > 4
+                                ? [
+                                    _SmallBadge(
+                                      label: '+${category.subtypes.length - 4}',
+                                      color: const Color(0xFF9E9E9E),
+                                    ),
+                                  ]
+                                : [],
+                          ),
                   ),
                   const SizedBox(height: 3),
                   _SmallBadge(
@@ -887,14 +1242,18 @@ class _CatalogCard extends StatelessWidget {
               children: [
                 IconButton(
                   tooltip: 'Editar',
-                  icon: const Icon(Icons.edit_outlined,
-                      color: AppColors.primaryBlue),
+                  icon: const Icon(
+                    Icons.edit_outlined,
+                    color: AppColors.primaryBlue,
+                  ),
                   onPressed: onEdit,
                 ),
                 IconButton(
                   tooltip: 'Eliminar',
-                  icon: const Icon(Icons.delete_outline_rounded,
-                      color: Color(0xFFC62828)),
+                  icon: const Icon(
+                    Icons.delete_outline_rounded,
+                    color: Color(0xFFC62828),
+                  ),
                   onPressed: onDelete,
                 ),
               ],
@@ -933,8 +1292,7 @@ class _CatalogDialogState extends State<_CatalogDialog> {
     _id = TextEditingController(text: e?.id ?? '');
     _title = TextEditingController(text: e?.title ?? '');
     _order = TextEditingController(text: (e?.order ?? 0).toString());
-    _subtypes = TextEditingController(
-        text: e?.subtypes.join('\n') ?? '');
+    _subtypes = TextEditingController(text: e?.subtypes.join('\n') ?? '');
     _tab = e?.tab ?? 'hogar';
   }
 
@@ -993,8 +1351,7 @@ class _CatalogDialogState extends State<_CatalogDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(
-          _isEditing ? 'Editar categoría' : 'Nueva categoría'),
+      title: Text(_isEditing ? 'Editar categoría' : 'Nueva categoría'),
       content: SizedBox(
         width: 360,
         child: Form(
@@ -1024,20 +1381,22 @@ class _CatalogDialogState extends State<_CatalogDialog> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: DropdownButtonFormField<String>(
-                    value: _tab,
+                    initialValue: _tab,
                     decoration: const InputDecoration(
                       labelText: 'Tab',
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                       isDense: true,
                     ),
                     items: const [
+                      DropdownMenuItem(value: 'hogar', child: Text('Hogar')),
                       DropdownMenuItem(
-                          value: 'hogar', child: Text('Hogar')),
-                      DropdownMenuItem(
-                          value: 'industrial',
-                          child: Text('Industrial')),
+                        value: 'industrial',
+                        child: Text('Industrial'),
+                      ),
                     ],
                     onChanged: (v) {
                       if (v != null) setState(() => _tab = v);
@@ -1058,14 +1417,15 @@ class _CatalogDialogState extends State<_CatalogDialog> {
                       labelText: 'Subtipos (uno por línea)',
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                       isDense: true,
                       hintText: 'Envases\nJarras\nVasos...',
                     ),
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty)
-                            ? 'Agrega al menos un subtipo'
-                            : null,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Agrega al menos un subtipo'
+                        : null,
                   ),
                 ),
               ],
@@ -1079,15 +1439,16 @@ class _CatalogDialogState extends State<_CatalogDialog> {
           child: const Text('Cancelar'),
         ),
         FilledButton(
-          style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primaryBlue),
+          style: FilledButton.styleFrom(backgroundColor: AppColors.primaryBlue),
           onPressed: _saving ? null : _save,
           child: _saving
               ? const SizedBox(
                   width: 18,
                   height: 18,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white),
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
                 )
               : Text(_isEditing ? 'Guardar' : 'Agregar'),
         ),
@@ -1099,8 +1460,30 @@ class _CatalogDialogState extends State<_CatalogDialog> {
 // ═══════════════════════════════════════════════════════════════════════════════
 // PESTAÑA PRODUCTOS
 // ═══════════════════════════════════════════════════════════════════════════════
-class _ProductosTab extends StatelessWidget {
+class _ProductosTab extends StatefulWidget {
   const _ProductosTab();
+
+  @override
+  State<_ProductosTab> createState() => _ProductosTabState();
+}
+
+class _ProductosTabState extends State<_ProductosTab> {
+  final _searchCtrl = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  void _showProductDialog(Product? product) {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _ProductDialog(product: product),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1109,62 +1492,116 @@ class _ProductosTab extends StatelessWidget {
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primaryBlue,
         icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text('Nuevo producto',
-            style: TextStyle(
-                color: Colors.white, fontWeight: FontWeight.w700)),
-        onPressed: () => _showProductDialog(context, null),
+        label: const Text(
+          'Nuevo producto',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+        ),
+        onPressed: () => _showProductDialog(null),
       ),
-      body: StreamBuilder<List<Product>>(
-        stream: ProductService.streamAdmin(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return const Center(
-              child: Text('Error al cargar productos.',
-                  style: TextStyle(color: Color(0xFFC62828))),
-            );
-          }
-          if (!snapshot.hasData) {
-            return const Center(
-                child: CircularProgressIndicator(
-                    color: AppColors.primaryBlue));
-          }
-          final products = snapshot.data!;
-          if (products.isEmpty) {
-            return const Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.inventory_2_outlined,
-                      size: 56, color: Color(0xFFB0BEC5)),
-                  SizedBox(height: 12),
-                  Text('No hay productos aún.',
-                      style: TextStyle(color: Color(0xFF8A94A6))),
-                ],
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: TextField(
+              controller: _searchCtrl,
+              decoration: InputDecoration(
+                hintText: 'Buscar por código o nombre…',
+                prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                suffixIcon: _query.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear_rounded, size: 18),
+                        onPressed: () {
+                          _searchCtrl.clear();
+                          setState(() => _query = '');
+                        },
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFDDE3EE)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFDDE3EE)),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                isDense: true,
+                filled: true,
+                fillColor: Colors.white,
               ),
-            );
-          }
-          return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-            itemCount: products.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
-            itemBuilder: (context, i) {
-              final product = products[i];
-              return _ProductCard(
-                product: product,
-                onEdit: () => _showProductDialog(context, product),
-              );
-            },
-          );
-        },
+              onChanged: (v) => setState(() => _query = v.trim().toLowerCase()),
+            ),
+          ),
+          Expanded(
+            child: StreamBuilder<List<Product>>(
+              stream: ProductService.streamAdmin(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return const Center(
+                    child: Text(
+                      'Error al cargar productos.',
+                      style: TextStyle(color: Color(0xFFC62828)),
+                    ),
+                  );
+                }
+                if (!snapshot.hasData) {
+                  return const Center(
+                    child: CircularProgressIndicator(
+                        color: AppColors.primaryBlue),
+                  );
+                }
+                var products = snapshot.data!;
+                if (_query.isNotEmpty) {
+                  products = products
+                      .where(
+                        (p) =>
+                            p.id.toLowerCase().contains(_query) ||
+                            p.name.toLowerCase().contains(_query),
+                      )
+                      .toList();
+                }
+                if (products.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.inventory_2_outlined,
+                          size: 56,
+                          color: Color(0xFFB0BEC5),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          _query.isNotEmpty
+                              ? 'Sin resultados para "$_query".'
+                              : 'No hay productos aún.',
+                          style:
+                              const TextStyle(color: Color(0xFF8A94A6)),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                return ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                  itemCount: products.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
+                  itemBuilder: (context, i) {
+                    final product = products[i];
+                    return _ProductCard(
+                      product: product,
+                      onEdit: () => _showProductDialog(product),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
-    );
-  }
-
-  void _showProductDialog(BuildContext context, Product? product) {
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => _ProductDialog(product: product),
     );
   }
 }
@@ -1179,8 +1616,7 @@ class _ProductCard extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Eliminar producto'),
-        content:
-            Text('¿Seguro que deseas eliminar "${product.name}"?'),
+        content: Text('¿Seguro que deseas eliminar "${product.name}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -1189,7 +1625,8 @@ class _ProductCard extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFFC62828)),
+              foregroundColor: const Color(0xFFC62828),
+            ),
             child: const Text('Eliminar'),
           ),
         ],
@@ -1220,8 +1657,7 @@ class _ProductCard extends StatelessWidget {
 
   Future<void> _toggleActive(BuildContext context) async {
     try {
-      await ProductService.setActive(product.id,
-          active: !product.isActive);
+      await ProductService.setActive(product.id, active: !product.isActive);
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1261,41 +1697,58 @@ class _ProductCard extends StatelessWidget {
                   color: AppColors.lightBlue,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.inventory_2_outlined,
-                    color: AppColors.primaryBlue),
+                child: const Icon(
+                  Icons.inventory_2_outlined,
+                  color: AppColors.primaryBlue,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(product.name,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                            color: Color(0xFF1A2230))),
-                    Text(product.category,
-                        style: const TextStyle(
-                            fontSize: 12, color: Color(0xFF8A94A6))),
+                    Text(
+                      product.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: Color(0xFF1A2230),
+                      ),
+                    ),
+                    Text(
+                      product.category,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF8A94A6),
+                      ),
+                    ),
                     if (product.catalogId != null)
-                      Text('ID: ${product.catalogId} · Tab: ${product.tab ?? '—'}',
-                          style: const TextStyle(
-                              fontSize: 11, color: Color(0xFFB0BEC5))),
+                      Text(
+                        'ID: ${product.catalogId} · Tab: ${product.tab ?? '—'}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFFB0BEC5),
+                        ),
+                      ),
                     const SizedBox(height: 4),
                     Row(
                       children: [
                         Text(
                           'RD\$ ${product.price.toStringAsFixed(2)}',
                           style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primaryBlue,
-                              fontSize: 14),
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primaryBlue,
+                            fontSize: 14,
+                          ),
                         ),
                         const SizedBox(width: 8),
-                        Text('Min: ${product.minOrderQty} uds',
-                            style: const TextStyle(
-                                fontSize: 11,
-                                color: Color(0xFF8A94A6))),
+                        Text(
+                          'Min: ${product.minOrderQty} uds',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF8A94A6),
+                          ),
+                        ),
                         const SizedBox(width: 8),
                         _SmallBadge(
                           label: product.isActive ? 'Activo' : 'Inactivo',
@@ -1312,14 +1765,14 @@ class _ProductCard extends StatelessWidget {
                 children: [
                   IconButton(
                     tooltip: 'Editar',
-                    icon: const Icon(Icons.edit_outlined,
-                        color: AppColors.primaryBlue),
+                    icon: const Icon(
+                      Icons.edit_outlined,
+                      color: AppColors.primaryBlue,
+                    ),
                     onPressed: onEdit,
                   ),
                   IconButton(
-                    tooltip: product.isActive
-                        ? 'Desactivar'
-                        : 'Activar',
+                    tooltip: product.isActive ? 'Desactivar' : 'Activar',
                     icon: Icon(
                       product.isActive
                           ? Icons.visibility_off_outlined
@@ -1332,8 +1785,10 @@ class _ProductCard extends StatelessWidget {
                   ),
                   IconButton(
                     tooltip: 'Eliminar',
-                    icon: const Icon(Icons.delete_outline_rounded,
-                        color: Color(0xFFC62828)),
+                    icon: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: Color(0xFFC62828),
+                    ),
                     onPressed: () => _delete(context),
                   ),
                 ],
@@ -1363,6 +1818,10 @@ class _ProductDialogState extends State<_ProductDialog> {
   late final TextEditingController _listPrice;
   late final TextEditingController _minQty;
   late final TextEditingController _stepQty;
+  late final TextEditingController _palletQtyCtrl;
+  late final TextEditingController _largoCtrl;
+  late final TextEditingController _anchoCtrl;
+  late final TextEditingController _altoCtrl;
 
   List<CatalogCategory> _catalogs = const [];
   CatalogCategory? _selectedCatalog;
@@ -1380,13 +1839,23 @@ class _ProductDialogState extends State<_ProductDialog> {
     _name = TextEditingController(text: p?.name ?? '');
     _description = TextEditingController(text: p?.description ?? '');
     _price = TextEditingController(
-        text: p != null
-            ? p.price.toStringAsFixed(2)
-            : ProductSeeder.nuevoProductoPrecioAleatorio().toStringAsFixed(2));
+      text: p != null
+          ? p.price.toStringAsFixed(2)
+          : ProductSeeder.nuevoProductoPrecioAleatorio().toStringAsFixed(2),
+    );
     _listPrice = TextEditingController(
-        text: p?.listPrice != null ? p!.listPrice!.toStringAsFixed(2) : '');
-    _minQty  = TextEditingController(text: (p?.minOrderQty ?? 1).toString());
+      text: p?.listPrice != null ? p!.listPrice!.toStringAsFixed(2) : '',
+    );
+    _minQty = TextEditingController(text: (p?.minOrderQty ?? 1).toString());
     _stepQty = TextEditingController(text: (p?.stepQty ?? 1).toString());
+    _palletQtyCtrl = TextEditingController(
+        text: p?.palletQty != null ? p!.palletQty.toString() : '');
+    _largoCtrl = TextEditingController(
+        text: p?.largo != null ? p!.largo.toString() : '');
+    _anchoCtrl = TextEditingController(
+        text: p?.ancho != null ? p!.ancho.toString() : '');
+    _altoCtrl = TextEditingController(
+        text: p?.alto != null ? p!.alto.toString() : '');
     _variants = List.from(p?.variants ?? []);
     _loadCatalogs();
   }
@@ -1423,6 +1892,10 @@ class _ProductDialogState extends State<_ProductDialog> {
     _listPrice.dispose();
     _minQty.dispose();
     _stepQty.dispose();
+    _palletQtyCtrl.dispose();
+    _largoCtrl.dispose();
+    _anchoCtrl.dispose();
+    _altoCtrl.dispose();
     super.dispose();
   }
 
@@ -1444,6 +1917,19 @@ class _ProductDialogState extends State<_ProductDialog> {
       },
       if (_listPrice.text.trim().isNotEmpty)
         'listPrice': double.tryParse(_listPrice.text.trim()),
+      if (_palletQtyCtrl.text.trim().isNotEmpty)
+        'palletQty': int.tryParse(_palletQtyCtrl.text.trim()),
+      if (_largoCtrl.text.trim().isNotEmpty ||
+          _anchoCtrl.text.trim().isNotEmpty ||
+          _altoCtrl.text.trim().isNotEmpty)
+        'dimensions': <String, dynamic>{
+          if (_largoCtrl.text.trim().isNotEmpty)
+            'largo': double.tryParse(_largoCtrl.text.trim()),
+          if (_anchoCtrl.text.trim().isNotEmpty)
+            'ancho': double.tryParse(_anchoCtrl.text.trim()),
+          if (_altoCtrl.text.trim().isNotEmpty)
+            'alto': double.tryParse(_altoCtrl.text.trim()),
+        },
       if (_variants.isNotEmpty)
         'variants': _variants.map((v) => v.toMap()).toList(),
     };
@@ -1461,15 +1947,20 @@ class _ProductDialogState extends State<_ProductDialog> {
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Error al guardar: $e'),
-          backgroundColor: const Color(0xFFC62828),
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al guardar: $e'),
+            backgroundColor: const Color(0xFFC62828),
+          ),
+        );
       }
     }
   }
 
-  Future<void> _openVariantDialog({ProductVariant? existing, int? index}) async {
+  Future<void> _openVariantDialog({
+    ProductVariant? existing,
+    int? index,
+  }) async {
     final result = await showDialog<ProductVariant>(
       context: context,
       barrierDismissible: false,
@@ -1493,11 +1984,14 @@ class _ProductDialogState extends State<_ProductDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(_isEditing ? 'Editar producto' : 'Nuevo producto'),
+      contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       content: SizedBox(
-        width: 380,
+        width: 420,
+        height: MediaQuery.of(context).size.height * 0.78,
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(
+            padding: const EdgeInsets.only(bottom: 16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1524,20 +2018,26 @@ class _ProductDialogState extends State<_ProductDialog> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: DropdownButtonFormField<CatalogCategory>(
-                      value: _selectedCatalog,
+                      initialValue: _selectedCatalog,
                       decoration: const InputDecoration(
                         labelText: 'Categoría del catálogo',
                         border: OutlineInputBorder(),
                         contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 10),
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
                         isDense: true,
                       ),
                       items: _catalogs
-                          .map((c) => DropdownMenuItem(
-                                value: c,
-                                child: Text(
-                                    '${c.title} (${c.tab == 'hogar' ? 'Hogar' : 'Industrial'})'),
-                              ))
+                          .map(
+                            (c) => DropdownMenuItem(
+                              value: c,
+                              child: Text(
+                                '${c.title} (${c.tab == 'hogar' ? 'Hogar' : 'Industrial'})',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          )
                           .toList(),
                       onChanged: (c) => setState(() {
                         _selectedCatalog = c;
@@ -1551,56 +2051,120 @@ class _ProductDialogState extends State<_ProductDialog> {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: DropdownButtonFormField<String>(
-                        value: _selectedSubtype,
+                        initialValue: _selectedSubtype,
                         decoration: const InputDecoration(
                           labelText: 'Subtipo',
                           border: OutlineInputBorder(),
                           contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
                           isDense: true,
                         ),
                         items: _selectedCatalog!.subtypes
-                            .map((s) => DropdownMenuItem(
-                                  value: s,
-                                  child: Text(s),
-                                ))
+                            .map(
+                              (s) => DropdownMenuItem(value: s, child: Text(s)),
+                            )
                             .toList(),
-                        onChanged: (s) =>
-                            setState(() => _selectedSubtype = s),
+                        onChanged: (s) => setState(() => _selectedSubtype = s),
                         validator: (v) =>
                             v == null ? 'Selecciona un subtipo' : null,
                       ),
                     ),
                 ],
-                // ── Precio general (fallback sin variantes) ────
-                _Field(
-                  controller: _price,
-                  label: 'Precio base (RD\$)',
-                  keyboardType: TextInputType.number,
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Requerido';
-                    if (double.tryParse(v.trim()) == null) return 'Número inválido';
-                    return null;
-                  },
+                // ── Precios ────────────────────────────────────
+                const _SectionLabel('Precios (RD\$)'),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _Field(
+                        controller: _price,
+                        label: 'Precio base',
+                        keyboardType: TextInputType.number,
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return 'Requerido';
+                          if (double.tryParse(v.trim()) == null) {
+                            return 'Inválido';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _Field(
+                        controller: _listPrice,
+                        label: 'Precio tachado',
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                  ],
                 ),
-                _Field(
-                  controller: _listPrice,
-                  label: 'Precio anterior / tachado (opcional)',
-                  keyboardType: TextInputType.number,
+                // ── Cantidades ─────────────────────────────────
+                const _SectionLabel('Cantidades'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _Field(
+                        controller: _minQty,
+                        label: 'Mín. por pedido',
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _Field(
+                        controller: _stepQty,
+                        label: 'Múltiplo',
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                  ],
                 ),
-                _Field(
-                  controller: _minQty,
-                  label: 'Cantidad mínima',
-                  keyboardType: TextInputType.number,
+                // ── Dimensiones del empaque ────────────────────
+                const _SectionLabel('Empaque'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _Field(
+                        controller: _largoCtrl,
+                        label: 'Largo (cm)',
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _Field(
+                        controller: _anchoCtrl,
+                        label: 'Ancho (cm)',
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                  ],
                 ),
-                _Field(
-                  controller: _stepQty,
-                  label: 'Múltiplo de compra',
-                  keyboardType: TextInputType.number,
+                Row(
+                  children: [
+                    Expanded(
+                      child: _Field(
+                        controller: _altoCtrl,
+                        label: 'Alto (cm)',
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _Field(
+                        controller: _palletQtyCtrl,
+                        label: 'Cajas/pallet',
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                  ],
                 ),
 
                 // ── Variantes ──────────────────────────────────
-                const Divider(height: 24),
+                const Divider(height: 20),
                 Row(
                   children: [
                     const Expanded(
@@ -1618,7 +2182,8 @@ class _ProductDialogState extends State<_ProductDialog> {
                       icon: const Icon(Icons.add_rounded, size: 18),
                       label: const Text('Agregar'),
                       style: TextButton.styleFrom(
-                          foregroundColor: AppColors.primaryBlue),
+                        foregroundColor: AppColors.primaryBlue,
+                      ),
                     ),
                   ],
                 ),
@@ -1628,7 +2193,9 @@ class _ProductDialogState extends State<_ProductDialog> {
                     child: Text(
                       'Sin variantes. El precio base aplica a todos los clientes.',
                       style: TextStyle(
-                          fontSize: 12, color: Colors.grey.shade500),
+                        fontSize: 12,
+                        color: Colors.grey.shade500,
+                      ),
                     ),
                   )
                 else
@@ -1658,8 +2225,9 @@ class _ProductDialogState extends State<_ProductDialog> {
                                 Text(
                                   'Código: ${v.codigo}  EAN: ${v.ean}',
                                   style: const TextStyle(
-                                      fontSize: 11,
-                                      color: Color(0xFF8A94A6)),
+                                    fontSize: 11,
+                                    color: Color(0xFF8A94A6),
+                                  ),
                                 ),
                                 Text(
                                   'Minorista: RD\$${v.priceRetail.toStringAsFixed(0)}/caja  '
@@ -1669,8 +2237,9 @@ class _ProductDialogState extends State<_ProductDialog> {
                                 Text(
                                   '${v.packQty} uds/caja · ${v.palletQty} cajas/pallet · Stock: ${v.stock}',
                                   style: const TextStyle(
-                                      fontSize: 11,
-                                      color: Color(0xFF8A94A6)),
+                                    fontSize: 11,
+                                    color: Color(0xFF8A94A6),
+                                  ),
                                 ),
                               ],
                             ),
@@ -1678,20 +2247,30 @@ class _ProductDialogState extends State<_ProductDialog> {
                           Column(
                             children: [
                               IconButton(
-                                constraints:
-                                    const BoxConstraints(minWidth: 36, minHeight: 36),
+                                constraints: const BoxConstraints(
+                                  minWidth: 36,
+                                  minHeight: 36,
+                                ),
                                 padding: EdgeInsets.zero,
-                                icon: const Icon(Icons.edit_outlined,
-                                    size: 18, color: AppColors.primaryBlue),
+                                icon: const Icon(
+                                  Icons.edit_outlined,
+                                  size: 18,
+                                  color: AppColors.primaryBlue,
+                                ),
                                 onPressed: () =>
                                     _openVariantDialog(existing: v, index: i),
                               ),
                               IconButton(
-                                constraints:
-                                    const BoxConstraints(minWidth: 36, minHeight: 36),
+                                constraints: const BoxConstraints(
+                                  minWidth: 36,
+                                  minHeight: 36,
+                                ),
                                 padding: EdgeInsets.zero,
-                                icon: const Icon(Icons.delete_outline_rounded,
-                                    size: 18, color: Color(0xFFC62828)),
+                                icon: const Icon(
+                                  Icons.delete_outline_rounded,
+                                  size: 18,
+                                  color: Color(0xFFC62828),
+                                ),
                                 onPressed: () => _removeVariant(i),
                               ),
                             ],
@@ -1718,7 +2297,10 @@ class _ProductDialogState extends State<_ProductDialog> {
                   width: 18,
                   height: 18,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white))
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
               : Text(_isEditing ? 'Guardar' : 'Agregar'),
         ),
       ],
@@ -1759,28 +2341,43 @@ class _VariantDialogState extends State<_VariantDialog> {
   void initState() {
     super.initState();
     final e = widget.existing;
-    _codigo        = TextEditingController(text: e?.codigo ?? '');
-    _ean        = TextEditingController(text: e?.ean ?? '');
-    _color      = TextEditingController(text: e?.color ?? '');
-    _size       = TextEditingController(text: e?.size ?? '');
-    _largo      = TextEditingController(text: e?.largo?.toString() ?? '');
-    _ancho      = TextEditingController(text: e?.ancho?.toString() ?? '');
-    _alto       = TextEditingController(text: e?.alto?.toString() ?? '');
-    _peso       = TextEditingController(text: e?.peso?.toString() ?? '');
-    _packQty    = TextEditingController(text: (e?.packQty  ?? 1).toString());
-    _palletQty  = TextEditingController(text: (e?.palletQty ?? 1).toString());
+    _codigo = TextEditingController(text: e?.codigo ?? '');
+    _ean = TextEditingController(text: e?.ean ?? '');
+    _color = TextEditingController(text: e?.color ?? '');
+    _size = TextEditingController(text: e?.size ?? '');
+    _largo = TextEditingController(text: e?.largo?.toString() ?? '');
+    _ancho = TextEditingController(text: e?.ancho?.toString() ?? '');
+    _alto = TextEditingController(text: e?.alto?.toString() ?? '');
+    _peso = TextEditingController(text: e?.peso?.toString() ?? '');
+    _packQty = TextEditingController(text: (e?.packQty ?? 1).toString());
+    _palletQty = TextEditingController(text: (e?.palletQty ?? 1).toString());
     _priceRetail = TextEditingController(
-        text: e != null ? e.priceRetail.toStringAsFixed(2) : '');
-    _priceDist  = TextEditingController(
-        text: e != null ? e.priceDistributor.toStringAsFixed(2) : '');
-    _stock      = TextEditingController(text: (e?.stock ?? 0).toString());
-    _isActive   = e?.isActive ?? true;
+      text: e != null ? e.priceRetail.toStringAsFixed(2) : '',
+    );
+    _priceDist = TextEditingController(
+      text: e != null ? e.priceDistributor.toStringAsFixed(2) : '',
+    );
+    _stock = TextEditingController(text: (e?.stock ?? 0).toString());
+    _isActive = e?.isActive ?? true;
   }
 
   @override
   void dispose() {
-    for (final c in [_codigo,_ean,_color,_size,_largo,_ancho,_alto,_peso,
-                     _packQty,_palletQty,_priceRetail,_priceDist,_stock]) {
+    for (final c in [
+      _codigo,
+      _ean,
+      _color,
+      _size,
+      _largo,
+      _ancho,
+      _alto,
+      _peso,
+      _packQty,
+      _palletQty,
+      _priceRetail,
+      _priceDist,
+      _stock,
+    ]) {
       c.dispose();
     }
     super.dispose();
@@ -1790,23 +2387,31 @@ class _VariantDialogState extends State<_VariantDialog> {
     if (!_formKey.currentState!.validate()) return;
 
     final dims = <String, double>{};
-    if (_largo.text.trim().isNotEmpty) dims['largo'] = double.parse(_largo.text.trim());
-    if (_ancho.text.trim().isNotEmpty) dims['ancho'] = double.parse(_ancho.text.trim());
-    if (_alto.text.trim().isNotEmpty)  dims['alto']  = double.parse(_alto.text.trim());
-    if (_peso.text.trim().isNotEmpty)  dims['peso']  = double.parse(_peso.text.trim());
+    if (_largo.text.trim().isNotEmpty) {
+      dims['largo'] = double.parse(_largo.text.trim());
+    }
+    if (_ancho.text.trim().isNotEmpty) {
+      dims['ancho'] = double.parse(_ancho.text.trim());
+    }
+    if (_alto.text.trim().isNotEmpty) {
+      dims['alto'] = double.parse(_alto.text.trim());
+    }
+    if (_peso.text.trim().isNotEmpty) {
+      dims['peso'] = double.parse(_peso.text.trim());
+    }
 
     final variant = ProductVariant(
-      codigo:              _codigo.text.trim(),
-      ean:              _ean.text.trim(),
-      color:            _color.text.trim(),
-      size:             _size.text.trim().isNotEmpty ? _size.text.trim() : null,
-      dimensions:       dims,
-      packQty:          int.tryParse(_packQty.text.trim())   ?? 1,
-      palletQty:        int.tryParse(_palletQty.text.trim()) ?? 1,
-      priceRetail:      double.tryParse(_priceRetail.text.trim()) ?? 0,
-      priceDistributor: double.tryParse(_priceDist.text.trim())   ?? 0,
-      stock:            int.tryParse(_stock.text.trim()) ?? 0,
-      isActive:         _isActive,
+      codigo: _codigo.text.trim(),
+      ean: _ean.text.trim(),
+      color: _color.text.trim(),
+      size: _size.text.trim().isNotEmpty ? _size.text.trim() : null,
+      dimensions: dims,
+      packQty: int.tryParse(_packQty.text.trim()) ?? 1,
+      palletQty: int.tryParse(_palletQty.text.trim()) ?? 1,
+      priceRetail: double.tryParse(_priceRetail.text.trim()) ?? 0,
+      priceDistributor: double.tryParse(_priceDist.text.trim()) ?? 0,
+      stock: int.tryParse(_stock.text.trim()) ?? 0,
+      isActive: _isActive,
     );
     Navigator.pop(context, variant);
   }
@@ -1853,43 +2458,73 @@ class _VariantDialogState extends State<_VariantDialog> {
                 ),
                 // Dimensiones
                 const _SectionLabel('Dimensiones (cm/kg) — opcionales'),
-                Row(children: [
-                  Expanded(child: _Field(controller: _largo, label: 'Largo',
-                      keyboardType: TextInputType.number)),
-                  const SizedBox(width: 8),
-                  Expanded(child: _Field(controller: _ancho, label: 'Ancho',
-                      keyboardType: TextInputType.number)),
-                ]),
-                Row(children: [
-                  Expanded(child: _Field(controller: _alto, label: 'Alto',
-                      keyboardType: TextInputType.number)),
-                  const SizedBox(width: 8),
-                  Expanded(child: _Field(controller: _peso, label: 'Peso (kg)',
-                      keyboardType: TextInputType.number)),
-                ]),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _Field(
+                        controller: _largo,
+                        label: 'Largo',
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _Field(
+                        controller: _ancho,
+                        label: 'Ancho',
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _Field(
+                        controller: _alto,
+                        label: 'Alto',
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _Field(
+                        controller: _peso,
+                        label: 'Peso (kg)',
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                  ],
+                ),
                 // Empaque y pallet
                 const _SectionLabel('Empaque y logística'),
-                Row(children: [
-                  Expanded(child: _Field(
-                    controller: _packQty,
-                    label: 'Uds / caja',
-                    keyboardType: TextInputType.number,
-                    validator: (v) =>
-                        (v == null || int.tryParse(v.trim()) == null)
+                Row(
+                  children: [
+                    Expanded(
+                      child: _Field(
+                        controller: _packQty,
+                        label: 'Uds / caja',
+                        keyboardType: TextInputType.number,
+                        validator: (v) =>
+                            (v == null || int.tryParse(v.trim()) == null)
                             ? 'Requerido'
                             : null,
-                  )),
-                  const SizedBox(width: 8),
-                  Expanded(child: _Field(
-                    controller: _palletQty,
-                    label: 'Cajas / pallet',
-                    keyboardType: TextInputType.number,
-                    validator: (v) =>
-                        (v == null || int.tryParse(v.trim()) == null)
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _Field(
+                        controller: _palletQty,
+                        label: 'Cajas / pallet',
+                        keyboardType: TextInputType.number,
+                        validator: (v) =>
+                            (v == null || int.tryParse(v.trim()) == null)
                             ? 'Requerido'
                             : null,
-                  )),
-                ]),
+                      ),
+                    ),
+                  ],
+                ),
                 _Field(
                   controller: _stock,
                   label: 'Stock (cajas disponibles)',
@@ -1897,32 +2532,41 @@ class _VariantDialogState extends State<_VariantDialog> {
                 ),
                 // Precios
                 const _SectionLabel('Precios (RD\$ por caja)'),
-                Row(children: [
-                  Expanded(child: _Field(
-                    controller: _priceRetail,
-                    label: 'Minorista',
-                    keyboardType: TextInputType.number,
-                    validator: (v) =>
-                        (v == null || double.tryParse(v.trim()) == null)
+                Row(
+                  children: [
+                    Expanded(
+                      child: _Field(
+                        controller: _priceRetail,
+                        label: 'Minorista',
+                        keyboardType: TextInputType.number,
+                        validator: (v) =>
+                            (v == null || double.tryParse(v.trim()) == null)
                             ? 'Requerido'
                             : null,
-                  )),
-                  const SizedBox(width: 8),
-                  Expanded(child: _Field(
-                    controller: _priceDist,
-                    label: 'Distribuidor',
-                    keyboardType: TextInputType.number,
-                    validator: (v) =>
-                        (v == null || double.tryParse(v.trim()) == null)
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _Field(
+                        controller: _priceDist,
+                        label: 'Distribuidor',
+                        keyboardType: TextInputType.number,
+                        validator: (v) =>
+                            (v == null || double.tryParse(v.trim()) == null)
                             ? 'Requerido'
                             : null,
-                  )),
-                ]),
+                      ),
+                    ),
+                  ],
+                ),
                 // Activo
                 SwitchListTile(
                   value: _isActive,
                   onChanged: (v) => setState(() => _isActive = v),
-                  title: const Text('Variante activa', style: TextStyle(fontSize: 14)),
+                  title: const Text(
+                    'Variante activa',
+                    style: TextStyle(fontSize: 14),
+                  ),
                   contentPadding: EdgeInsets.zero,
                   activeThumbColor: AppColors.primaryBlue,
                 ),
@@ -1993,8 +2637,10 @@ class _Field extends StatelessWidget {
         decoration: InputDecoration(
           labelText: label,
           border: const OutlineInputBorder(),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
           isDense: true,
         ),
       ),
@@ -2017,7 +2663,6 @@ class _PruebasTabState extends State<_PruebasTab> {
   bool _migrandoPrecios = false;
   String? _resultado;
 
-
   Future<void> _enviarErrorPrueba() async {
     setState(() {
       _crashlyticsSending = true;
@@ -2032,8 +2677,10 @@ class _PruebasTabState extends State<_PruebasTab> {
       );
       await FirebaseCrashlytics.instance.sendUnsentReports();
       if (mounted) {
-        setState(() => _resultado =
-            '✓ Reporte enviado. Revisa Firebase Console → Crashlytics.');
+        setState(
+          () => _resultado =
+              '✓ Reporte enviado. Revisa Firebase Console → Crashlytics.',
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -2043,7 +2690,6 @@ class _PruebasTabState extends State<_PruebasTab> {
       if (mounted) setState(() => _crashlyticsSending = false);
     }
   }
-
 
   void _forzarCrashFatal() {
     showDialog<bool>(
@@ -2062,7 +2708,8 @@ class _PruebasTabState extends State<_PruebasTab> {
           ),
           TextButton(
             style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFFC62828)),
+              foregroundColor: const Color(0xFFC62828),
+            ),
             onPressed: () {
               Navigator.pop(ctx, true);
               Future<void>.delayed(const Duration(milliseconds: 300), () {
@@ -2154,8 +2801,10 @@ class _PruebasTabState extends State<_PruebasTab> {
                         color: const Color(0xFFFFF3E0),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.bug_report_outlined,
-                          color: Color(0xFFE65100)),
+                      child: const Icon(
+                        Icons.bug_report_outlined,
+                        color: Color(0xFFE65100),
+                      ),
                     ),
                     const SizedBox(width: 12),
                     const Column(
@@ -2172,7 +2821,9 @@ class _PruebasTabState extends State<_PruebasTab> {
                         Text(
                           'Prueba el reporte de errores',
                           style: TextStyle(
-                              fontSize: 12, color: Color(0xFF8A94A6)),
+                            fontSize: 12,
+                            color: Color(0xFF8A94A6),
+                          ),
                         ),
                       ],
                     ),
@@ -2188,15 +2839,15 @@ class _PruebasTabState extends State<_PruebasTab> {
                     const Text(
                       'Error no fatal',
                       style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1A2230)),
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1A2230),
+                      ),
                     ),
                     const SizedBox(height: 4),
                     const Text(
                       'Envía un error de prueba a Firebase sin cerrar la app. '
                       'Aparece en Crashlytics como "Non-fatal".',
-                      style: TextStyle(
-                          fontSize: 12, color: Color(0xFF8A94A6)),
+                      style: TextStyle(fontSize: 12, color: Color(0xFF8A94A6)),
                     ),
                     const SizedBox(height: 10),
                     SizedBox(
@@ -2204,10 +2855,8 @@ class _PruebasTabState extends State<_PruebasTab> {
                       child: OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
                           foregroundColor: const Color(0xFFE65100),
-                          side:
-                              const BorderSide(color: Color(0xFFE65100)),
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 12),
+                          side: const BorderSide(color: Color(0xFFE65100)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
                         onPressed: _crashlyticsSending
                             ? null
@@ -2217,8 +2866,9 @@ class _PruebasTabState extends State<_PruebasTab> {
                                 width: 16,
                                 height: 16,
                                 child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Color(0xFFE65100)),
+                                  strokeWidth: 2,
+                                  color: Color(0xFFE65100),
+                                ),
                               )
                             : const Icon(Icons.send_outlined),
                         label: const Text('Enviar error de prueba'),
@@ -2257,15 +2907,15 @@ class _PruebasTabState extends State<_PruebasTab> {
                     const Text(
                       'Crash fatal',
                       style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1A2230)),
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1A2230),
+                      ),
                     ),
                     const SizedBox(height: 4),
                     const Text(
                       'Cierra la app inmediatamente. Vuelve a abrirla para '
                       'que se envíe el reporte. Aparece en Crashlytics como "Fatal".',
-                      style: TextStyle(
-                          fontSize: 12, color: Color(0xFF8A94A6)),
+                      style: TextStyle(fontSize: 12, color: Color(0xFF8A94A6)),
                     ),
                     const SizedBox(height: 10),
                     SizedBox(
@@ -2274,15 +2924,13 @@ class _PruebasTabState extends State<_PruebasTab> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFC62828),
                           foregroundColor: Colors.white,
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 12),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
                         onPressed: _forzarCrashFatal,
                         icon: const Icon(Icons.warning_amber_rounded),
                         label: const Text(
                           'Forzar crash fatal',
-                          style:
-                              TextStyle(fontWeight: FontWeight.w700),
+                          style: TextStyle(fontWeight: FontWeight.w700),
                         ),
                       ),
                     ),
@@ -2298,15 +2946,15 @@ class _PruebasTabState extends State<_PruebasTab> {
                     const Text(
                       'Firestore products (migración de prueba)',
                       style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1A2230)),
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1A2230),
+                      ),
                     ),
                     const SizedBox(height: 4),
                     const Text(
                       'Renombra campo price a precio y asigna precios aleatorios '
                       'en todos los documentos de products.',
-                      style: TextStyle(
-                          fontSize: 12, color: Color(0xFF8A94A6)),
+                      style: TextStyle(fontSize: 12, color: Color(0xFF8A94A6)),
                     ),
                     const SizedBox(height: 10),
                     SizedBox(
@@ -2325,7 +2973,9 @@ class _PruebasTabState extends State<_PruebasTab> {
                                 width: 16,
                                 height: 16,
                                 child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white),
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
                               )
                             : const Icon(Icons.swap_horiz_rounded),
                         label: Text(
@@ -2352,16 +3002,18 @@ class _PruebasTabState extends State<_PruebasTab> {
           child: const Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.info_outline_rounded,
-                  color: AppColors.primaryBlue, size: 18),
+              Icon(
+                Icons.info_outline_rounded,
+                color: AppColors.primaryBlue,
+                size: 18,
+              ),
               SizedBox(width: 10),
               Expanded(
                 child: Text(
                   'Los reportes aparecen en Firebase Console → Crashlytics '
                   'en 1-2 minutos. En modo debug los errores no fatales '
                   'se envían, pero los crashes fatales requieren modo release.',
-                  style: TextStyle(
-                      fontSize: 12, color: AppColors.primaryBlue),
+                  style: TextStyle(fontSize: 12, color: AppColors.primaryBlue),
                 ),
               ),
             ],
@@ -2390,7 +3042,10 @@ class _SmallBadge extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(
-            fontSize: 10, fontWeight: FontWeight.w700, color: color),
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
       ),
     );
   }
@@ -2416,9 +3071,16 @@ class _OrdenesTab extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.receipt_long_outlined, size: 56, color: Color(0xFFCBD5E1)),
+                Icon(
+                  Icons.receipt_long_outlined,
+                  size: 56,
+                  color: Color(0xFFCBD5E1),
+                ),
                 SizedBox(height: 12),
-                Text('Sin órdenes aún', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 16)),
+                Text(
+                  'Sin órdenes aún',
+                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 16),
+                ),
               ],
             ),
           );
@@ -2426,7 +3088,7 @@ class _OrdenesTab extends StatelessWidget {
         return ListView.separated(
           padding: const EdgeInsets.all(16),
           itemCount: orders.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 10),
+          separatorBuilder: (_, _) => const SizedBox(height: 10),
           itemBuilder: (context, i) => _AdminOrderCard(order: orders[i]),
         );
       },
@@ -2454,7 +3116,13 @@ class _AdminOrderCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 4, offset: Offset(0, 2))],
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2467,12 +3135,21 @@ class _AdminOrderCard extends StatelessWidget {
                   children: [
                     Text(
                       '#${order.id.substring(0, 8).toUpperCase()}',
-                      style: const TextStyle(fontFamily: 'monospace', fontSize: 13, fontWeight: FontWeight.w700),
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      order.customerName.isNotEmpty ? order.customerName : order.customerEmail,
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
+                      order.customerName.isNotEmpty
+                          ? order.customerName
+                          : order.customerEmail,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF475569),
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -2492,7 +3169,12 @@ class _AdminOrderCard extends StatelessWidget {
               ),
               Text(
                 'RD\$${_fmtNum(order.total)}',
-                style: TextStyle(fontFamily: 'monospace', fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primaryBlue),
+                style: TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primaryBlue,
+                ),
               ),
             ],
           ),
@@ -2501,17 +3183,29 @@ class _AdminOrderCard extends StatelessWidget {
             children: [
               Expanded(
                 child: DropdownButtonFormField<OrderStatus>(
-                  value: order.status,
+                  initialValue: order.status,
                   decoration: InputDecoration(
                     labelText: 'Estado',
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     isDense: true,
                   ),
-                  items: _statusOptions.map((s) => DropdownMenuItem(
-                    value: s,
-                    child: Text(s.label, style: const TextStyle(fontSize: 13)),
-                  )).toList(),
+                  items: _statusOptions
+                      .map(
+                        (s) => DropdownMenuItem(
+                          value: s,
+                          child: Text(
+                            s.label,
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        ),
+                      )
+                      .toList(),
                   onChanged: (s) {
                     if (s != null) OrderService.updateStatus(order.id, s);
                   },
@@ -2524,7 +3218,9 @@ class _AdminOrderCard extends StatelessWidget {
                 tooltip: 'Ver detalle',
                 onPressed: () => Navigator.push<void>(
                   context,
-                  MaterialPageRoute<void>(builder: (_) => OrdenDetalleScreen(order: order)),
+                  MaterialPageRoute<void>(
+                    builder: (_) => OrdenDetalleScreen(order: order),
+                  ),
                 ),
               ),
             ],
@@ -2544,22 +3240,40 @@ class _StatusChipAdmin extends StatelessWidget {
     final (color, bg) = _colors(status);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
-      child: Text(status.label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        status.label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
     );
   }
 
   (Color, Color) _colors(OrderStatus s) {
     switch (s) {
-      case OrderStatus.pendiente:  return (const Color(0xFFB45309), const Color(0xFFFEF3C7));
-      case OrderStatus.confirmado: return (const Color(0xFF1D4ED8), const Color(0xFFDBEAFE));
-      case OrderStatus.enProceso:  return (const Color(0xFF7C3AED), const Color(0xFFEDE9FE));
-      case OrderStatus.enviado:    return (const Color(0xFF0F766E), const Color(0xFFCCFBF1));
-      case OrderStatus.entregado:  return (const Color(0xFF15803D), const Color(0xFFDCFCE7));
-      case OrderStatus.cancelado:  return (const Color(0xFFB91C1C), const Color(0xFFFFE5E8));
+      case OrderStatus.pendiente:
+        return (const Color(0xFFB45309), const Color(0xFFFEF3C7));
+      case OrderStatus.confirmado:
+        return (const Color(0xFF1D4ED8), const Color(0xFFDBEAFE));
+      case OrderStatus.enProceso:
+        return (const Color(0xFF7C3AED), const Color(0xFFEDE9FE));
+      case OrderStatus.enviado:
+        return (const Color(0xFF0F766E), const Color(0xFFCCFBF1));
+      case OrderStatus.entregado:
+        return (const Color(0xFF15803D), const Color(0xFFDCFCE7));
+      case OrderStatus.cancelado:
+        return (const Color(0xFFB91C1C), const Color(0xFFFFE5E8));
     }
   }
 }
 
-String _fmtNum(double n) => n.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},');
+String _fmtNum(double n) => n
+    .toStringAsFixed(0)
+    .replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},');
 String _fmtDate(DateTime d) => '${d.day}/${d.month}/${d.year}';

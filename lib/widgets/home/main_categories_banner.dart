@@ -23,11 +23,7 @@ class MainCategoriesBanner extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              gradient: const LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [Color(0xFF0059B7), Color(0xFFE21026)],
-              ),
+              color: const Color(0xFF0059B7),
             ),
             child: Row(
               children: [

@@ -9,6 +9,7 @@ class CartService extends ChangeNotifier {
 
   List<CartItem> get items => List.unmodifiable(_items);
   int get totalPiezas => _items.fold(0, (s, it) => s + it.cantidad);
+  double get totalCbm => _items.fold(0.0, (s, it) => s + (it.totalCbm ?? 0.0));
   bool get isEmpty => _items.isEmpty;
 
   void addItem(CartItem item) {
@@ -16,8 +17,7 @@ class CartService extends ChangeNotifier {
     if (idx >= 0) {
       final it = _items[idx];
       final maxQty = it.stock > 0 ? it.stock : 99999;
-      final minQty = it.minOrderQty > 0 ? it.minOrderQty : 1;
-      it.cantidad = (it.cantidad + item.cantidad).clamp(minQty, maxQty);
+      it.cantidad = (it.cantidad + item.cantidad).clamp(1, maxQty);
     } else {
       _items.add(item);
     }
@@ -29,8 +29,7 @@ class CartService extends ChangeNotifier {
     if (idx < 0) return;
     final it = _items[idx];
     final maxQty = it.stock > 0 ? it.stock : 99999;
-    final minQty = it.minOrderQty > 0 ? it.minOrderQty : 1;
-    it.cantidad = (it.cantidad + delta).clamp(minQty, maxQty);
+    it.cantidad = (it.cantidad + delta).clamp(1, maxQty);
     notifyListeners();
   }
 
