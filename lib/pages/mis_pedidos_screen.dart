@@ -3,6 +3,7 @@ import 'package:app_duralon/models/order.dart';
 import 'package:app_duralon/services/locale_service.dart';
 import 'package:app_duralon/services/order_service.dart';
 import 'package:app_duralon/styles/app_style.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' hide Order;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -195,9 +196,88 @@ class _OrderCard extends StatelessWidget {
 
 // ── Detalle de orden ───────────────────────────────────────────────────────────
 
-class OrdenDetalleScreen extends StatelessWidget {
+class OrdenDetalleScreen extends StatefulWidget {
   const OrdenDetalleScreen({super.key, required this.order});
   final Order order;
+
+  @override
+  State<OrdenDetalleScreen> createState() => _OrdenDetalleScreenState();
+}
+
+class _OrdenDetalleScreenState extends State<OrdenDetalleScreen> {
+  Order get order => widget.order;
+
+  // productId → {cbmPerEmpaque, pesoEmpaque} obtenidos de Firestore.
+  // Solo se usan cuando el OrderItem no tiene esos valores guardados (pedidos viejos).
+  final Map<String, Map<String, double?>> _productDims = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchMissingDims();
+  }
+
+  Future<void> _fetchMissingDims() async {
+    final itemsFaltantes = order.items
+        .where((i) => i.cbmPerEmpaque == null && i.pesoEmpaque == null)
+        .toList();
+    if (itemsFaltantes.isEmpty) return;
+
+    // Fetch una sola vez por productId único (cache de docs).
+    final Map<String, Map<String, dynamic>> docCache = {};
+    for (final item in itemsFaltantes) {
+      try {
+        final doc = docCache[item.productId] ??
+            (await FirebaseFirestore.instance
+                    .collection('products')
+                    .doc(item.productId)
+                    .get())
+                .data();
+        if (doc == null) continue;
+        docCache[item.productId] = doc;
+
+        // Busca la variante por código del ítem; si no, usa dimensiones del producto.
+        Map<String, dynamic>? dims;
+        final variants = doc['variants'] as List<dynamic>?;
+        if (variants != null) {
+          final match = variants.cast<Map<String, dynamic>>().firstWhere(
+                (v) => v['codigo'] == item.codigo,
+                orElse: () => <String, dynamic>{},
+              );
+          dims = match['dimensions'] as Map<String, dynamic>?;
+        }
+        dims ??= doc['dimensions'] as Map<String, dynamic>?;
+        if (dims == null) continue;
+
+        final l = (dims['largo'] as num?)?.toDouble();
+        final a = (dims['ancho'] as num?)?.toDouble();
+        final h = (dims['alto'] as num?)?.toDouble();
+        final w = (dims['peso'] as num?)?.toDouble();
+
+        double? cbm;
+        double? peso;
+        if (l != null && a != null && h != null) {
+          cbm = (l * a * h) / 1_000_000 * item.packQty;
+        }
+        if (w != null && w > 0) {
+          peso = w * item.packQty;
+        }
+
+        // Clave única por productId+codigo para distinguir variantes del mismo producto.
+        final key = '${item.productId}_${item.codigo}';
+        if (mounted) setState(() => _productDims[key] = {'cbm': cbm, 'peso': peso});
+      } catch (_) {}
+    }
+  }
+
+  /// Devuelve cbm/peso: primero del ítem guardado (pedidos nuevos),
+  /// si no del lookup automático en Firestore (pedidos anteriores).
+  (double?, double?) _dimsFor(OrderItem item) {
+    final key = '${item.productId}_${item.codigo}';
+    final cbm = item.cbmPerEmpaque ?? _productDims[key]?['cbm'];
+    final peso = item.pesoEmpaque ?? _productDims[key]?['peso'];
+    return (cbm, peso);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -364,6 +444,22 @@ class OrdenDetalleScreen extends StatelessWidget {
                                   'RD\$${_fmt(item.precio)}/und  ·  RD\$${_fmt(item.precioEmpaque)}/emp',
                                   style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
                                 ),
+                                Builder(builder: (context) {
+                                  final (cbm, peso) = _dimsFor(item);
+                                  if (cbm == null && peso == null) return const SizedBox.shrink();
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 2),
+                                    child: Text(
+                                      [
+                                        if (cbm != null)
+                                          'CBM: ${cbm.toStringAsFixed(4)} m³/emp',
+                                        if (peso != null)
+                                          'Peso: ${peso.toStringAsFixed(2)} kg/emp',
+                                      ].join('  ·  '),
+                                      style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                                    ),
+                                  );
+                                }),
                                 const SizedBox(height: 4),
                                 item.palletQty != null
                                     ? _PalletBadgeOrder(

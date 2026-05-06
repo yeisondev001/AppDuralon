@@ -52,6 +52,8 @@ class OrderItem {
     required this.precio,
     required this.cantidad,
     this.packQty = 1,
+    this.cbmPerEmpaque,
+    this.pesoEmpaque,
     this.imageUrl,
     this.palletQty,
   });
@@ -71,6 +73,12 @@ class OrderItem {
   /// Unidades por empaque. Default 1 para órdenes antiguas sin este campo.
   final int packQty;
 
+  /// CBM por empaque (m³); null si el producto no tiene dimensiones.
+  final double? cbmPerEmpaque;
+
+  /// Peso por empaque (kg); null si el producto no tiene peso registrado.
+  final double? pesoEmpaque;
+
   final String? imageUrl;
 
   /// Empaques por paleta cuando el cliente pidió por paleta. null = se pidió por empaque.
@@ -86,12 +94,14 @@ class OrderItem {
     'codigo':    codigo,
     'nombre':    nombre,
     'categoria': categoria,
-    if (color != null)     'color':    color,
+    if (color != null)          'color':        color,
     'precio':    precio,
     'cantidad':  cantidad,
     'packQty':   packQty,
-    if (imageUrl != null)  'imageUrl': imageUrl,
-    if (palletQty != null) 'palletQty': palletQty,
+    if (cbmPerEmpaque != null)  'cbmPerEmpaque': cbmPerEmpaque,
+    if (pesoEmpaque != null)    'pesoEmpaque':   pesoEmpaque,
+    if (imageUrl != null)       'imageUrl':      imageUrl,
+    if (palletQty != null)      'palletQty':     palletQty,
   };
 
   factory OrderItem.fromMap(Map<String, dynamic> m) => OrderItem(
@@ -102,9 +112,11 @@ class OrderItem {
     color:     m['color']     as String?,
     precio:    (m['precio']   as num?)?.toDouble() ?? 0,
     cantidad:  (m['cantidad'] as num?)?.toInt()    ?? 1,
-    packQty:   (m['packQty']  as num?)?.toInt()    ?? 1,
-    imageUrl:  m['imageUrl']  as String?,
-    palletQty: (m['palletQty'] as num?)?.toInt(),
+    packQty:       (m['packQty']       as num?)?.toInt()    ?? 1,
+    cbmPerEmpaque: (m['cbmPerEmpaque'] as num?)?.toDouble(),
+    pesoEmpaque:   (m['pesoEmpaque']   as num?)?.toDouble(),
+    imageUrl:      m['imageUrl']  as String?,
+    palletQty:     (m['palletQty'] as num?)?.toInt(),
   );
 }
 

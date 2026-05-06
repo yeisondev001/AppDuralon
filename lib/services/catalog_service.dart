@@ -186,6 +186,16 @@ class CatalogService {
         needsCommit = true;
       }
 
+      // Migración: elimina doc 'articulos_hogar' duplicado cuando ya existe 'hogar'.
+      // El product seeder usa id='hogar' y los productos apuntan a catalogId='hogar'.
+      // 'articulos_hogar' es un órfano creado por seedFromLocalData() que genera duplicados.
+      final hogarDoc = await _col.doc('hogar').get();
+      final articulos_hogarDoc = await _col.doc('articulos_hogar').get();
+      if (hogarDoc.exists && articulos_hogarDoc.exists) {
+        batch.delete(_col.doc('articulos_hogar'));
+        needsCommit = true;
+      }
+
       if (needsCommit) await batch.commit();
     } catch (_) {
       // Silencioso — si falla por permisos no bloquea la app
