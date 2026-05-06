@@ -17,11 +17,10 @@ class CatalogService {
         .orderBy('tab')
         .orderBy('order')
         .snapshots()
-        .map((snap) => snap.docs
-            .map((d) =>
-                CatalogCategory.fromFirestore(
-                    d as DocumentSnapshot<Map<String, dynamic>>))
-            .toList());
+        .map((snap) => _dedupe(snap.docs
+            .map((d) => CatalogCategory.fromFirestore(
+                d as DocumentSnapshot<Map<String, dynamic>>))
+            .toList()));
   }
 
   /// Stream filtrado por tab ("hogar" | "industrial").
@@ -30,11 +29,10 @@ class CatalogService {
         .where('tab', isEqualTo: tab)
         .orderBy('order')
         .snapshots()
-        .map((snap) => snap.docs
-            .map((d) =>
-                CatalogCategory.fromFirestore(
-                    d as DocumentSnapshot<Map<String, dynamic>>))
-            .toList());
+        .map((snap) => _dedupe(snap.docs
+            .map((d) => CatalogCategory.fromFirestore(
+                d as DocumentSnapshot<Map<String, dynamic>>))
+            .toList()));
   }
 
   /// Obtiene una sola vez la lista de categorías de un tab.
@@ -190,8 +188,8 @@ class CatalogService {
       // El product seeder usa id='hogar' y los productos apuntan a catalogId='hogar'.
       // 'articulos_hogar' es un órfano creado por seedFromLocalData() que genera duplicados.
       final hogarDoc = await _col.doc('hogar').get();
-      final articulos_hogarDoc = await _col.doc('articulos_hogar').get();
-      if (hogarDoc.exists && articulos_hogarDoc.exists) {
+      final articulosHogarDoc = await _col.doc('articulos_hogar').get();
+      if (hogarDoc.exists && articulosHogarDoc.exists) {
         batch.delete(_col.doc('articulos_hogar'));
         needsCommit = true;
       }
@@ -200,6 +198,43 @@ class CatalogService {
     } catch (_) {
       // Silencioso — si falla por permisos no bloquea la app
     }
+  }
+
+  /// Elimina categorías con el mismo tab+título, quedándose con la primera
+  /// (la de menor `order`). Evita que seeders distintos dupliquen el catálogo.
+  static List<CatalogCategory> _dedupe(List<CatalogCategory> cats) {
+    final seen = <String>{};
+    return cats.where((c) {
+      final key = '${c.tab}_${c.title.toLowerCase().trim()}';
+      return seen.add(key);
+    }).toList();
+  }
+
+  /// Borra documentos duplicados de catalog_categories (mismo tab+título, id distinto).
+  /// Conserva el doc con menor `order`; elimina los demás.
+  static Future<int> deleteDuplicates() async {
+    final snap = await _col.orderBy('tab').orderBy('order').get();
+    final seen = <String, String>{};
+    final toDelete = <String>[];
+    for (final d in snap.docs) {
+      final data = d.data();
+      final tab = data['tab'] as String? ?? '';
+      final title = (data['title'] as String? ?? '').toLowerCase().trim();
+      final key = '${tab}_$title';
+      if (seen.containsKey(key)) {
+        toDelete.add(d.id);
+      } else {
+        seen[key] = d.id;
+      }
+    }
+    if (toDelete.isNotEmpty) {
+      final batch = FirebaseFirestore.instance.batch();
+      for (final id in toDelete) {
+        batch.delete(_col.doc(id));
+      }
+      await batch.commit();
+    }
+    return toDelete.length;
   }
 
   static String _slugify(String s) =>

@@ -15,6 +15,7 @@ class CatalogosTab extends StatefulWidget {
 
 class _CatalogosTabState extends State<CatalogosTab> {
   bool _seeding = false;
+  bool _cleaningDupes = false;
   bool _seedingHogarCatalog = false;
   bool _seedingIndustrialCatalog = false;
   bool _seedingDimensions = false;
@@ -171,6 +172,36 @@ class _CatalogosTabState extends State<CatalogosTab> {
     }
   }
 
+  Future<void> _limpiarDuplicados() async {
+    setState(() => _cleaningDupes = true);
+    try {
+      final deleted = await CatalogService.deleteDuplicates();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(deleted == 0
+                ? 'No se encontraron duplicados.'
+                : '$deleted categoría(s) duplicada(s) eliminada(s).'),
+            backgroundColor: deleted == 0
+                ? const Color(0xFF0059B7)
+                : const Color(0xFF2E7D32),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: const Color(0xFFC62828),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _cleaningDupes = false);
+    }
+  }
+
   void _showCategoryDialog(BuildContext ctx, {CatalogCategory? existing}) {
     showDialog<void>(
       context: ctx,
@@ -313,6 +344,50 @@ class _CatalogosTabState extends State<CatalogosTab> {
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // ── Limpiar duplicados ────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF3CD),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFFFB300)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.warning_amber_rounded,
+                          color: Color(0xFFB45309), size: 18),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Text(
+                          'Si ves categorías repetidas, usa este botón para eliminar los documentos duplicados en Firestore.',
+                          style: TextStyle(
+                              fontSize: 12, color: Color(0xFF92400E)),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFFB45309),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                        ),
+                        onPressed: _cleaningDupes ? null : _limpiarDuplicados,
+                        child: _cleaningDupes
+                            ? const SizedBox(
+                                width: 16, height: 16,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Text('Limpiar',
+                                style: TextStyle(
+                                    fontSize: 12, fontWeight: FontWeight.w700)),
                       ),
                     ],
                   ),
