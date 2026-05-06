@@ -4,17 +4,14 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-class DuplicateRncException implements Exception {}
-
-class InvalidRncException implements Exception {}
-
-class DuplicateIdentificationException implements Exception {}
-
-class UserNotActiveException implements Exception {}
-
-class InvalidIdentificationException implements Exception {}
-
-class InvalidTaxpayerTypeException implements Exception {}
+// Excepciones de dominio propias — permiten distinguir errores de negocio
+// de errores técnicos de Firebase en los catch de la UI (login, onboarding, admin).
+class DuplicateRncException implements Exception {}        // RNC ya registrado en customers
+class InvalidRncException implements Exception {}          // RNC con formato inválido
+class DuplicateIdentificationException implements Exception {} // Cédula/RNC usada por otro usuario
+class UserNotActiveException implements Exception {}       // Usuario existe pero estado != 'activo'
+class InvalidIdentificationException implements Exception {} // Longitud/checksum inválidos
+class InvalidTaxpayerTypeException implements Exception {} // tipoContribuyente desconocido
 
 class AuthService {
   AuthService({FirebaseAuth? firebaseAuth, FirebaseFirestore? firestore})
@@ -266,6 +263,9 @@ class AuthService {
     await batch.commit();
   }
 
+  // ── Registro por email + contraseña ──────────────────────────────────────
+  // Crea la cuenta de Firebase Auth y los docs en users/customers en un batch.
+  // Valida RNC/cédula antes de crear Auth para no dejar cuentas huérfanas.
   Future<void> registerWholesaleCustomer({
     required String email,
     required String password,
@@ -338,10 +338,15 @@ class AuthService {
     await batch.commit();
   }
 
+  // ── Normalización ─────────────────────────────────────────────────────────
+
+  // Elimina guiones, espacios y cualquier carácter no numérico.
   String _normalizeDigits(String value) {
     return value.replaceAll(RegExp(r'[^0-9]'), '');
   }
 
+  // Dominicanos → solo dígitos. Extranjeros → alfanumérico en mayúsculas.
+  // La normalización diferente garantiza búsquedas consistentes en Firestore.
   String _normalizeIdentificationForStorage({
     required String identification,
     required bool isDominican,
@@ -353,6 +358,8 @@ class AuthService {
     );
   }
 
+  // Devuelve 'rnc', 'cedula' o null (identificación inválida).
+  // Solo aplica a dominicanos; extranjeros usan _normalizeIdentificationForStorage.
   String? _identificationType(String normalized) {
     if (normalized.length == 9 && isValidDominicanRnc(normalized)) {
       return 'rnc';
@@ -404,6 +411,9 @@ class AuthService {
     }
   }
 
+  // true = necesita RNC (empresa/zona franca/gubernamental)
+  // false = necesita cédula (persona física)
+  // null = tipo desconocido → lanza InvalidTaxpayerTypeException
   bool? _taxpayerTypeRequiresRnc(String taxpayerType) {
     switch (taxpayerType) {
       case 'empresa':
@@ -417,12 +427,16 @@ class AuthService {
     }
   }
 
+  // Acepta con o sin tilde para tolerar variaciones de escritura del usuario.
   bool _isDominicanCountry(String country) {
     final normalized = country.trim().toLowerCase();
     return normalized == 'república dominicana' ||
         normalized == 'republica dominicana';
   }
 
+  // ── Algoritmos de validación RD ───────────────────────────────────────────
+
+  // Módulo 10 con pesos alternantes [1,2]; si el producto > 9, se resta 9.
   bool _isValidDominicanCedula(String normalizedCedula) {
     if (normalizedCedula.length != 11) return false;
     final digits = normalizedCedula.split('').map(int.parse).toList();

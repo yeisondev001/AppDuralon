@@ -19,6 +19,8 @@ import 'package:app_duralon/widgets/duralon_guest_cart_dialog.dart';
 import 'package:app_duralon/widgets/product_image.dart';
 import 'package:flutter/material.dart';
 
+enum _BuyMode { empaque, paleta }
+
 // Mapa de nombre de color (español) → Color de Flutter para los chips.
 const Map<String, Color> _kColorMap = {
   'Azul':         Color(0xFF1565C0),
@@ -73,7 +75,8 @@ class ProductoScreen extends StatefulWidget {
 }
 
 class _ProductoScreenState extends State<ProductoScreen> {
-  late int _empaques;
+  int _displayCount = 1;
+  _BuyMode _buyMode = _BuyMode.empaque;
   final PageController _imagePageController = PageController();
 
   ProductVariant? _selectedVariant;
@@ -99,14 +102,20 @@ class _ProductoScreenState extends State<ProductoScreen> {
     return (l * a * h) / 1_000_000;
   }
 
-  /// Unidades mínimas = 1 empaque.
-  int get _effectiveMinOrderQty => _packQty;
+  // Cantidad de empaques por paleta (null = producto sin paleta definida).
+  int? get _palletQty {
+    final qty = _selectedVariant?.palletQty ?? _p.palletQty;
+    return (qty != null && qty > 0) ? qty : null;
+  }
 
-  /// El paso es el tamaño del empaque (nunca de 1 en 1).
-  int get _stepQty => _packQty;
+  // En paleta mode _displayCount ya es empaques (múltiplos de palletQty).
+  // En empaque mode _displayCount son unidades (múltiplos de packQty).
+  int get _numEmpaques => _buyMode == _BuyMode.paleta
+      ? _displayCount
+      : (_displayCount ~/ _packQty).clamp(1, 999999);
 
-  /// Empaques implícitos derivados de las unidades seleccionadas.
-  int get _numPaquetes => _packQty > 0 ? _empaques ~/ _packQty : _empaques;
+  // Unidades totales = empaques × unidades/empaque.
+  int get _numUnidades => _numEmpaques * _packQty;
 
   double get _activePrice {
     if (_selectedVariant != null) {
@@ -117,7 +126,7 @@ class _ProductoScreenState extends State<ProductoScreen> {
     return _p.price;
   }
 
-  double get _total => _activePrice * _numPaquetes;
+  double get _total => _activePrice * _numUnidades;
 
   bool get _isDistribuidor =>
       widget.userRole == 'cliente_distribuidor' ||
@@ -158,7 +167,6 @@ class _ProductoScreenState extends State<ProductoScreen> {
   void initState() {
     super.initState();
     _activeColorProduct = widget.product;
-    _empaques = 1; // temporal, se recalcula tras seleccionar variante
     if (_displayColors.length == 1) {
       _selectedColor = _displayColors.first;
       if (_p.hasVariants && _p.activeVariants.isNotEmpty) {
@@ -168,7 +176,8 @@ class _ProductoScreenState extends State<ProductoScreen> {
         );
       }
     }
-    _empaques = _packQty; // mínimo = 1 empaque en unidades
+    // Empaque mode arranca mostrando 1 empaque (= packQty unidades).
+    _displayCount = _packQty;
   }
 
   void _onProductColorSelected(Product product) {
@@ -186,7 +195,8 @@ class _ProductoScreenState extends State<ProductoScreen> {
           );
         }
       }
-      _empaques = _packQty; // reiniciar al mínimo del nuevo producto
+      _buyMode = _BuyMode.empaque;
+      _displayCount = _packQty; // 1 empaque del nuevo producto/variante
     });
     _imagePageController.jumpToPage(0);
   }
@@ -203,13 +213,8 @@ class _ProductoScreenState extends State<ProductoScreen> {
               .firstWhere((v) => v.color == color, orElse: () => _p.activeVariants.first);
         }
       }
-      // Ajustar cantidad al nuevo packQty (redondear al múltiplo superior más cercano)
-      final newPack = _packQty;
-      if (_empaques < newPack) {
-        _empaques = newPack;
-      } else if (_empaques % newPack != 0) {
-        _empaques = ((_empaques / newPack).ceil()) * newPack;
-      }
+      // En empaque mode: 1 empaque = packQty unidades; en paleta: 1 paleta.
+      _displayCount = _buyMode == _BuyMode.paleta ? 1 : _packQty;
     });
   }
 
@@ -218,28 +223,15 @@ class _ProductoScreenState extends State<ProductoScreen> {
       showDuralonGuestCartDialog(context);
       return;
     }
-    if (_empaques < _packQty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${S.minQtyError}: $_packQty ${S.units} (1 ${S.package}).')),
-      );
-      return;
-    }
-    if (_empaques % _packQty != 0) {
-      // Ajustar automáticamente al múltiplo superior
-      setState(() => _empaques = ((_empaques / _packQty).ceil()) * _packQty);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${S.multipleError} $_packQty ${S.units}. Ajustado a $_empaques.')),
-      );
-      return;
-    }
     final item = CartItem.fromProduct(
       _p,
       _selectedVariant,
-      _numPaquetes,
+      _numEmpaques,
       _isDistribuidor,
+      palletQty: _buyMode == _BuyMode.paleta ? _palletQty : null,
     );
     CartService.instance.addItem(item);
-    showCartAddedToast(context, _p.name, _numPaquetes);
+    showCartAddedToast(context, _p.name, _numEmpaques);
   }
 
   Widget _buildPriceLocked(BuildContext context) {
@@ -681,26 +673,33 @@ class _ProductoScreenState extends State<ProductoScreen> {
                                   ),
                                 ),
 
-                                // Selector de cantidad (en unidades, paso = packQty)
-                                const SizedBox(height: 24),
-                                Text(
-                                  S.units,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    color: Color(0xFF8E9AAF),
-                                    fontWeight: FontWeight.w500,
+                                // ── Selector por empaque / por paleta ─────
+                                if (_palletQty != null) ...[
+                                  const SizedBox(height: 20),
+                                  _BuyModeToggle(
+                                    mode: _buyMode,
+                                    onChanged: (mode) => setState(() {
+                                      _buyMode = mode;
+                                      // paleta arranca en 1 paleta = palletQty empaques
+                                      _displayCount = mode == _BuyMode.paleta
+                                          ? (_palletQty ?? 1)
+                                          : _packQty;
+                                    }),
                                   ),
-                                ),
-                                const SizedBox(height: 10),
+                                ],
+                                const SizedBox(height: 16),
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     _QtyCircleButton(
                                       icon: Icons.remove,
-                                      onPressed: _empaques > _effectiveMinOrderQty
-                                          ? () => setState(() => _empaques -= _stepQty)
-                                          : null,
+                                      onPressed: _buyMode == _BuyMode.paleta
+                                          ? (_displayCount > (_palletQty ?? 1)
+                                              ? () => setState(() => _displayCount -= _palletQty ?? 1)
+                                              : null)
+                                          : (_displayCount > _packQty
+                                              ? () => setState(() => _displayCount -= _packQty)
+                                              : null),
                                       highlight: false,
                                     ),
                                     Container(
@@ -714,11 +713,14 @@ class _ProductoScreenState extends State<ProductoScreen> {
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Text(
-                                            '$_empaques',
+                                            '$_displayCount',
                                             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
                                           ),
                                           Text(
-                                            S.units,
+                                            // ambos modos muestran empaques o unidades, no "paleta"
+                                            _buyMode == _BuyMode.paleta
+                                                ? (_displayCount == 1 ? S.package : S.packagePlural)
+                                                : S.units,
                                             style: const TextStyle(
                                               fontSize: 10,
                                               color: Color(0xFF8E9AAF),
@@ -730,16 +732,22 @@ class _ProductoScreenState extends State<ProductoScreen> {
                                     ),
                                     _QtyCircleButton(
                                       icon: Icons.add,
-                                      onPressed: _numPaquetes < 9999
-                                          ? () => setState(() => _empaques += _stepQty)
-                                          : null,
+                                      onPressed: _buyMode == _BuyMode.paleta
+                                          ? (_displayCount < 9999 * (_palletQty ?? 1)
+                                              ? () => setState(() => _displayCount += _palletQty ?? 1)
+                                              : null)
+                                          : (_displayCount < 9999 * _packQty
+                                              ? () => setState(() => _displayCount += _packQty)
+                                              : null),
                                       highlight: true,
                                     ),
                                   ],
                                 ),
                                 const SizedBox(height: 10),
                                 Text(
-                                  '= $_numPaquetes ${_numPaquetes != 1 ? S.packagePlural : S.package}  ·  $_packQty ${S.units}/${S.package}',
+                                  _buyMode == _BuyMode.paleta
+                                      ? '= ${_displayCount ~/ (_palletQty ?? 1)} ${(_displayCount ~/ (_palletQty ?? 1)) == 1 ? S.palletSing : S.palletPlur}  ·  $_numUnidades ${S.units}'
+                                      : '= $_numEmpaques ${_numEmpaques == 1 ? S.package : S.packagePlural}  ·  $_packQty ${S.units}/${S.package}',
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
                                     fontSize: 12,
@@ -750,7 +758,7 @@ class _ProductoScreenState extends State<ProductoScreen> {
                                 if (_cbmPerEmpaque != null) ...[
                                   const SizedBox(height: 4),
                                   Text(
-                                    'CBM: ${(_cbmPerEmpaque! * _numPaquetes).toStringAsFixed(4)} m³  (${_cbmPerEmpaque!.toStringAsFixed(4)} m³/${S.package})',
+                                    'CBM: ${(_cbmPerEmpaque! * _numEmpaques).toStringAsFixed(4)} m³  (${_cbmPerEmpaque!.toStringAsFixed(4)} m³/${S.package})',
                                     textAlign: TextAlign.center,
                                     style: const TextStyle(
                                       fontSize: 12,
@@ -1520,6 +1528,107 @@ class _QtyCircleButton extends StatelessWidget {
                 ? const Color(0xFFB0B8C4)
                 : (highlight ? AppColors.primaryRed : const Color(0xFF1E2A3A)),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// Selector de modo: Por empaque / Por paleta
+// =============================================================================
+class _BuyModeToggle extends StatelessWidget {
+  const _BuyModeToggle({required this.mode, required this.onChanged});
+  final _BuyMode mode;
+  final ValueChanged<_BuyMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F2F6),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      padding: const EdgeInsets.all(4),
+      child: Row(
+        children: [
+          Expanded(
+            child: _ModeChip(
+              icon: Icons.inventory_2_outlined,
+              label: S.byPack,
+              selected: mode == _BuyMode.empaque,
+              onTap: () => onChanged(_BuyMode.empaque),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: _ModeChip(
+              icon: Icons.layers_outlined,
+              label: S.byPallet,
+              selected: mode == _BuyMode.paleta,
+              onTap: () => onChanged(_BuyMode.paleta),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ModeChip extends StatelessWidget {
+  const _ModeChip({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primaryBlue : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: AppColors.primaryBlue.withValues(alpha: 0.25),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : [],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: selected ? Colors.white : const Color(0xFF6A7482),
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: selected ? Colors.white : const Color(0xFF6A7482),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

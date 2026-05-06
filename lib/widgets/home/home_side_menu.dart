@@ -22,7 +22,6 @@ const Set<String> kSideMenuItemsRequiringAccount = {
   'Ofertas',
   'Mis pedidos',
   'Mis direcciones',
-  'Metodos de pago',
   'Soporte',
 };
 
@@ -39,14 +38,12 @@ class HomeSideMenu extends StatefulWidget {
     required this.onItemTap,
     this.onLoginTap,
     this.selectedItem = 'Inicio',
-    this.showWholesaleRules = false,
     this.showAdminPanel = false,
   });
 
   final ValueChanged<String> onItemTap;
   final VoidCallback? onLoginTap;
   final String selectedItem;
-  final bool showWholesaleRules;
   final bool showAdminPanel;
 
   @override
@@ -167,24 +164,11 @@ class _HomeSideMenuState extends State<HomeSideMenu> {
                         onTap: () => widget.onItemTap('Mis direcciones'),
                       ),
                       _MenuItem(
-                        icon: Icons.credit_card_outlined,
-                        title: S.menuPayments,
-                        selected: widget.selectedItem == 'Metodos de pago',
-                        onTap: () => widget.onItemTap('Metodos de pago'),
-                      ),
-                      _MenuItem(
                         icon: Icons.support_agent_rounded,
                         title: S.menuSupport,
                         selected: widget.selectedItem == 'Soporte',
                         onTap: () => widget.onItemTap('Soporte'),
                       ),
-                      if (widget.showWholesaleRules)
-                        _MenuItem(
-                          icon: Icons.tune_rounded,
-                          title: S.menuWholesale,
-                          selected: widget.selectedItem == 'Reglas mayoristas',
-                          onTap: () => widget.onItemTap('Reglas mayoristas'),
-                        ),
                       if (widget.showAdminPanel) ...[
                         const Padding(
                           padding: EdgeInsets.symmetric(

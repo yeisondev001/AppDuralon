@@ -12,7 +12,6 @@ import 'package:app_duralon/models/catalog_category.dart';
 import 'package:app_duralon/models/home_product_section.dart';
 import 'package:app_duralon/models/product.dart';
 import 'package:app_duralon/pages/admin_panel_screen.dart';
-import 'package:app_duralon/pages/admin_wholesale_rules_screen.dart';
 import 'package:app_duralon/pages/perfil_screen.dart';
 import 'package:app_duralon/pages/catalogo_screen.dart';
 import 'package:app_duralon/pages/login_screen.dart';
@@ -51,7 +50,6 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isMenuOpen = false;
   String _searchQuery = '';
   int _selectedStoreTab = 0;
-  bool _canManageWholesaleRules = false;
   bool _isAdmin = false;
   String? _userRole;
 
@@ -96,7 +94,6 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       setState(() {
         _userRole = role;
-        _canManageWholesaleRules = role == 'admin';
         _isAdmin = role == 'admin';
       });
     } catch (_) {}
@@ -324,6 +321,7 @@ class _HomeScreenState extends State<HomeScreen> {
       slideRightRoute<void>(
         CatalogoStandaloneScreen(
           isGuestMode: widget.isGuestMode,
+          userRole: _userRole,
           onCartTap: () => _handleCartTap(context, null),
           onSectionTap: (catalogId, subtype) =>
               _openProductsScreen(context, catalogId, subtype),
@@ -349,7 +347,6 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 HomeSideMenu(
                   selectedItem: 'Inicio',
-                  showWholesaleRules: _canManageWholesaleRules,
                   showAdminPanel: _isAdmin,
                   onItemTap: (item) {
                     if (item == 'Inicio') {
@@ -417,26 +414,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       Navigator.push<void>(
                         context,
                         slideRightRoute<void>(const MisDireccionesScreen()),
-                      );
-                      return;
-                    }
-                    if (item == 'Reglas mayoristas') {
-                      _closeMenu();
-                      if (!_canManageWholesaleRules) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'No tienes permisos para reglas mayoristas.',
-                            ),
-                          ),
-                        );
-                        return;
-                      }
-                      Navigator.push<void>(
-                        context,
-                        slideRightRoute<void>(
-                          const AdminWholesaleRulesScreen(),
-                        ),
                       );
                       return;
                     }

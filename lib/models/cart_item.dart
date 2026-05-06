@@ -1,6 +1,7 @@
 import 'package:app_duralon/models/product.dart';
 import 'package:app_duralon/models/product_variant.dart';
 
+// Representa una línea del carrito: un producto+variante con su cantidad en empaques.
 class CartItem {
   CartItem({
     required this.id,
@@ -15,6 +16,7 @@ class CartItem {
     this.imageUrl,
     this.packQty = 1,
     this.cbmPerEmpaque,
+    this.palletQty,
   });
 
   final String id;
@@ -37,24 +39,36 @@ class CartItem {
   /// CBM por empaque; null si el producto no tiene dimensiones.
   final double? cbmPerEmpaque;
 
+  /// Empaques por paleta; presente solo si el ítem se añadió en modo "por paleta".
+  /// Se usa como flag de logística: si != null, el cliente pidió por paletas.
+  final int? palletQty;
+
   int get totalUnidades => cantidad * packQty;
   double? get totalCbm => cbmPerEmpaque != null ? cbmPerEmpaque! * cantidad : null;
-  double get total => precio * cantidad;
+  // precio es por unidad → total = precio/und × und/paq × núm. paquetes
+  double get total => precio * packQty * cantidad;
 
+  // Construye un CartItem desde un producto y su variante seleccionada.
+  // La variante tiene prioridad sobre el producto para código, precio y dimensiones.
+  // [palletQty]: si se pasa, marca el ítem como "añadido por paleta" para logística.
   static CartItem fromProduct(
     Product p,
     ProductVariant? variant,
     int empaques,
-    bool isDistribuidor,
-  ) {
+    bool isDistribuidor, {
+    int? palletQty,
+  }) {
     final codigo = variant?.codigo.isNotEmpty == true ? variant!.codigo : p.id;
     final precio = variant != null
         ? (isDistribuidor ? variant.priceDistributor : variant.priceRetail)
         : p.price;
+    // packQty == 0 no es válido; fallback a 1 para evitar división por cero en UI.
     final pack = (variant?.packQty ?? p.minOrderQty) > 0
         ? (variant?.packQty ?? p.minOrderQty)
         : 1;
 
+    // CBM por empaque: largo × ancho × alto (mm³) ÷ 1,000,000 → m³, × unidades/empaque.
+    // Queda null si faltan dimensiones; la UI oculta la columna CBM en ese caso.
     double? cbm;
     final dims = variant?.dimensions.isNotEmpty == true
         ? variant!.dimensions
@@ -81,6 +95,7 @@ class CartItem {
       imageUrl: p.imageUrl,
       packQty: pack,
       cbmPerEmpaque: cbm,
+      palletQty: palletQty,
     );
   }
 }

@@ -69,6 +69,10 @@ class CartItemCard extends StatelessWidget {
                         item.color!,
                         style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                       ),
+                    const SizedBox(height: 4),
+                    item.palletQty != null
+                        ? _PalletBadge(empaques: item.cantidad, palletQty: item.palletQty!)
+                        : _EmpaqueBadge(empaques: item.cantidad),
                   ],
                 ),
               ),
@@ -92,7 +96,7 @@ class CartItemCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    'RD\$${_fmt(item.precio)}/paq',
+                    'RD\$${_fmt(item.precio * item.packQty)}/paq',
                     style: const TextStyle(
                       fontSize: 11,
                       color: Color(0xFF94A3B8),
@@ -281,6 +285,76 @@ class _QtyButton extends StatelessWidget {
           size: 16,
           color: disabled ? const Color(0xFFCBD5E1) : AppColors.primaryBlue,
         ),
+      ),
+    );
+  }
+}
+
+// ── Badge modo compra ─────────────────────────────────────────────────────────
+
+class _EmpaqueBadge extends StatelessWidget {
+  const _EmpaqueBadge({required this.empaques});
+  final int empaques;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.archive_outlined, size: 12, color: Color(0xFF1D4ED8)),
+          const SizedBox(width: 4),
+          Text(
+            'Por empaque · $empaques ${empaques == 1 ? 'emp' : 'emps'}',
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF1D4ED8),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PalletBadge extends StatelessWidget {
+  const _PalletBadge({required this.empaques, required this.palletQty});
+  final int empaques;
+  final int palletQty;
+
+  @override
+  Widget build(BuildContext context) {
+    final paletas = empaques / palletQty;
+    final exact = empaques % palletQty == 0;
+    final label = exact
+        ? '${paletas.toInt()} ${paletas == 1 ? 'paleta' : 'paletas'}'
+        : '≈ ${paletas.toStringAsFixed(2)} paletas';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.lightBlue,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.layers_outlined, size: 12, color: AppColors.primaryBlue),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primaryBlue,
+            ),
+          ),
+        ],
       ),
     );
   }

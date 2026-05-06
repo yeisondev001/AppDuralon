@@ -23,11 +23,13 @@ class _CarritoScreenState extends State<CarritoScreen> {
   @override
   void initState() {
     super.initState();
+    // Escucha cambios del CartService para redibujar totales y lista al instante.
     _cart.addListener(_onCartChanged);
   }
 
   @override
   void dispose() {
+    // Obligatorio: evita llamar setState en un widget ya desmontado.
     _cart.removeListener(_onCartChanged);
     super.dispose();
   }
@@ -36,6 +38,9 @@ class _CarritoScreenState extends State<CarritoScreen> {
 
   bool _enviando = false;
 
+  // ── Confirmar pedido ──────────────────────────────────────────────────────
+  // Muestra un bottom sheet con campo de notas; si el usuario acepta,
+  // crea el pedido en Firestore y limpia el carrito antes de navegar.
   Future<void> _confirmarPedido(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -124,7 +129,9 @@ class _CarritoScreenState extends State<CarritoScreen> {
           color:     i.color,
           precio:    i.precio,
           cantidad:  i.cantidad,
+          packQty:   i.packQty,
           imageUrl:  i.imageUrl,
+          palletQty: i.palletQty,
         )).toList(),
         subtotal:  _subtotal,
         descuento: 0,
@@ -152,18 +159,23 @@ class _CarritoScreenState extends State<CarritoScreen> {
     }
   }
 
+  // Formatea número como "1,234" (sin decimales, separador de miles con coma).
   String _fmtNum(double n) => n.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},');
 
+  // ── Cálculos de totales ───────────────────────────────────────────────────
+  // ITBIS = 18% (impuesto dominicano equivalente al IVA).
   double get _subtotal =>
       _cart.items.fold(0, (s, it) => s + it.total);
   double get _itbis => _subtotal * 0.18;
   double get _total => _subtotal + _itbis;
 
+  // ── Build ─────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final items = _cart.items;
     final user = FirebaseAuth.instance.currentUser;
 
+    // ListenableBuilder sobre LocaleService para redibujar los textos al cambiar idioma.
     return ListenableBuilder(
       listenable: LocaleService.instance,
       builder: (context, _) => Scaffold(
@@ -217,6 +229,9 @@ class _CarritoScreenState extends State<CarritoScreen> {
     );
   }
 
+  // ── Header ────────────────────────────────────────────────────────────────
+  // Muestra: botón de regreso, título "Mi pedido", badge con total de unidades
+  // y, si el usuario está logueado, su avatar + nombre/correo.
   Widget _buildHeader(BuildContext context, User? user) {
     final piezas = _cart.totalPiezas;
     return Container(
@@ -334,6 +349,8 @@ class _CarritoScreenState extends State<CarritoScreen> {
     );
   }
 
+  // ── Estado vacío ──────────────────────────────────────────────────────────
+  // Carrito sin ítems: icono + texto + botón para volver al catálogo.
   Widget _buildEmpty(BuildContext context) {
     return Center(
       child: Column(
@@ -382,6 +399,9 @@ class _CarritoScreenState extends State<CarritoScreen> {
     );
   }
 
+  // ── Footer ────────────────────────────────────────────────────────────────
+  // Barra fija inferior con total + botón "Confirmar pedido".
+  // El botón se deshabilita durante el envío para evitar doble submit.
   Widget _buildFooter(BuildContext context) {
     final totalStr =
         'RD\$${_total.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},')}';

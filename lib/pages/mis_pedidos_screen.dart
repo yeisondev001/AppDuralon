@@ -145,12 +145,26 @@ class _OrderCard extends StatelessWidget {
                 _StatusChip(status: order.status),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              '${order.totalUnidades} unidades · ${order.items.length} productos',
-              style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+            const SizedBox(height: 6),
+            // Referencias + empaques + unidades
+            Wrap(
+              spacing: 12,
+              children: [
+                _InfoPill(
+                  icon: Icons.inventory_2_outlined,
+                  label: '${order.items.length} ${order.items.length == 1 ? 'producto' : 'productos'}',
+                ),
+                _InfoPill(
+                  icon: Icons.archive_outlined,
+                  label: '${order.totalEmpaques} empaques',
+                ),
+                _InfoPill(
+                  icon: Icons.widgets_outlined,
+                  label: '${order.totalUnidades} unidades',
+                ),
+              ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -225,12 +239,19 @@ class OrdenDetalleScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _infoRow(S.date, _fmtDate(order.createdAt)),
+                if (order.updatedAt != null &&
+                    order.updatedAt!.difference(order.createdAt).abs() > const Duration(minutes: 1))
+                  _infoRow('Actualizado', _fmtDate(order.updatedAt!)),
                 _infoRow(
                   S.customer,
                   order.customerName.isNotEmpty
                       ? order.customerName
                       : order.customerEmail,
                 ),
+                _infoRow('Empaques', '${order.totalEmpaques}'),
+                _infoRow('Unidades', '${order.totalUnidades}'),
+                if (order.cupon != null && order.cupon!.isNotEmpty)
+                  _infoRow('Cupón', order.cupon!),
                 if (order.notas != null && order.notas!.isNotEmpty)
                   _infoRow(S.notes, order.notas!),
               ],
@@ -288,13 +309,68 @@ class OrdenDetalleScreen extends StatelessWidget {
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                                Text(
-                                  '${item.cantidad} × RD\$${_fmt(item.precio)}',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF64748B),
-                                  ),
+                                const SizedBox(height: 2),
+                                // Código + color
+                                Row(
+                                  children: [
+                                    Text(
+                                      'CÓD · ${item.codigo}',
+                                      style: const TextStyle(
+                                        fontFamily: 'monospace',
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF64748B),
+                                        letterSpacing: 0.4,
+                                      ),
+                                    ),
+                                    if (item.color != null && item.color!.isNotEmpty) ...[
+                                      const Text(
+                                        '  ·  ',
+                                        style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
+                                      ),
+                                      Text(
+                                        item.color!,
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          color: Color(0xFF64748B),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
+                                const SizedBox(height: 4),
+                                // Desglose según modo de compra
+                                if (item.palletQty != null) ...[
+                                  // Paleta: N paletas × palletQty emp/pal
+                                  Text(
+                                    '${item.cantidad ~/ item.palletQty!} ${(item.cantidad ~/ item.palletQty!) == 1 ? 'paleta' : 'paletas'}  ×  ${item.palletQty} emp/paleta  =  ${item.cantidad} empaques',
+                                    style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                                  ),
+                                ] else ...[
+                                  // Empaque: N empaques
+                                  Text(
+                                    '${item.cantidad} ${item.cantidad == 1 ? 'empaque' : 'empaques'}',
+                                    style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                                  ),
+                                ],
+                                // Siempre: empaques × uds/emp = total unidades
+                                Text(
+                                  '${item.cantidad} emp  ×  ${item.packQty} uds/emp  =  ${item.totalUnidades} unidades',
+                                  style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'RD\$${_fmt(item.precio)}/und  ·  RD\$${_fmt(item.precioEmpaque)}/emp',
+                                  style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                                ),
+                                const SizedBox(height: 4),
+                                item.palletQty != null
+                                    ? _PalletBadgeOrder(
+                                        empaques: item.cantidad,
+                                        palletQty: item.palletQty!,
+                                      )
+                                    : _EmpaqueBadgeOrder(empaques: item.cantidad),
                               ],
                             ),
                           ),
@@ -483,4 +559,109 @@ class _StatusChip extends StatelessWidget {
 String _fmt(double n) => n
     .toStringAsFixed(0)
     .replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},');
-String _fmtDate(DateTime d) => '${d.day}/${d.month}/${d.year}';
+String _fmtDate(DateTime d) {
+  const months = [
+    'ene','feb','mar','abr','may','jun',
+    'jul','ago','sep','oct','nov','dic',
+  ];
+  final h = d.hour.toString().padLeft(2, '0');
+  final m = d.minute.toString().padLeft(2, '0');
+  return '${d.day} ${months[d.month - 1]} ${d.year}  $h:$m';
+}
+
+class _InfoPill extends StatelessWidget {
+  const _InfoPill({required this.icon, required this.label});
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12, color: const Color(0xFF94A3B8)),
+        const SizedBox(width: 3),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+        ),
+      ],
+    );
+  }
+}
+
+// Badge modo empaque
+class _EmpaqueBadgeOrder extends StatelessWidget {
+  const _EmpaqueBadgeOrder({required this.empaques});
+  final int empaques;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.archive_outlined, size: 12, color: Color(0xFF1D4ED8)),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              'Por empaque · $empaques ${empaques == 1 ? 'empaque' : 'empaques'}',
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1D4ED8),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Badge "X paletas" para órdenes con ítems pedidos en modo paleta.
+class _PalletBadgeOrder extends StatelessWidget {
+  const _PalletBadgeOrder({required this.empaques, required this.palletQty});
+  final int empaques;
+  final int palletQty;
+
+  @override
+  Widget build(BuildContext context) {
+    final paletas = empaques / palletQty;
+    final exact = empaques % palletQty == 0;
+    final label = exact
+        ? '${paletas.toInt()} ${paletas == 1 ? 'paleta' : 'paletas'} · $palletQty paq/pal'
+        : '≈ ${paletas.toStringAsFixed(2)} paletas · $palletQty paq/pal';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.lightBlue,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.layers_outlined, size: 12, color: AppColors.primaryBlue),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primaryBlue,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

@@ -216,15 +216,14 @@ class _PerfilScreenState extends State<PerfilScreen> {
     final identification = customer['identificacion'] as String?;
     final identificationType = customer['tipoIdentificacion'] as String?;
     final fiscalAddress = customer['direccionFiscal'] as String?;
+    final phone = customer['telefono'] as String?;
+    final city = customer['ciudad'] as String?;
+    final country = customer['pais'] as String?;
 
     return [
       _InfoRow(
         label: S.name,
         value: customer['nombreCompleto'] as String? ?? '—',
-      ),
-      _InfoRow(
-        label: S.email,
-        value: customer['correo'] as String? ?? '—',
       ),
       _InfoRow(
         label: S.clientType,
@@ -239,12 +238,15 @@ class _PerfilScreenState extends State<PerfilScreen> {
             ? identification
             : '—',
       ),
-      _InfoRow(
-        label: S.fiscalAddress,
-        value: (fiscalAddress != null && fiscalAddress.trim().isNotEmpty)
-            ? fiscalAddress
-            : '—',
-      ),
+      if (phone != null && phone.trim().isNotEmpty)
+        _InfoRow(label: S.phone, value: phone),
+      if (city != null && city.trim().isNotEmpty)
+        _InfoRow(label: S.city, value: city),
+      if (country != null && country.trim().isNotEmpty)
+        _InfoRow(label: S.country, value: country),
+      if (fiscalAddress != null && fiscalAddress.trim().isNotEmpty)
+        _InfoRow(label: S.fiscalAddress, value: fiscalAddress),
+      // Campos solo visibles para el administrador
       if (esInterno) ...[
         _InfoRow(
           label: S.status,

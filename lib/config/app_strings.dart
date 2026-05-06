@@ -80,7 +80,11 @@ abstract final class S {
   static String get weightLabel  => _t(es: 'Peso',          en: 'Weight',           fr: 'Poids');
   static String get cbmPerPack   => _t(es: 'CBM / empaque', en: 'CBM / pack',       fr: 'CBM / emballage');
   static String get packLabel    => _t(es: 'Empaque',       en: 'Pack',             fr: 'Emballage');
-  static String get totalPallet  => _t(es: 'Total/Pallet',  en: 'Total/Pallet',     fr: 'Total/Palette');
+  static String get totalPallet  => _t(es: 'Paleta',        en: 'Pallet',           fr: 'Palette');
+  static String get byPack       => _t(es: 'Por empaque',   en: 'By pack',          fr: 'Par emballage');
+  static String get byPallet     => _t(es: 'Por paleta',    en: 'By pallet',        fr: 'Par palette');
+  static String get palletSing   => _t(es: 'paleta',        en: 'pallet',           fr: 'palette');
+  static String get palletPlur   => _t(es: 'paletas',       en: 'pallets',          fr: 'palettes');
 
   // ── Pantalla de producto ──────────────────────────────────────────────────────
   static String get productTitle  => _t(es: 'Producto',              en: 'Product',                fr: 'Produit');
@@ -157,6 +161,9 @@ abstract final class S {
   static String get provider      => _t(es: 'Proveedor',             en: 'Provider',               fr: 'Fournisseur');
   static String get userId        => _t(es: 'ID de usuario',         en: 'User ID',                fr: 'ID utilisateur');
   static String get clientType    => _t(es: 'Tipo de cliente',       en: 'Client type',            fr: 'Type de client');
+  static String get phone         => _t(es: 'Teléfono',              en: 'Phone',                  fr: 'Téléphone');
+  static String get city          => _t(es: 'Ciudad',                en: 'City',                   fr: 'Ville');
+  static String get country       => _t(es: 'País',                  en: 'Country',                fr: 'Pays');
   static String get fiscalAddress => _t(es: 'Dirección fiscal',      en: 'Fiscal address',         fr: 'Adresse fiscale');
   static String get creditEnabled => _t(es: 'Crédito habilitado',    en: 'Credit enabled',         fr: 'Crédit activé');
   static String get registered    => _t(es: 'Registrado',            en: 'Registered',             fr: 'Inscrit');

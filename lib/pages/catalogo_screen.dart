@@ -7,7 +7,12 @@ import 'package:app_duralon/data/catalog_category_icons.dart';
 import 'package:app_duralon/models/catalog_category.dart';
 import 'package:app_duralon/models/home_product_section.dart';
 import 'package:app_duralon/models/product.dart';
+import 'package:app_duralon/pages/admin_panel_screen.dart';
 import 'package:app_duralon/pages/login_screen.dart';
+import 'package:app_duralon/pages/mis_direcciones_screen.dart';
+import 'package:app_duralon/pages/mis_pedidos_screen.dart';
+import 'package:app_duralon/pages/ofertas_screen.dart';
+import 'package:app_duralon/pages/perfil_screen.dart';
 import 'package:app_duralon/services/catalog_service.dart';
 import 'package:app_duralon/services/locale_service.dart';
 import 'package:app_duralon/styles/app_style.dart';
@@ -235,11 +240,13 @@ class CatalogoStandaloneScreen extends StatefulWidget {
   const CatalogoStandaloneScreen({
     super.key,
     this.isGuestMode = true,
+    this.userRole,
     required this.onCartTap,
     required this.onSectionTap,
   });
 
   final bool isGuestMode;
+  final String? userRole;
   final VoidCallback onCartTap;
   final void Function(String catalogId, String subtype) onSectionTap;
 
@@ -320,6 +327,7 @@ class _CatalogoStandaloneScreenState
               children: [
                 HomeSideMenu(
                   selectedItem: 'Catalogo',
+                  showAdminPanel: widget.userRole == 'admin',
                   onItemTap: (item) {
                     if (item == 'Inicio') {
                       Navigator.of(context).maybePop();
@@ -332,6 +340,34 @@ class _CatalogoStandaloneScreenState
                     if (widget.isGuestMode && kSideMenuItemsRequiringAccount.contains(item)) {
                       _closeMenu();
                       showDuralonGuestCartDialog(context);
+                      return;
+                    }
+                    if (item == 'Mi perfil') {
+                      _closeMenu();
+                      Navigator.push<void>(context, slideRightRoute<void>(const PerfilScreen()));
+                      return;
+                    }
+                    if (item == 'Mis pedidos') {
+                      _closeMenu();
+                      Navigator.push<void>(context, slideRightRoute<void>(const MisPedidosScreen()));
+                      return;
+                    }
+                    if (item == 'Ofertas') {
+                      _closeMenu();
+                      Navigator.push<void>(context, slideRightRoute<void>(OfertasScreen(
+                        isGuestMode: widget.isGuestMode,
+                        userRole: widget.userRole,
+                      )));
+                      return;
+                    }
+                    if (item == 'Mis direcciones') {
+                      _closeMenu();
+                      Navigator.push<void>(context, slideRightRoute<void>(const MisDireccionesScreen()));
+                      return;
+                    }
+                    if (item == 'Panel de administración') {
+                      _closeMenu();
+                      Navigator.push<void>(context, slideRightRoute<void>(const AdminPanelScreen()));
                       return;
                     }
                     _closeMenu();

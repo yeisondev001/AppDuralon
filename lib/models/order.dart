@@ -51,7 +51,9 @@ class OrderItem {
     this.color,
     required this.precio,
     required this.cantidad,
+    this.packQty = 1,
     this.imageUrl,
+    this.palletQty,
   });
 
   final String productId;
@@ -59,21 +61,37 @@ class OrderItem {
   final String nombre;
   final String categoria;
   final String? color;
+
+  /// Precio por unidad (RD$).
   final double precio;
+
+  /// Número de empaques pedidos.
   final int cantidad;
+
+  /// Unidades por empaque. Default 1 para órdenes antiguas sin este campo.
+  final int packQty;
+
   final String? imageUrl;
 
-  double get total => precio * cantidad;
+  /// Empaques por paleta cuando el cliente pidió por paleta. null = se pidió por empaque.
+  final int? palletQty;
+
+  int get totalUnidades => cantidad * packQty;
+  double get precioEmpaque => precio * packQty;
+  // precio es por unidad → total = precio/und × und/paq × núm. paquetes
+  double get total => precio * packQty * cantidad;
 
   Map<String, dynamic> toMap() => {
     'productId': productId,
     'codigo':    codigo,
     'nombre':    nombre,
     'categoria': categoria,
-    if (color != null)    'color':    color,
+    if (color != null)     'color':    color,
     'precio':    precio,
     'cantidad':  cantidad,
-    if (imageUrl != null) 'imageUrl': imageUrl,
+    'packQty':   packQty,
+    if (imageUrl != null)  'imageUrl': imageUrl,
+    if (palletQty != null) 'palletQty': palletQty,
   };
 
   factory OrderItem.fromMap(Map<String, dynamic> m) => OrderItem(
@@ -84,7 +102,9 @@ class OrderItem {
     color:     m['color']     as String?,
     precio:    (m['precio']   as num?)?.toDouble() ?? 0,
     cantidad:  (m['cantidad'] as num?)?.toInt()    ?? 1,
+    packQty:   (m['packQty']  as num?)?.toInt()    ?? 1,
     imageUrl:  m['imageUrl']  as String?,
+    palletQty: (m['palletQty'] as num?)?.toInt(),
   );
 }
 
@@ -121,7 +141,8 @@ class Order {
   final DateTime createdAt;
   final DateTime? updatedAt;
 
-  int get totalUnidades => items.fold(0, (s, it) => s + it.cantidad);
+  int get totalEmpaques => items.fold(0, (s, it) => s + it.cantidad);
+  int get totalUnidades => items.fold(0, (s, it) => s + it.totalUnidades);
 
   Map<String, dynamic> toFirestore() => {
     'customerId':    customerId,
