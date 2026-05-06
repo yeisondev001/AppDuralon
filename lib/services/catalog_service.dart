@@ -200,31 +200,41 @@ class CatalogService {
     }
   }
 
+  // IDs canónicos usados por el product seeder: los productos apuntan a estos.
+  // Cuando hay dos docs con el mismo título, se preserva este ID para que
+  // _productsForCatalog encuentre los productos por catalogId correctamente.
+  static const _canonicalIds = {
+    'hogar', 'cocina', 'infantil', 'jardineria', 'muebles',
+    'crates', 'otros_ind', 'pallets',
+  };
+
   // Si Firestore tiene dos docs con el mismo tab+título (por haber corrido
-  // dos seeders distintos), une los subtypes de todos los duplicados en uno solo
-  // para no perder ningún subgrupo. El doc master es el primero en orden.
+  // dos seeders distintos), une los subtypes de todos los duplicados en uno solo.
+  // El doc master es el que tiene ID canónico; si ninguno lo es, el primero en orden.
   static List<CatalogCategory> _dedupe(List<CatalogCategory> cats) {
-    // Agrupa por tab+título
     final groups = <String, List<CatalogCategory>>{};
     for (final c in cats) {
       final key = '${c.tab}_${c.title.toLowerCase().trim()}';
       groups.putIfAbsent(key, () => []).add(c);
     }
-    // Recorre en orden original, emite solo la primera aparición de cada clave
-    // pero con los subtypes unificados de todos los duplicados
+
     final seen = <String>{};
     final result = <CatalogCategory>[];
     for (final c in cats) {
       final key = '${c.tab}_${c.title.toLowerCase().trim()}';
       if (seen.add(key)) {
         final group = groups[key]!;
+        // Elige el master: el de ID canónico primero, o el primero por orden
+        final master = group.firstWhere(
+          (g) => _canonicalIds.contains(g.id),
+          orElse: () => group.first,
+        );
         if (group.length > 1) {
           final merged = <String>{};
           for (final g in group) { merged.addAll(g.subtypes); }
-          final sorted = merged.toList()..sort();
-          result.add(c.copyWith(subtypes: sorted));
+          result.add(master.copyWith(subtypes: merged.toList()..sort()));
         } else {
-          result.add(c);
+          result.add(master);
         }
       }
     }
