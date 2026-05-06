@@ -201,13 +201,34 @@ class CatalogService {
   }
 
   // Si Firestore tiene dos docs con el mismo tab+título (por haber corrido
-  // dos seeders distintos), este filtro muestra solo el primero y oculta el resto.
+  // dos seeders distintos), une los subtypes de todos los duplicados en uno solo
+  // para no perder ningún subgrupo. El doc master es el primero en orden.
   static List<CatalogCategory> _dedupe(List<CatalogCategory> cats) {
-    final seen = <String>{};
-    return cats.where((c) {
+    // Agrupa por tab+título
+    final groups = <String, List<CatalogCategory>>{};
+    for (final c in cats) {
       final key = '${c.tab}_${c.title.toLowerCase().trim()}';
-      return seen.add(key);
-    }).toList();
+      groups.putIfAbsent(key, () => []).add(c);
+    }
+    // Recorre en orden original, emite solo la primera aparición de cada clave
+    // pero con los subtypes unificados de todos los duplicados
+    final seen = <String>{};
+    final result = <CatalogCategory>[];
+    for (final c in cats) {
+      final key = '${c.tab}_${c.title.toLowerCase().trim()}';
+      if (seen.add(key)) {
+        final group = groups[key]!;
+        if (group.length > 1) {
+          final merged = <String>{};
+          for (final g in group) { merged.addAll(g.subtypes); }
+          final sorted = merged.toList()..sort();
+          result.add(c.copyWith(subtypes: sorted));
+        } else {
+          result.add(c);
+        }
+      }
+    }
+    return result;
   }
 
   static String _slugify(String s) =>
