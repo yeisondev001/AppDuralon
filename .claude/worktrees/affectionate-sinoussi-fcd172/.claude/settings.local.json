@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter analyze *)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\Usuarios\\\\Desktop\\\\plantillasappDuralon\\\\HOGAR CON CODIGO\" -ErrorAction SilentlyContinue | ForEach-Object { $_.Name })",
+      "Bash(node -e \"const XLSX=require\\('xlsx'\\);const wb=XLSX.readFile\\('EMPAQUES PRODUCTOS J FRANKENBERG.xls.xlsx'\\);console.log\\('Hojas:',wb.SheetNames\\);\")",
+      "Bash(npm install *)",
+      "Bash(node -e ' *)",
+      "Bash(node extract_empaques.js)",
+      "Bash(node inject_seeder.js)",
+      "Bash(node -e \"require\\('firebase-admin'\\)\")",
+      "Bash(node seed_dimensions.js)",
+      "Bash(dart analyze *)"
+    ]
+  }
+}

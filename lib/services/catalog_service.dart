@@ -1,7 +1,6 @@
 // Servicio de acceso a la colección `catalog_categories` en Firestore.
 // Expone streams, CRUD y una función de carga inicial con los datos base del catálogo.
 import 'package:app_duralon/models/catalog_category.dart';
-import 'package:app_duralon/services/product_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CatalogService {
@@ -201,51 +200,14 @@ class CatalogService {
     }
   }
 
-  /// Elimina categorías con el mismo tab+título, quedándose con la primera
-  /// (la de menor `order`). Evita que seeders distintos dupliquen el catálogo.
+  // Si Firestore tiene dos docs con el mismo tab+título (por haber corrido
+  // dos seeders distintos), este filtro muestra solo el primero y oculta el resto.
   static List<CatalogCategory> _dedupe(List<CatalogCategory> cats) {
     final seen = <String>{};
     return cats.where((c) {
       final key = '${c.tab}_${c.title.toLowerCase().trim()}';
       return seen.add(key);
     }).toList();
-  }
-
-  /// Unifica categorías duplicadas (mismo tab+título, id distinto).
-  /// Conserva el doc con menor `order` como master; mueve todos los productos
-  /// del duplicado al master antes de borrar el duplicado.
-  static Future<int> deleteDuplicates() async {
-    final snap = await _col.orderBy('tab').orderBy('order').get();
-
-    // master[key] = id del doc que conservamos (el primero en orden)
-    final master = <String, String>{};
-    // duplicados[duplicateId] = masterId
-    final duplicates = <String, String>{};
-
-    for (final d in snap.docs) {
-      final data = d.data();
-      final tab = data['tab'] as String? ?? '';
-      final title = (data['title'] as String? ?? '').toLowerCase().trim();
-      final key = '${tab}_$title';
-      if (master.containsKey(key)) {
-        duplicates[d.id] = master[key]!;
-      } else {
-        master[key] = d.id;
-      }
-    }
-
-    if (duplicates.isEmpty) return 0;
-
-    // Para cada duplicado: mueve sus productos al master, luego borra el doc
-    for (final entry in duplicates.entries) {
-      final fromId = entry.key;
-      final toId = entry.value;
-      await ProductService.reassignCatalogId(
-          fromCatalogId: fromId, toCatalogId: toId);
-      await _col.doc(fromId).delete();
-    }
-
-    return duplicates.length;
   }
 
   static String _slugify(String s) =>

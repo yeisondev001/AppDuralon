@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"C:\\\\Users\\\\Usuarios\\\\Desktop\\\\appDuralon\\\\app_duralon\\\\.claude\\\\worktrees\\\\wizardly-euler-eb4d84\" diff --name-only HEAD~1 HEAD)",
+      "PowerShell(git -C \"C:\\\\Users\\\\Usuarios\\\\Desktop\\\\appDuralon\\\\app_duralon\" worktree list)",
+      "Read(//c/Users/Usuarios/Desktop/appDuralon/app_duralon/**)",
+      "Bash(flutter run *)",
+      "Bash(flutter analyze *)",
+      "Bash(flutter build *)",
+      "Bash(dir /s /b \"C:\\\\Users\\\\Usuarios\\\\Desktop\\\\appDuralon\\\\app_duralon\\\\lib\\\\pages\\\\admin*\")"
+    ]
+  }
+}

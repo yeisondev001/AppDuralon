@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter run *)",
+      "Bash(cmd /c start http://localhost:8080)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:8080/)",
+      "Bash(findstr \"8080\")"
+    ]
+  }
+}

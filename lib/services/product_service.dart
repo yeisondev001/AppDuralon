@@ -85,32 +85,6 @@ class ProductService {
     });
   }
 
-  /// Reasigna todos los productos de [fromCatalogId] al [toCatalogId].
-  /// Retorna la cantidad de documentos actualizados.
-  static Future<int> reassignCatalogId({
-    required String fromCatalogId,
-    required String toCatalogId,
-  }) async {
-    final snap = await _col.where('catalogId', isEqualTo: fromCatalogId).get();
-    if (snap.docs.isEmpty) return 0;
-
-    const batchSize = 400;
-    int updated = 0;
-    for (int i = 0; i < snap.docs.length; i += batchSize) {
-      final batch = FirebaseFirestore.instance.batch();
-      final end = (i + batchSize).clamp(0, snap.docs.length);
-      for (int j = i; j < end; j++) {
-        batch.update(snap.docs[j].reference, {
-          'catalogId': toCatalogId,
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-        updated++;
-      }
-      await batch.commit();
-    }
-    return updated;
-  }
-
   /// Migra `price` -> `precio` y sobrescribe `precio` con valores aleatorios.
   ///
   /// Retorna la cantidad de documentos actualizados.
