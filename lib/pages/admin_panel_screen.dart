@@ -1,4 +1,5 @@
 import 'package:app_duralon/pages/admin_panel/tabs/catalogos_tab.dart';
+import 'package:app_duralon/pages/admin_panel/tabs/clientes_tab.dart';
 import 'package:app_duralon/pages/admin_panel/tabs/ordenes_tab.dart';
 import 'package:app_duralon/pages/admin_panel/tabs/productos_tab.dart';
 import 'package:app_duralon/pages/admin_panel/tabs/pruebas_tab.dart';
@@ -20,7 +21,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 5, vsync: this);
+    _tabs = TabController(length: 6, vsync: this);
   }
 
   @override
@@ -59,6 +60,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
           indicatorColor: AppColors.primaryBlue,
           tabs: const [
             Tab(icon: Icon(Icons.people_outline_rounded), text: 'Usuarios'),
+            Tab(icon: Icon(Icons.business_outlined), text: 'Clientes'),
             Tab(icon: Icon(Icons.category_outlined), text: 'Catálogos'),
             Tab(icon: Icon(Icons.inventory_2_outlined), text: 'Productos'),
             Tab(icon: Icon(Icons.receipt_long_outlined), text: 'Órdenes'),
@@ -70,6 +72,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
         controller: _tabs,
         children: const [
           UsuariosTab(),
+          ClientesTab(),
           CatalogosTab(),
           ProductosTab(),
           OrdenesTab(),
