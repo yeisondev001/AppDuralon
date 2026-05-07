@@ -58,14 +58,11 @@ class CartItem {
   static CartItem fromProduct(
     Product p,
     ProductVariant? variant,
-    int empaques,
-    bool isDistribuidor, {
+    int empaques, {
     int? palletQty,
   }) {
     final codigo = variant?.codigo.isNotEmpty == true ? variant!.codigo : p.id;
-    final precio = variant != null
-        ? (isDistribuidor ? variant.priceDistributor : variant.priceRetail)
-        : p.price;
+    final precio = variant?.price ?? p.price;
     // packQty == 0 no es válido; fallback a 1 para evitar división por cero en UI.
     final pack = (variant?.packQty ?? p.minOrderQty) > 0
         ? (variant?.packQty ?? p.minOrderQty)

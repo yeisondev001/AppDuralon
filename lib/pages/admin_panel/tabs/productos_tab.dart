@@ -781,8 +781,7 @@ class _ProductDialogState extends State<_ProductDialog> {
                                   ),
                                 ),
                                 Text(
-                                  'Minorista: RD\$${v.priceRetail.toStringAsFixed(0)}/caja  '
-                                  'Dist.: RD\$${v.priceDistributor.toStringAsFixed(0)}/caja',
+                                  'Precio: RD\$${v.price.toStringAsFixed(0)}/caja',
                                   style: const TextStyle(fontSize: 11),
                                 ),
                                 Text(
@@ -881,8 +880,7 @@ class _VariantDialogState extends State<_VariantDialog> {
   late final TextEditingController _peso;
   late final TextEditingController _packQty;
   late final TextEditingController _palletQty;
-  late final TextEditingController _priceRetail;
-  late final TextEditingController _priceDist;
+  late final TextEditingController _price;
   late final TextEditingController _stock;
   bool _isActive = true;
 
@@ -902,11 +900,8 @@ class _VariantDialogState extends State<_VariantDialog> {
     _peso = TextEditingController(text: e?.peso?.toString() ?? '');
     _packQty = TextEditingController(text: (e?.packQty ?? 1).toString());
     _palletQty = TextEditingController(text: (e?.palletQty ?? 1).toString());
-    _priceRetail = TextEditingController(
-      text: e != null ? e.priceRetail.toStringAsFixed(2) : '',
-    );
-    _priceDist = TextEditingController(
-      text: e != null ? e.priceDistributor.toStringAsFixed(2) : '',
+    _price = TextEditingController(
+      text: e != null ? e.price.toStringAsFixed(2) : '',
     );
     _stock = TextEditingController(text: (e?.stock ?? 0).toString());
     _isActive = e?.isActive ?? true;
@@ -925,8 +920,7 @@ class _VariantDialogState extends State<_VariantDialog> {
       _peso,
       _packQty,
       _palletQty,
-      _priceRetail,
-      _priceDist,
+      _price,
       _stock,
     ]) {
       c.dispose();
@@ -959,8 +953,7 @@ class _VariantDialogState extends State<_VariantDialog> {
       dimensions: dims,
       packQty: int.tryParse(_packQty.text.trim()) ?? 1,
       palletQty: int.tryParse(_palletQty.text.trim()) ?? 1,
-      priceRetail: double.tryParse(_priceRetail.text.trim()) ?? 0,
-      priceDistributor: double.tryParse(_priceDist.text.trim()) ?? 0,
+      price: double.tryParse(_price.text.trim()) ?? 0,
       stock: int.tryParse(_stock.text.trim()) ?? 0,
       isActive: _isActive,
     );
@@ -1081,34 +1074,15 @@ class _VariantDialogState extends State<_VariantDialog> {
                   label: 'Stock (cajas disponibles)',
                   keyboardType: TextInputType.number,
                 ),
-                // Precios
-                const AdminSectionLabel('Precios (RD\$ por caja)'),
-                Row(
-                  children: [
-                    Expanded(
-                      child: AdminField(
-                        controller: _priceRetail,
-                        label: 'Minorista',
-                        keyboardType: TextInputType.number,
-                        validator: (v) =>
-                            (v == null || double.tryParse(v.trim()) == null)
-                            ? 'Requerido'
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: AdminField(
-                        controller: _priceDist,
-                        label: 'Distribuidor',
-                        keyboardType: TextInputType.number,
-                        validator: (v) =>
-                            (v == null || double.tryParse(v.trim()) == null)
-                            ? 'Requerido'
-                            : null,
-                      ),
-                    ),
-                  ],
+                const AdminSectionLabel('Precio (RD\$ por caja)'),
+                AdminField(
+                  controller: _price,
+                  label: 'Precio base',
+                  keyboardType: TextInputType.number,
+                  validator: (v) =>
+                      (v == null || double.tryParse(v.trim()) == null)
+                      ? 'Requerido'
+                      : null,
                 ),
                 // Activo
                 SwitchListTile(

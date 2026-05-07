@@ -9,8 +9,7 @@ class ProductVariant {
     this.dimensions = const {},
     required this.packQty,
     required this.palletQty,
-    required this.priceRetail,
-    required this.priceDistributor,
+    required this.price,
     this.stock = 0,
     this.isActive = true,
   });
@@ -37,11 +36,8 @@ class ProductVariant {
   /// Cajas por pallet.
   final int palletQty;
 
-  /// Precio por caja para cliente minorista (RD$).
-  final double priceRetail;
-
-  /// Precio por caja para cliente distribuidor (RD$).
-  final double priceDistributor;
+  /// Precio base por caja (RD$). Los descuentos se aplican por cliente individualmente.
+  final double price;
 
   /// Stock disponible en cajas.
   final int stock;
@@ -56,8 +52,7 @@ class ProductVariant {
   double? get alto  => dimensions['alto'];
   double? get peso  => dimensions['peso'];
 
-  /// Precio por pallet para distribuidor.
-  double get pricePerPallet => priceDistributor * palletQty;
+  double get pricePerPallet => price * palletQty;
 
   // ── Serialización ─────────────────────────────────────────────
   factory ProductVariant.fromMap(Map<String, dynamic> m) {
@@ -70,8 +65,9 @@ class ProductVariant {
       dimensions:        rawDims.map((k, v) => MapEntry(k, (v as num).toDouble())),
       packQty:           (m['packQty']   as num?)?.toInt() ?? 1,
       palletQty:         (m['palletQty'] as num?)?.toInt() ?? 1,
-      priceRetail:       (m['priceRetail']      as num?)?.toDouble() ?? 0,
-      priceDistributor:  (m['priceDistributor'] as num?)?.toDouble() ?? 0,
+      price: (m['price'] as num?)?.toDouble()
+          ?? (m['priceRetail'] as num?)?.toDouble()
+          ?? 0,
       stock:             (m['stock']    as num?)?.toInt() ?? 0,
       isActive:          m['isActive'] as bool? ?? true,
     );
@@ -86,8 +82,7 @@ class ProductVariant {
       if (dimensions.isNotEmpty) 'dimensions': dimensions,
       'packQty':           packQty,
       'palletQty':         palletQty,
-      'priceRetail':       priceRetail,
-      'priceDistributor':  priceDistributor,
+      'price': price,
       'stock':    stock,
       'isActive': isActive,
     };
@@ -101,8 +96,7 @@ class ProductVariant {
     Map<String, double>? dimensions,
     int? packQty,
     int? palletQty,
-    double? priceRetail,
-    double? priceDistributor,
+    double? price,
     int? stock,
     bool? isActive,
   }) {
@@ -114,8 +108,7 @@ class ProductVariant {
       dimensions:       dimensions       ?? this.dimensions,
       packQty:          packQty          ?? this.packQty,
       palletQty:        palletQty        ?? this.palletQty,
-      priceRetail:      priceRetail      ?? this.priceRetail,
-      priceDistributor: priceDistributor ?? this.priceDistributor,
+      price: price ?? this.price,
       stock:            stock            ?? this.stock,
       isActive:         isActive         ?? this.isActive,
     );

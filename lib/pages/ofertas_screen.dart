@@ -17,9 +17,6 @@ class OfertasScreen extends StatelessWidget {
   final bool isGuestMode;
   final String? userRole;
 
-  bool get _isDistribuidor =>
-      userRole == 'cliente_distribuidor' || userRole == 'admin';
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -121,7 +118,6 @@ class OfertasScreen extends StatelessWidget {
                   delegate: SliverChildBuilderDelegate(
                     (context, i) => _OfertaCard(
                       product: ofertas[i],
-                      isDistribuidor: _isDistribuidor,
                       onTap: () => Navigator.push<void>(
                         context,
                         slideRightRoute<void>(
@@ -154,7 +150,6 @@ class OfertasScreen extends StatelessWidget {
       product,
       product.activeVariants.isNotEmpty ? product.activeVariants.first : null,
       product.minOrderQty > 0 ? product.minOrderQty : 1,
-      _isDistribuidor,
     );
     CartService.instance.addItem(item);
     showCartAddedToast(
@@ -204,13 +199,11 @@ class OfertasScreen extends StatelessWidget {
 class _OfertaCard extends StatelessWidget {
   const _OfertaCard({
     required this.product,
-    required this.isDistribuidor,
     required this.onTap,
     required this.onAddToCart,
   });
 
   final Product product;
-  final bool isDistribuidor;
   final VoidCallback onTap;
   final VoidCallback onAddToCart;
 

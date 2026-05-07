@@ -232,7 +232,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ? product.activeVariants.first
             : null,
         product.minOrderQty > 0 ? product.minOrderQty : 1,
-        _isDistribuidor,
       );
       CartService.instance.addItem(item);
       showCartAddedToast(context, product.name, product.minOrderQty > 0 ? product.minOrderQty : 1);
@@ -242,10 +241,6 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
   }
-
-  bool get _isDistribuidor =>
-      _userRole == 'cliente_distribuidor' ||
-      _userRole == 'admin';
 
   void _showComingSoon(BuildContext context, String feature) {
     ScaffoldMessenger.of(context).showSnackBar(

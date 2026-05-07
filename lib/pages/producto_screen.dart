@@ -117,20 +117,9 @@ class _ProductoScreenState extends State<ProductoScreen> {
   // Unidades totales = empaques × unidades/empaque.
   int get _numUnidades => _numEmpaques * _packQty;
 
-  double get _activePrice {
-    if (_selectedVariant != null) {
-      return _isDistribuidor
-          ? _selectedVariant!.priceDistributor
-          : _selectedVariant!.priceRetail;
-    }
-    return _p.price;
-  }
+  double get _activePrice => _selectedVariant?.price ?? _p.price;
 
   double get _total => _activePrice * _numUnidades;
-
-  bool get _isDistribuidor =>
-      widget.userRole == 'cliente_distribuidor' ||
-      widget.userRole == 'admin';
 
   bool get _isAdmin => widget.userRole == 'admin';
 
@@ -227,7 +216,6 @@ class _ProductoScreenState extends State<ProductoScreen> {
       _p,
       _selectedVariant,
       _numEmpaques,
-      _isDistribuidor,
       palletQty: _buyMode == _BuyMode.paleta ? _palletQty : null,
     );
     CartService.instance.addItem(item);
@@ -653,7 +641,6 @@ class _ProductoScreenState extends State<ProductoScreen> {
                               _CaracteristicasCard(
                                 product: _p,
                                 selectedVariant: _selectedVariant,
-                                isDistribuidor: _isDistribuidor,
                                 isAdmin: _isAdmin,
                               ),
 
@@ -1239,13 +1226,11 @@ class _CaracteristicasCard extends StatefulWidget {
   const _CaracteristicasCard({
     required this.product,
     this.selectedVariant,
-    required this.isDistribuidor,
     required this.isAdmin,
   });
 
   final Product product;
   final ProductVariant? selectedVariant;
-  final bool isDistribuidor;
   final bool isAdmin;
 
   @override
@@ -1372,28 +1357,10 @@ class _CaracteristicasCardState extends State<_CaracteristicasCard> {
       rows.add(_CaractRow(label: S.totalPallet, value: '$palletQty'));
     }
 
-    // Precios por rol
-    if (widget.isAdmin && _v != null) {
-      rows.add(_CaractRow(
-        label: S.priceRetail,
-        value: 'RD\$ ${_v!.priceRetail.toStringAsFixed(0)}/paq',
-        highlight: true,
-      ));
-      rows.add(_CaractRow(
-        label: S.priceDistrib,
-        value: 'RD\$ ${_v!.priceDistributor.toStringAsFixed(0)}/paq',
-        highlight: true,
-      ));
-    } else if (widget.isDistribuidor && _v != null) {
-      rows.add(_CaractRow(
-        label: S.yourPrice,
-        value: 'RD\$ ${_v!.priceDistributor.toStringAsFixed(0)}/paq',
-        highlight: true,
-      ));
-    } else if (_v != null) {
+    if (_v != null) {
       rows.add(_CaractRow(
         label: S.price,
-        value: 'RD\$ ${_v!.priceRetail.toStringAsFixed(0)}/paq',
+        value: 'RD\$ ${_v!.price.toStringAsFixed(0)}/paq',
         highlight: true,
       ));
     }

@@ -104,9 +104,6 @@ abstract final class S {
   static String get colorLabel    => _t(es: 'Color',                 en: 'Color',                  fr: 'Couleur');
   static String get surtido       => _t(es: 'Surtido',               en: 'Assorted',               fr: 'Assorti');
   static String get colorNotSelectable => _t(es: '(color no seleccionable)', en: '(color not selectable)', fr: '(couleur non sélectionnable)');
-  static String get priceRetail   => _t(es: 'Precio minorista',      en: 'Retail price',           fr: 'Prix de détail');
-  static String get priceDistrib  => _t(es: 'Precio distribuidor',   en: 'Distributor price',      fr: 'Prix distributeur');
-  static String get yourPrice     => _t(es: 'Tu precio',             en: 'Your price',             fr: 'Votre prix');
   static String get price         => _t(es: 'Precio',                en: 'Price',                  fr: 'Prix');
   static String get stock         => _t(es: 'Stock',                 en: 'Stock',                  fr: 'Stock');
   static String get boxes         => _t(es: 'cajas',                 en: 'boxes',                  fr: 'boîtes');
