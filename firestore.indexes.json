@@ -4,59 +4,59 @@
       "collectionGroup": "products",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "isActive",  "order": "ASCENDING" },
-        { "fieldPath": "name",      "order": "ASCENDING" }
+        { "fieldPath": "activo",  "order": "ASCENDING" },
+        { "fieldPath": "nombre",  "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "products",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "tab",       "order": "ASCENDING" },
-        { "fieldPath": "isActive",  "order": "ASCENDING" },
-        { "fieldPath": "name",      "order": "ASCENDING" }
+        { "fieldPath": "seccion", "order": "ASCENDING" },
+        { "fieldPath": "activo",  "order": "ASCENDING" },
+        { "fieldPath": "nombre",  "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "products",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "catalogId", "order": "ASCENDING" },
-        { "fieldPath": "isActive",  "order": "ASCENDING" },
-        { "fieldPath": "name",      "order": "ASCENDING" }
+        { "fieldPath": "catalogoId", "order": "ASCENDING" },
+        { "fieldPath": "activo",     "order": "ASCENDING" },
+        { "fieldPath": "nombre",     "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "catalog_categories",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "tab",   "order": "ASCENDING" },
-        { "fieldPath": "order", "order": "ASCENDING" }
+        { "fieldPath": "seccion", "order": "ASCENDING" },
+        { "fieldPath": "orden",   "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "orders",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "userId",    "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        { "fieldPath": "clienteId", "order": "ASCENDING" },
+        { "fieldPath": "creadoEn",  "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "orders",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "status",    "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        { "fieldPath": "estado",   "order": "ASCENDING" },
+        { "fieldPath": "creadoEn", "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "orders",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "customerType", "order": "ASCENDING" },
-        { "fieldPath": "status",       "order": "ASCENDING" },
-        { "fieldPath": "createdAt",    "order": "DESCENDING" }
+        { "fieldPath": "tipoCliente", "order": "ASCENDING" },
+        { "fieldPath": "estado",      "order": "ASCENDING" },
+        { "fieldPath": "creadoEn",    "order": "DESCENDING" }
       ]
     }
   ],
