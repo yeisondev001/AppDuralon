@@ -122,6 +122,14 @@ service cloud.firestore {
     }
 
     // ═══════════════════════════════════════════════════════════
+    // clientes  (directorio importado desde sistema externo)
+    // ═══════════════════════════════════════════════════════════
+    match /clientes/{clienteId} {
+      allow read:  if isInterno();
+      allow write: if isAdmin();
+    }
+
+    // ═══════════════════════════════════════════════════════════
     // app_config  (configuración global: banners, avisos, etc.)
     // ═══════════════════════════════════════════════════════════
     match /app_config/{docId} {
