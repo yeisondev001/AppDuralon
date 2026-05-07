@@ -1,5 +1,4 @@
 // Servicio de acceso a la colección `catalog_categories` en Firestore.
-// Expone streams, CRUD y una función de carga inicial con los datos base del catálogo.
 import 'package:app_duralon/models/catalog_category.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -11,11 +10,11 @@ class CatalogService {
 
   // ── Lectura ──────────────────────────────────────────────────────────────────
 
-  /// Stream de todas las categorías, ordenadas por [tab] y luego [order].
+  /// Stream de todas las categorías, ordenadas por sección y luego orden.
   static Stream<List<CatalogCategory>> streamAll() {
     return _col
-        .orderBy('tab')
-        .orderBy('order')
+        .orderBy('seccion')
+        .orderBy('orden')
         .snapshots()
         .map((snap) => _dedupe(snap.docs
             .map((d) => CatalogCategory.fromFirestore(
@@ -23,11 +22,11 @@ class CatalogService {
             .toList()));
   }
 
-  /// Stream filtrado por tab ("hogar" | "industrial").
+  /// Stream filtrado por sección ("hogar" | "industrial").
   static Stream<List<CatalogCategory>> streamByTab(String tab) {
     return _col
-        .where('tab', isEqualTo: tab)
-        .orderBy('order')
+        .where('seccion', isEqualTo: tab)
+        .orderBy('orden')
         .snapshots()
         .map((snap) => _dedupe(snap.docs
             .map((d) => CatalogCategory.fromFirestore(
@@ -35,10 +34,10 @@ class CatalogService {
             .toList()));
   }
 
-  /// Obtiene una sola vez la lista de categorías de un tab.
+  /// Obtiene una sola vez la lista de categorías de una sección.
   static Future<List<CatalogCategory>> fetchByTab(String tab) async {
     final snap =
-        await _col.where('tab', isEqualTo: tab).orderBy('order').get();
+        await _col.where('seccion', isEqualTo: tab).orderBy('orden').get();
     return snap.docs
         .map((d) => CatalogCategory.fromFirestore(
             d as DocumentSnapshot<Map<String, dynamic>>))
@@ -47,22 +46,21 @@ class CatalogService {
 
   // ── Escritura ─────────────────────────────────────────────────────────────────
 
-  /// Agrega una nueva categoría. Usa el [id] si se especifica, si no genera uno.
+  /// Agrega una nueva categoría.
   static Future<void> add(CatalogCategory category) async {
     final data = {
       ...category.toFirestore(),
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
+      'creadoEn':      FieldValue.serverTimestamp(),
+      'actualizadoEn': FieldValue.serverTimestamp(),
     };
     await _col.doc(category.id).set(data);
   }
 
   /// Actualiza campos de una categoría existente.
-  static Future<void> update(
-      String id, Map<String, dynamic> fields) async {
+  static Future<void> update(String id, Map<String, dynamic> fields) async {
     await _col.doc(id).update({
       ...fields,
-      'updatedAt': FieldValue.serverTimestamp(),
+      'actualizadoEn': FieldValue.serverTimestamp(),
     });
   }
 
@@ -73,7 +71,6 @@ class CatalogService {
 
   // ── Carga inicial ─────────────────────────────────────────────────────────────
 
-  /// Estructura base del catálogo Hogar: título → subtipos.
   static const _hogar = <String, List<String>>{
     'Cocina': [
       'Envases', 'Jarras', 'Vasos', 'Surtidor de Agua',
@@ -90,14 +87,12 @@ class CatalogService {
     'Infantil': ['Silla', 'Cubeta bañito', 'Banqueta', 'Bacinillas'],
   };
 
-  /// Estructura base del catálogo Industrial: título → subtipos.
   static const _industrial = <String, List<String>>{
     'Cajones Industriales': ['Cajón Estándar', 'Cajón Reciclado', 'Cajón Grande', 'Caja Logística'],
     'Otros': ['Conos', 'Accesorios Industriales'],
     'Paletas': ['Paleta Exportación', 'Paleta Racking', 'Paleta Carga Pesada', 'Paleta Estándar'],
   };
 
-  /// IDs estables en Firestore por título de grupo.
   static const _groupIds = <String, String>{
     'Cocina': 'cocina',
     'Artículos del Hogar': 'articulos_hogar',
@@ -109,61 +104,57 @@ class CatalogService {
     'Paletas': 'pallets',
   };
 
-  /// Escribe en Firestore la estructura base del catálogo usando `set` con merge.
-  /// Ejecutar una sola vez desde el Panel de administración → Catálogos → Cargar.
   static Future<void> seedFromLocalData() async {
     final batch = FirebaseFirestore.instance.batch();
 
-    var order = 0;
-    _hogar.forEach((title, subtypes) {
-      final id = _groupIds[title] ?? _slugify(title);
+    var orden = 0;
+    _hogar.forEach((titulo, subtipos) {
+      final id = _groupIds[titulo] ?? _slugify(titulo);
       batch.set(_col.doc(id), {
-        'title': title,
-        'tab': 'hogar',
-        'order': order++,
-        'subtypes': subtypes,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
+        'titulo':        titulo,
+        'seccion':       'hogar',
+        'orden':         orden++,
+        'subtipos':      subtipos,
+        'creadoEn':      FieldValue.serverTimestamp(),
+        'actualizadoEn': FieldValue.serverTimestamp(),
       });
     });
 
-    order = 0;
-    _industrial.forEach((title, subtypes) {
-      final id = _groupIds[title] ?? _slugify(title);
+    orden = 0;
+    _industrial.forEach((titulo, subtipos) {
+      final id = _groupIds[titulo] ?? _slugify(titulo);
       batch.set(_col.doc(id), {
-        'title': title,
-        'tab': 'industrial',
-        'order': order++,
-        'subtypes': subtypes,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
+        'titulo':        titulo,
+        'seccion':       'industrial',
+        'orden':         orden++,
+        'subtipos':      subtipos,
+        'creadoEn':      FieldValue.serverTimestamp(),
+        'actualizadoEn': FieldValue.serverTimestamp(),
       });
     });
 
     await batch.commit();
   }
 
-  /// Migra documentos legacy del catálogo. Seguro llamarlo en cada inicio.
   static Future<void> migrateIndustrialIfNeeded() async {
     try {
       final batch = FirebaseFirestore.instance.batch();
       var needsCommit = false;
 
-      // Migración industrial: doc 'industrial' (inglés) → crates/otros_ind/pallets
       final oldIndustrial = await _col.doc('industrial').get();
       if (oldIndustrial.exists) {
         final cratesDoc = await _col.doc('crates').get();
         if (!cratesDoc.exists) {
-          var order = 0;
-          _industrial.forEach((title, subtypes) {
-            final id = _groupIds[title] ?? _slugify(title);
+          var orden = 0;
+          _industrial.forEach((titulo, subtipos) {
+            final id = _groupIds[titulo] ?? _slugify(titulo);
             batch.set(_col.doc(id), {
-              'title': title,
-              'tab': 'industrial',
-              'order': order++,
-              'subtypes': subtypes,
-              'createdAt': FieldValue.serverTimestamp(),
-              'updatedAt': FieldValue.serverTimestamp(),
+              'titulo':        titulo,
+              'seccion':       'industrial',
+              'orden':         orden++,
+              'subtipos':      subtipos,
+              'creadoEn':      FieldValue.serverTimestamp(),
+              'actualizadoEn': FieldValue.serverTimestamp(),
             });
           });
         }
@@ -171,22 +162,17 @@ class CatalogService {
         needsCommit = true;
       }
 
-      // Migración hogar: doc 'mascotas' con Bacinillas → pasa a Infantil
       final mascotasDoc = await _col.doc('mascotas').get();
       if (mascotasDoc.exists) {
-        // Actualiza Infantil para incluir Bacinillas
         final infantilId = _groupIds['Infantil'] ?? _slugify('Infantil');
         batch.update(_col.doc(infantilId), {
-          'subtypes': _hogar['Infantil'],
-          'updatedAt': FieldValue.serverTimestamp(),
+          'subtipos':      _hogar['Infantil'],
+          'actualizadoEn': FieldValue.serverTimestamp(),
         });
         batch.delete(_col.doc('mascotas'));
         needsCommit = true;
       }
 
-      // Migración: elimina doc 'articulos_hogar' duplicado cuando ya existe 'hogar'.
-      // El product seeder usa id='hogar' y los productos apuntan a catalogId='hogar'.
-      // 'articulos_hogar' es un órfano creado por seedFromLocalData() que genera duplicados.
       final hogarDoc = await _col.doc('hogar').get();
       final articulosHogarDoc = await _col.doc('articulos_hogar').get();
       if (hogarDoc.exists && articulosHogarDoc.exists) {
@@ -200,17 +186,11 @@ class CatalogService {
     }
   }
 
-  // IDs canónicos usados por el product seeder: los productos apuntan a estos.
-  // Cuando hay dos docs con el mismo título, se preserva este ID para que
-  // _productsForCatalog encuentre los productos por catalogId correctamente.
   static const _canonicalIds = {
     'hogar', 'cocina', 'infantil', 'jardineria', 'muebles',
     'crates', 'otros_ind', 'pallets',
   };
 
-  // Si Firestore tiene dos docs con el mismo tab+título (por haber corrido
-  // dos seeders distintos), une los subtypes de todos los duplicados en uno solo.
-  // El doc master es el que tiene ID canónico; si ninguno lo es, el primero en orden.
   static List<CatalogCategory> _dedupe(List<CatalogCategory> cats) {
     final groups = <String, List<CatalogCategory>>{};
     for (final c in cats) {
@@ -224,7 +204,6 @@ class CatalogService {
       final key = '${c.tab}_${c.title.toLowerCase().trim()}';
       if (seen.add(key)) {
         final group = groups[key]!;
-        // Elige el master: el de ID canónico primero, o el primero por orden
         final master = group.firstWhere(
           (g) => _canonicalIds.contains(g.id),
           orElse: () => group.first,

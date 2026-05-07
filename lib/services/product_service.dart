@@ -1,5 +1,4 @@
 // Servicio centralizado para la colección `products` en Firestore.
-// Reemplaza el acceso directo disperso en pantallas; usar en HomeScreen y admin.
 import 'dart:math';
 
 import 'package:app_duralon/models/product.dart';
@@ -16,38 +15,38 @@ class ProductService {
 
   /// Todos los productos activos en tiempo real, ordenados por nombre.
   static Stream<List<Product>> streamAll({bool activeOnly = true}) {
-    Query<Map<String, dynamic>> q = _col.orderBy('name');
+    Query<Map<String, dynamic>> q = _col.orderBy('nombre');
     if (activeOnly) {
-      q = q.where('isActive', isEqualTo: true);
+      q = q.where('activo', isEqualTo: true);
     }
     return q.snapshots().map(_mapSnap);
   }
 
-  /// Productos activos filtrados por tab ("hogar" | "industrial").
+  /// Productos activos filtrados por sección ("hogar" | "industrial").
   static Stream<List<Product>> streamByTab(String tab,
       {bool activeOnly = true}) {
     Query<Map<String, dynamic>> q =
-        _col.where('tab', isEqualTo: tab).orderBy('name');
+        _col.where('seccion', isEqualTo: tab).orderBy('nombre');
     if (activeOnly) {
-      q = q.where('isActive', isEqualTo: true);
+      q = q.where('activo', isEqualTo: true);
     }
     return q.snapshots().map(_mapSnap);
   }
 
-  /// Productos filtrados por catalogId (ej: "cocina").
+  /// Productos filtrados por catalogoId (ej: "cocina").
   static Stream<List<Product>> streamByCatalog(String catalogId,
       {bool activeOnly = true}) {
     Query<Map<String, dynamic>> q =
-        _col.where('catalogId', isEqualTo: catalogId).orderBy('name');
+        _col.where('catalogoId', isEqualTo: catalogId).orderBy('nombre');
     if (activeOnly) {
-      q = q.where('isActive', isEqualTo: true);
+      q = q.where('activo', isEqualTo: true);
     }
     return q.snapshots().map(_mapSnap);
   }
 
-  /// Stream de TODOS los productos (sin filtro isActive), para el panel de admin.
+  /// Stream de TODOS los productos (sin filtro activo), para el panel de admin.
   static Stream<List<Product>> streamAdmin() {
-    return _col.orderBy('name').snapshots().map(_mapSnap);
+    return _col.orderBy('nombre').snapshots().map(_mapSnap);
   }
 
   // ── Escritura ─────────────────────────────────────────────────────────────────
@@ -56,9 +55,9 @@ class ProductService {
   static Future<String> add(Map<String, dynamic> data) async {
     final payload = {
       ...data,
-      'isActive': data['isActive'] ?? true,
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
+      'activo':      data['activo'] ?? true,
+      'creadoEn':    FieldValue.serverTimestamp(),
+      'actualizadoEn': FieldValue.serverTimestamp(),
     };
     final ref = await _col.add(payload);
     return ref.id;
@@ -68,7 +67,7 @@ class ProductService {
   static Future<void> update(String id, Map<String, dynamic> data) async {
     await _col.doc(id).update({
       ...data,
-      'updatedAt': FieldValue.serverTimestamp(),
+      'actualizadoEn': FieldValue.serverTimestamp(),
     });
   }
 
@@ -80,14 +79,12 @@ class ProductService {
   /// Activa o desactiva un producto sin borrarlo.
   static Future<void> setActive(String id, {required bool active}) async {
     await _col.doc(id).update({
-      'isActive': active,
-      'updatedAt': FieldValue.serverTimestamp(),
+      'activo':        active,
+      'actualizadoEn': FieldValue.serverTimestamp(),
     });
   }
 
-  /// Migra `price` -> `precio` y sobrescribe `precio` con valores aleatorios.
-  ///
-  /// Retorna la cantidad de documentos actualizados.
+  /// Migra `price` → `precio` con valores aleatorios (uso puntual desde admin).
   static Future<int> migratePriceToPrecioWithRandomValues() async {
     final snap = await _col.get();
     if (snap.docs.isEmpty) return 0;
@@ -104,9 +101,9 @@ class ProductService {
         final precioAleatorio =
             double.parse((_rnd.nextDouble() * 450 + 50).toStringAsFixed(2));
         batch.update(doc.reference, {
-          'precio': precioAleatorio,
-          'price': FieldValue.delete(),
-          'updatedAt': FieldValue.serverTimestamp(),
+          'precio':        precioAleatorio,
+          'price':         FieldValue.delete(),
+          'actualizadoEn': FieldValue.serverTimestamp(),
         });
         updated++;
       }

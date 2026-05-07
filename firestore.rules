@@ -19,7 +19,7 @@ service cloud.firestore {
     }
 
     function userRole() {
-      return get(/databases/$(database)/documents/users/$(uid())).data.role;
+      return get(/databases/$(database)/documents/users/$(uid())).data.rol;
     }
 
     // Roles de usuario
@@ -89,14 +89,14 @@ service cloud.firestore {
     // ═══════════════════════════════════════════════════════════
     match /orders/{orderId} {
       allow read: if isAuth() && (
-        resource.data.customerId == uid() || isInterno()
+        resource.data.clienteId == uid() || isInterno()
       );
       allow create: if isAuth() &&
-        request.resource.data.customerId == uid();
+        request.resource.data.clienteId == uid();
       allow update: if isInterno() || (
         isCliente() &&
-        resource.data.customerId == uid() &&
-        resource.data.status == 'pendiente'
+        resource.data.clienteId == uid() &&
+        resource.data.estado == 'pendiente'
       );
       allow delete: if false;
     }
@@ -106,7 +106,7 @@ service cloud.firestore {
     // ═══════════════════════════════════════════════════════════
     match /invoices/{invoiceId} {
       allow read: if isAuth() && (
-        resource.data.userId == uid() || isInterno()
+        resource.data.usuarioId == uid() || isInterno()
       );
       allow create, update: if isInterno();
       allow delete:         if false;
@@ -119,6 +119,15 @@ service cloud.firestore {
       allow read:            if isAuth();
       allow create, update:  if isInterno();
       allow delete:          if isAdmin();
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // clientes  (directorio importado desde sistema externo)
+    // Solo lectura para internos; escritura solo admin.
+    // ═══════════════════════════════════════════════════════════
+    match /clientes/{clienteId} {
+      allow read:   if isInterno();
+      allow write:  if isAdmin();
     }
 
     // ═══════════════════════════════════════════════════════════

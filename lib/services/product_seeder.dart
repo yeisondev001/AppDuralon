@@ -74,7 +74,7 @@ class ProductSeeder {
 
   static Future<void> _seedCategoriesByTab(String tab) async {
     final batch = _db.batch();
-    for (final c in _categories.where((e) => e['tab'] == tab)) {
+    for (final c in _categories.where((e) => e['seccion'] == tab)) {
       batch.set(
         _db.collection('catalog_categories').doc(c['id'] as String),
         c,
@@ -107,13 +107,13 @@ class ProductSeeder {
   // CATEGORÍAS
   // ════════════════════════════════════════════════════════════════
   static const _categories = <Map<String, dynamic>>[
-    // ── Categorías Hogar (orden alfabético) ──────────────────────
+    // ── Categorías Hogar ─────────────────────────────────────────
     {
       'id': 'hogar',
-      'title': 'Artículos del Hogar',
-      'tab': 'hogar',
-      'order': 1,
-      'subtypes': [
+      'titulo': 'Artículos del Hogar',
+      'seccion': 'hogar',
+      'orden': 1,
+      'subtipos': [
         'Bacinillas',
         'Cajas de Almacenamiento',
         'Canastas y Cestos',
@@ -129,10 +129,10 @@ class ProductSeeder {
     },
     {
       'id': 'cocina',
-      'title': 'Cocina',
-      'tab': 'hogar',
-      'order': 2,
-      'subtypes': [
+      'titulo': 'Cocina',
+      'seccion': 'hogar',
+      'orden': 2,
+      'subtipos': [
         'Coladores',
         'Embudos',
         'Envases',
@@ -147,10 +147,10 @@ class ProductSeeder {
     },
     {
       'id': 'infantil',
-      'title': 'Infantil',
-      'tab': 'hogar',
-      'order': 3,
-      'subtypes': [
+      'titulo': 'Infantil',
+      'seccion': 'hogar',
+      'orden': 3,
+      'subtipos': [
         'Baños y Sanitarios',
         'Banquetas',
         'Sillas Infantiles',
@@ -158,10 +158,10 @@ class ProductSeeder {
     },
     {
       'id': 'jardineria',
-      'title': 'Jardinería',
-      'tab': 'hogar',
-      'order': 4,
-      'subtypes': [
+      'titulo': 'Jardinería',
+      'seccion': 'hogar',
+      'orden': 4,
+      'subtipos': [
         'Jardineras',
         'Otros',
         'Planters',
@@ -170,22 +170,22 @@ class ProductSeeder {
     },
     {
       'id': 'muebles',
-      'title': 'Muebles',
-      'tab': 'hogar',
-      'order': 5,
-      'subtypes': [
+      'titulo': 'Muebles',
+      'seccion': 'hogar',
+      'orden': 5,
+      'subtipos': [
         'Mesas',
         'Muebles Rattan',
         'Sillas',
       ],
     },
-    // ── Categorías Industriales (orden alfabético) ───────────────
+    // ── Categorías Industriales ──────────────────────────────────
     {
       'id': 'crates',
-      'title': 'Cajones Industriales',
-      'tab': 'industrial',
-      'order': 1,
-      'subtypes': [
+      'titulo': 'Cajones Industriales',
+      'seccion': 'industrial',
+      'orden': 1,
+      'subtipos': [
         'Caja Logística',
         'Cajón Estándar',
         'Cajón Grande',
@@ -194,20 +194,20 @@ class ProductSeeder {
     },
     {
       'id': 'otros_ind',
-      'title': 'Otros',
-      'tab': 'industrial',
-      'order': 2,
-      'subtypes': [
+      'titulo': 'Otros',
+      'seccion': 'industrial',
+      'orden': 2,
+      'subtipos': [
         'Accesorios Industriales',
         'Conos',
       ],
     },
     {
       'id': 'pallets',
-      'title': 'Paletas',
-      'tab': 'industrial',
-      'order': 3,
-      'subtypes': [
+      'titulo': 'Paletas',
+      'seccion': 'industrial',
+      'orden': 3,
+      'subtipos': [
         'Paleta Carga Pesada',
         'Paleta Estándar',
         'Paleta Exportación',
@@ -233,25 +233,25 @@ class ProductSeeder {
     double peso = 0,
     int packQty = 1,
     int palletQty = 1,
-    int minOrderQty = 0, // 0 = usar packQty como mínimo
+    int minOrderQty = 0,
     String description = '',
   }) =>
       {
-        'codigo': codigo,
-        'name': name,
-        'category': category,
-        'catalogId': catalogId,
-        'tab': tab,
-        'ean': ean,
-        'color': color,
-        'precio': _precioAleatorio(),
-        'isActive': true,
-        'minOrderQty': minOrderQty > 0 ? minOrderQty : packQty,
-        'stepQty': 1,
-        'packQty': packQty,
-        'palletQty': palletQty,
-        if (description.isNotEmpty) 'description': description,
-        'dimensions': {
+        'codigo':     codigo,
+        'nombre':     name,
+        'categoria':  category,
+        'catalogoId': catalogId,
+        'seccion':    tab,
+        'ean':        ean,
+        'color':      color,
+        'precio':     _precioAleatorio(),
+        'activo':     true,
+        'cantMinima': minOrderQty > 0 ? minOrderQty : packQty,
+        'cantPaso':   1,
+        'cantEmpaque': packQty,
+        'cantPallet':  palletQty,
+        if (description.isNotEmpty) 'descripcion': description,
+        'dimensiones': {
           if (largo > 0) 'largo': largo,
           if (ancho > 0) 'ancho': ancho,
           if (alto  > 0) 'alto':  alto,
