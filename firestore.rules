@@ -19,7 +19,7 @@ service cloud.firestore {
     }
 
     function userRole() {
-      return get(/databases/$(database)/documents/users/$(uid())).data.role;
+      return get(/databases/$(database)/documents/users/$(uid())).data.rol;
     }
 
     // Roles de usuario
