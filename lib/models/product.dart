@@ -28,44 +28,64 @@ class Product {
   });
 
   final String id;
+
   final String name;
+
+  /// Nombre en inglés (opcional). Si está vacío usa [name].
   final String? nameEn;
+
+  /// Nombre en francés (opcional). Si está vacío usa [name].
   final String? nameFr;
 
   /// Subtipo visible (ej: "Envases"). Coincide con el subtype del catálogo.
   final String category;
 
-  /// Precio base (Firestore: campo `precio`).
+  /// Precio base (**Firestore:** campo `precio`; el nombre en inglés `price` está obsoleto).
   final double price;
 
   final String? description;
+
+  /// Color(es) del producto. Puede ser "Blanco/Crema/Azul" o "Surtido" o "Varios".
   final String? color;
+
+  /// Código de barras EAN del producto base.
   final String? ean;
 
   /// Precio anterior (tachado). Nulo = no mostrar.
   final double? listPrice;
 
+  /// Cantidad mínima de compra (unidades/cajas).
   final int minOrderQty;
+
+  /// Salto/múltiplo de compra.
   final int stepQty;
+
+  /// Cajas por pallet.
   final int? palletQty;
 
-  /// Dimensiones físicas en cm. Claves: 'largo', 'ancho', 'alto', 'peso'.
+  /// Dimensiones físicas en cm. Claves posibles: 'largo', 'ancho', 'alto', 'peso'.
   final Map<String, double> dimensions;
 
-  /// ID de la categoría en `catalog_categories`.
+  /// ID de la categoría en `catalog_categories` (ej: "cocina").
   final String? catalogId;
 
-  /// Sección: "hogar" | "industrial".
+  /// Tab al que pertenece: "hogar" | "industrial".
   final String? tab;
 
+  /// URL de imagen principal en Firebase Storage.
   final String? imageUrl;
+
+  /// URLs de imágenes adicionales.
   final List<String> imageUrls;
+
+  /// Variantes (color + tamaño + código + EAN + precios por rol).
   final List<ProductVariant> variants;
 
   /// false = oculto en tienda sin borrar el documento.
   final bool isActive;
 
   // ── Helpers ──────────────────────────────────────────────────
+  /// Devuelve [imageUrl] si está disponible, o el logo local como fallback.
   String get displayImage =>
       (imageUrl != null && imageUrl!.isNotEmpty)
           ? imageUrl!
@@ -76,6 +96,9 @@ class Product {
   List<ProductVariant> get activeVariants =>
       variants.where((v) => v.isActive).toList();
 
+  /// Devuelve la lista de colores individuales a partir del campo [color].
+  /// "Blanco/Crema/Azul" → ['Blanco','Crema','Azul']
+  /// "Surtido" / "Varios" → lista vacía (indica surtido, sin selección posible)
   List<String> get parsedColors {
     if (color == null || color!.isEmpty) return const [];
     final c = color!.trim();
@@ -85,6 +108,7 @@ class Product {
     return c.split('/').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
   }
 
+  /// true si el color es surtido o varios (no se puede elegir individualmente).
   bool get isSurtido {
     final c = color?.trim().toLowerCase() ?? '';
     return c == 'surtido' || c == 'varios';
@@ -95,6 +119,8 @@ class Product {
   double? get alto  => dimensions['alto'];
   double? get peso  => dimensions['peso'];
 
+  /// Devuelve el nombre en el idioma indicado; cae en español si no hay traducción.
+  /// [lang] es el código de idioma: 'es', 'en', 'fr'.
   String nameFor(String lang) {
     if (lang == 'en' && nameEn?.isNotEmpty == true) return nameEn!;
     if (lang == 'fr' && nameFr?.isNotEmpty == true) return nameFr!;
@@ -104,29 +130,27 @@ class Product {
   // ── Serialización ─────────────────────────────────────────────
   factory Product.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final d = doc.data() ?? const {};
-
-    // Lee campo español primero; fallback al inglés para docs antiguos.
-    final rawPrecio    = d['precio']     ?? d['price'];
-    final rawList      = d['precioLista'] ?? d['listPrice'];
-    final rawMin       = d['cantMinima']  ?? d['minOrderQty'];
-    final rawStep      = d['cantPaso']    ?? d['stepQty'];
-    final rawPallet    = d['cantPallet']  ?? d['palletQty'];
-    final rawUrls      = (d['urlImagenes'] ?? d['imageUrls']) as List<dynamic>? ?? [];
-    final rawVariants  = (d['variantes']   ?? d['variants'])  as List<dynamic>? ?? [];
-    final rawDims      = ((d['dimensiones'] ?? d['dimensions']) as Map<String, dynamic>?) ?? {};
+    final rawPrecio = d['precio'] ?? d['price']; // compat: docs antiguos con `price`
+    final rawList     = d['listPrice'];
+    final rawMin      = d['minOrderQty'];
+    final rawStep     = d['stepQty'];
+    final rawPallet   = d['palletQty'];
+    final rawUrls     = d['imageUrls'] as List<dynamic>? ?? [];
+    final rawVariants = d['variants']  as List<dynamic>? ?? [];
+    final rawDims     = d['dimensions'] as Map<String, dynamic>? ?? {};
 
     return Product(
       id: doc.id,
-      name: ((d['nombre'] ?? d['name']) as String?)?.trim().isNotEmpty == true
-          ? (d['nombre'] ?? d['name']) as String
+      name: (d['name'] as String?)?.trim().isNotEmpty == true
+          ? d['name'] as String
           : 'Producto ${doc.id}',
-      nameEn: d['nombreEn'] as String?,
-      nameFr: d['nombreFr'] as String?,
-      category: ((d['categoria'] ?? d['category']) as String?)?.trim().isNotEmpty == true
-          ? (d['categoria'] ?? d['category']) as String
+      nameEn: d['nameEn'] as String?,
+      nameFr: d['nameFr'] as String?,
+      category: (d['category'] as String?)?.trim().isNotEmpty == true
+          ? d['category'] as String
           : 'General',
       price:       rawPrecio is num ? rawPrecio.toDouble() : 0,
-      description: (d['descripcion'] ?? d['description']) as String?,
+      description: d['description'] as String?,
       color:       d['color'] as String?,
       ean:         d['ean']   as String?,
       listPrice:   rawList is num ? rawList.toDouble() : null,
@@ -134,39 +158,37 @@ class Product {
       stepQty:     rawStep is int ? rawStep : (rawStep is num ? rawStep.toInt() : 1),
       palletQty:   rawPallet is int ? rawPallet : (rawPallet is num ? rawPallet.toInt() : null),
       dimensions:  rawDims.map((k, v) => MapEntry(k, (v as num).toDouble())),
-      catalogId:   (d['catalogoId'] ?? d['catalogId']) as String?,
-      tab:         (d['seccion']    ?? d['tab'])        as String?,
-      imageUrl:    (d['urlImagen']  ?? d['imageUrl'])   as String?,
+      catalogId:   d['catalogId'] as String?,
+      tab:         d['tab']      as String?,
+      imageUrl:    d['imageUrl'] as String?,
       imageUrls:   rawUrls.map((e) => e.toString()).toList(),
       variants:    rawVariants
           .map((e) => ProductVariant.fromMap(e as Map<String, dynamic>))
           .toList(),
-      isActive: (d['activo'] ?? d['isActive']) as bool? ?? true,
+      isActive: d['isActive'] as bool? ?? true,
     );
   }
 
   Map<String, dynamic> toFirestore() {
     return <String, dynamic>{
-      'nombre':    name,
-      'categoria': category,
-      'precio':    price,
-      if (nameEn != null)      'nombreEn':   nameEn,
-      if (nameFr != null)      'nombreFr':   nameFr,
-      if (description != null) 'descripcion': description,
-      if (color != null)       'color':      color,
-      if (ean   != null)       'ean':        ean,
-      if (listPrice != null)   'precioLista': listPrice,
-      'cantMinima':  minOrderQty,
-      'cantPaso':    stepQty,
-      if (palletQty != null)       'cantPallet':  palletQty,
-      if (dimensions.isNotEmpty)   'dimensiones': dimensions,
-      if (imageUrl != null)        'urlImagen':   imageUrl,
-      if (imageUrls.isNotEmpty)    'urlImagenes': imageUrls,
-      if (catalogId != null)       'catalogoId':  catalogId,
-      if (tab != null)             'seccion':     tab,
+      'name':       name,
+      'category':   category,
+      'precio':     price,
+      if (description != null) 'description': description,
+      if (color != null)       'color':       color,
+      if (ean   != null)       'ean':         ean,
+      if (listPrice != null)   'listPrice':   listPrice,
+      'minOrderQty': minOrderQty,
+      'stepQty':     stepQty,
+      if (palletQty != null)       'palletQty':  palletQty,
+      if (dimensions.isNotEmpty)   'dimensions': dimensions,
+      if (imageUrl != null)        'imageUrl':   imageUrl,
+      if (imageUrls.isNotEmpty)    'imageUrls':  imageUrls,
+      if (catalogId != null)       'catalogId':  catalogId,
+      if (tab != null)             'tab':        tab,
       if (variants.isNotEmpty)
-        'variantes': variants.map((v) => v.toMap()).toList(),
-      'activo': isActive,
+        'variants': variants.map((v) => v.toMap()).toList(),
+      'isActive': isActive,
     };
   }
 
