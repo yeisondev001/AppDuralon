@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:app_duralon/services/auth_service.dart';
 import 'package:app_duralon/styles/app_style.dart';
 
 class ClientesTab extends StatefulWidget {
@@ -118,6 +119,8 @@ class _ClientesTabState extends State<ClientesTab> {
   }
 }
 
+// ── Tarjeta de cliente ─────────────────────────────────────────────────────────
+
 class _ClienteCard extends StatelessWidget {
   const _ClienteCard({required this.doc});
   final QueryDocumentSnapshot<Map<String, dynamic>> doc;
@@ -146,7 +149,6 @@ class _ClienteCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Avatar inicial
               Container(
                 width: 42,
                 height: 42,
@@ -228,17 +230,15 @@ class _ClienteCard extends StatelessWidget {
               _InfoRow(icon: Icons.phone_outlined, text: tel2.toString()),
           ],
           const SizedBox(height: 10),
-          // Botón asignar contraseña — pendiente de implementar
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: null, // Se habilitará cuando se implemente
+              onPressed: () => _mostrarDialogoContrasena(context, nombre, rnc),
               icon: const Icon(Icons.key_outlined, size: 16),
               label: const Text('Asignar contraseña'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.primaryBlue,
-                disabledForegroundColor: const Color(0xFFBDC5D1),
-                side: const BorderSide(color: Color(0xFFE2E8F0)),
+                side: BorderSide(color: AppColors.primaryBlue.withValues(alpha: 0.4)),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -251,7 +251,171 @@ class _ClienteCard extends StatelessWidget {
       ),
     );
   }
+
+  Future<void> _mostrarDialogoContrasena(
+      BuildContext context, String nombre, String rnc) async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => _AsignarContrasenaDialog(nombre: nombre, rnc: rnc),
+    );
+  }
 }
+
+// ── Diálogo de asignación de contraseña ───────────────────────────────────────
+
+class _AsignarContrasenaDialog extends StatefulWidget {
+  const _AsignarContrasenaDialog({required this.nombre, required this.rnc});
+  final String nombre;
+  final String rnc;
+
+  @override
+  State<_AsignarContrasenaDialog> createState() =>
+      _AsignarContrasenaDialogState();
+}
+
+class _AsignarContrasenaDialogState extends State<_AsignarContrasenaDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _passCtrl = TextEditingController();
+  final _confirmCtrl = TextEditingController();
+  bool _showPass = false;
+  bool _showConfirm = false;
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _passCtrl.dispose();
+    _confirmCtrl.dispose();
+    super.dispose();
+  }
+
+  String get _rncNorm => rnc.replaceAll(RegExp(r'\D'), '');
+  String get rnc => widget.rnc;
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() { _loading = true; _error = null; });
+
+    try {
+      await AuthService().crearClienteConRnc(
+        rnc: rnc,
+        nombre: widget.nombre,
+        password: _passCtrl.text.trim(),
+      );
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Acceso creado para ${widget.nombre}'),
+            backgroundColor: Colors.green.shade600,
+          ),
+        );
+      }
+    } on DuplicateRncException {
+      setState(() => _error = 'Este cliente ya tiene acceso creado.');
+    } on InvalidRncException {
+      setState(() => _error = 'El RNC "$rnc" no tiene un formato válido.');
+    } catch (e) {
+      setState(() => _error = 'Error al crear acceso: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final emailPreview = '${_rncNorm.isNotEmpty ? _rncNorm : 'rnc'}@duralon.com';
+
+    return AlertDialog(
+      title: const Text('Asignar contraseña', style: TextStyle(fontSize: 16)),
+      content: SizedBox(
+        width: 320,
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(widget.nombre,
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(Icons.email_outlined, size: 13, color: Color(0xFF94A3B8)),
+                  const SizedBox(width: 4),
+                  Text(emailPreview,
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF64748B),
+                          fontFamily: 'monospace')),
+                ],
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _passCtrl,
+                obscureText: !_showPass,
+                decoration: InputDecoration(
+                  labelText: 'Contraseña',
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                  suffixIcon: IconButton(
+                    icon: Icon(_showPass ? Icons.visibility_off : Icons.visibility,
+                        size: 18),
+                    onPressed: () => setState(() => _showPass = !_showPass),
+                  ),
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Requerido';
+                  if (v.trim().length < 6) return 'Mínimo 6 caracteres';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: _confirmCtrl,
+                obscureText: !_showConfirm,
+                decoration: InputDecoration(
+                  labelText: 'Confirmar contraseña',
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                  suffixIcon: IconButton(
+                    icon: Icon(_showConfirm ? Icons.visibility_off : Icons.visibility,
+                        size: 18),
+                    onPressed: () => setState(() => _showConfirm = !_showConfirm),
+                  ),
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Requerido';
+                  if (v.trim() != _passCtrl.text.trim()) return 'Las contraseñas no coinciden';
+                  return null;
+                },
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 10),
+                Text(_error!,
+                    style: const TextStyle(color: Colors.red, fontSize: 12)),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _loading ? null : () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: _loading ? null : _submit,
+          child: _loading
+              ? const SizedBox(
+                  width: 16, height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : const Text('Crear acceso'),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Widgets auxiliares ─────────────────────────────────────────────────────────
 
 class _StatusBadge extends StatelessWidget {
   const _StatusBadge({required this.activo});

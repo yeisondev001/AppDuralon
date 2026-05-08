@@ -37,7 +37,7 @@ service cloud.firestore {
     // ═══════════════════════════════════════════════════════════
     match /users/{userId} {
       allow read:   if isSelf(userId) || isInterno();
-      allow create: if isSelf(userId);
+      allow create: if isSelf(userId) || isAdmin();
       allow update: if isSelf(userId) || isAdmin();
       allow delete: if isAdmin();
     }
@@ -47,7 +47,7 @@ service cloud.firestore {
     // ═══════════════════════════════════════════════════════════
     match /customers/{customerId} {
       allow read:   if isSelf(customerId) || isInterno();
-      allow create: if isSelf(customerId);
+      allow create: if isSelf(customerId) || isAdmin();
       allow update: if isSelf(customerId) || isInterno();
       allow delete: if isAdmin();
 
